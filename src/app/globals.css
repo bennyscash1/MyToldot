@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────
+   ShorTree — Global Styles
+   ──────────────────────────────────────────────
+   We rely on Tailwind for almost everything.
+   Only truly global, non-composable rules live here.
+   ────────────────────────────────────────────── */
+
+@layer base {
+  /* Smooth box-sizing across the board */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    /* Smooth scroll for anchor navigation */
+    scroll-behavior: smooth;
+    /* Prevent font size inflation on mobile */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    /* Inherit font and direction from the <html> element
+       (set per-locale in [locale]/layout.tsx) */
+    font-family: inherit;
+  }
+
+  /* RTL-aware margin/padding helpers.
+     Tailwind's `ms-` / `me-` utilities handle logical
+     properties automatically, but this ensures baseline
+     browser styles respect the writing direction. */
+  [dir='rtl'] body {
+    direction: rtl;
+  }
+}
+
+@layer utilities {
+  /* Use this when you need to conditionally flip
+     a visual element (e.g. chevron icons) in RTL. */
+  .rtl-flip {
+    transform: scaleX(1);
+  }
+  [dir='rtl'] .rtl-flip {
+    transform: scaleX(-1);
+  }
+}

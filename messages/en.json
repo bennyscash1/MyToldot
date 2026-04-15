@@ -1,0 +1,23 @@
+{
+  "nav": {
+    "home": "Home",
+    "tree": "Family Tree",
+    "about": "About",
+    "logoAlt": "ShorTree logo"
+  },
+  "languageSwitcher": {
+    "label": "Switch language",
+    "en": "EN",
+    "he": "HE"
+  },
+  "home": {
+    "title": "Your Family Story, Preserved Forever",
+    "subtitle": "Discover, connect, and share the history of the Shor family — one branch at a time.",
+    "cta": "View the Family Tree"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong. Please try again.",
+    "comingSoon": "Coming soon"
+  }
+}

@@ -1,0 +1,177 @@
+// ============================================================
+// ShorTree — Prisma Schema
+// Phase 1: Core relational architecture (SaaS-ready)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN // Platform-level: can manage any tree (future admin panel)
+  ADMIN       // Tree-level: full control over one tree
+  EDITOR      // Can add/edit persons and relationships
+  VIEWER      // Read-only access
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+enum RelationshipType {
+  SPOUSE          // husband / wife / partner
+  PARENT_CHILD    // directional: person1 is the PARENT of person2
+  SIBLING         // person1 and person2 are siblings
+  ENGAGED         // betrothed, not yet married
+  DIVORCED        // formerly married
+  ADOPTED_PARENT  // person1 is the adoptive parent of person2
+}
+
+// ─────────────────────────────────────────────
+// TREE  (one tree = one family unit / tenant)
+// ─────────────────────────────────────────────
+
+model Tree {
+  id          String    @id @default(cuid())
+  name        String                          // e.g. "Asad Family"
+  description String?
+  is_public                  Boolean   @default(false) // privacy gate
+  strict_lineage_enforcement Boolean   @default(false) // when true: only blood/adoptive edges allowed; no informal links
+  created_at                 DateTime  @default(now())
+  updated_at                 DateTime  @updatedAt
+
+  // Relations
+  members       TreeMember[]
+  persons       Person[]
+  relationships Relationship[]
+
+  @@map("trees")
+}
+
+// ─────────────────────────────────────────────
+// USER  (Supabase Auth user mirrored here)
+// ─────────────────────────────────────────────
+
+model User {
+  id         String   @id                    // matches Supabase auth.users.id (UUID)
+  email      String   @unique
+  full_name  String?
+  avatar_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // A user can be a member of many trees with different roles
+  tree_memberships TreeMember[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// TREE MEMBER  (join table: User × Tree + role)
+// ─────────────────────────────────────────────
+
+model TreeMember {
+  id         String   @id @default(cuid())
+  role       Role     @default(VIEWER)
+  joined_at  DateTime @default(now())
+
+  // FK → Tree
+  tree_id String
+  tree    Tree   @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+
+  // FK → User
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([tree_id, user_id])               // one membership per tree per user
+  @@map("tree_members")
+}
+
+// ─────────────────────────────────────────────
+// PERSON  (a node in the family tree)
+// ─────────────────────────────────────────────
+
+model Person {
+  id             String    @id @default(cuid())
+
+  // Core identity
+  first_name     String
+  last_name      String?
+  maiden_name    String?                      // name before marriage
+  gender         Gender    @default(UNKNOWN)
+  birth_date     DateTime?
+  death_date     DateTime?
+  birth_place    String?
+  bio            String?                      // free-text biography
+
+  // Media (Supabase Storage path, not full URL)
+  profile_image  String?                      // e.g. "avatars/<person_id>.webp"
+
+  // i18n display overrides (Hebrew names)
+  first_name_he  String?
+  last_name_he   String?
+
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // ── Multi-tenancy FK ──
+  tree_id        String
+  tree           Tree      @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+
+  // ── Relationship edges (both directions) ──
+  relationships_as_person1 Relationship[] @relation("Person1Relationships")
+  relationships_as_person2 Relationship[] @relation("Person2Relationships")
+
+  @@index([tree_id])
+  @@map("persons")
+}
+
+// ─────────────────────────────────────────────
+// RELATIONSHIP  (edge between two Person nodes)
+// ─────────────────────────────────────────────
+
+/// Encodes a directed or undirected edge between two persons.
+/// Convention for PARENT_CHILD: person1 = parent, person2 = child.
+/// All other types are treated as undirected (symmetric).
+model Relationship {
+  id                String           @id @default(cuid())
+  relationship_type RelationshipType
+
+  // Optional metadata
+  start_date        DateTime?        // marriage date, adoption date, etc.
+  end_date          DateTime?        // divorce date, death, etc.
+  notes             String?
+
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+
+  // ── Multi-tenancy FK ──
+  tree_id           String
+  tree              Tree             @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+
+  // ── Person FKs ──
+  person1_id        String
+  person1           Person           @relation("Person1Relationships", fields: [person1_id], references: [id], onDelete: Cascade)
+
+  person2_id        String
+  person2           Person           @relation("Person2Relationships", fields: [person2_id], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate edges of the same type between the same two persons
+  @@unique([tree_id, person1_id, person2_id, relationship_type])
+  @@index([tree_id])
+  @@index([person1_id])
+  @@index([person2_id])
+  @@map("relationships")
+}
