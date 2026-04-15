@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Navbar() {
   const t = useTranslations('nav');
+  const tCommon = useTranslations('common');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-100 bg-white/80 backdrop-blur-sm">
@@ -58,7 +59,7 @@ export function Navbar() {
             <li key={item.href}>
               {item.disabled ? (
                 <span
-                  title={t('comingSoon' as never) ?? 'Coming soon'}
+                  title={tCommon('comingSoon')}
                   className="cursor-not-allowed rounded-md px-3 py-2 text-sm font-medium text-gray-300"
                 >
                   {t(item.labelKey as Parameters<typeof t>[0])}
