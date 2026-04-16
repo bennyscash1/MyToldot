@@ -14,7 +14,10 @@
  */
 
 import { NextRequest } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  createSupabaseServerClient,
+  isSupabaseServerConfigured,
+} from '@/lib/supabase/server';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 
@@ -28,6 +31,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   if (!body.email?.trim() || !body.password) {
     throw Errors.badRequest('`email` and `password` are required');
+  }
+
+  if (!isSupabaseServerConfigured()) {
+    throw Errors.internal('Supabase is not configured on this server');
   }
 
   const supabase = await createSupabaseServerClient();

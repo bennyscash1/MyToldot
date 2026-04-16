@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ApiError } from './errors';
 
 // ──────────────────────────────────────────────
@@ -64,18 +64,34 @@ export function err(
 /**
  * Wraps a route handler in a try/catch so you never forget error handling.
  *
- * Usage:
- *   export const GET = withErrorHandler(async (req) => {
- *     const data = await prisma.tree.findMany();
- *     return ok(data);
- *   });
+ * Overloaded to accept both single-argument (no dynamic params) and
+ * dual-argument (dynamic route with RouteContext) handler shapes so that
+ * Next.js 15's strict route-handler type validator accepts the result.
+ *
+ * Usage — static route:
+ *   export const GET = withErrorHandler(async (req) => { ... });
+ *
+ * Usage — dynamic route:
+ *   export const GET = withErrorHandler(async (req, ctx: RouteContext) => { ... });
  */
-export function withErrorHandler<T>(
-  handler: (...args: T[]) => Promise<NextResponse>,
-) {
-  return async (...args: T[]): Promise<NextResponse> => {
+
+// Overload 1: no RouteContext (static routes)
+export function withErrorHandler(
+  handler: (req: NextRequest) => Promise<NextResponse>,
+): (req: NextRequest) => Promise<NextResponse>;
+
+// Overload 2: with RouteContext (dynamic routes — [id], etc.)
+export function withErrorHandler<TCtx>(
+  handler: (req: NextRequest, ctx: TCtx) => Promise<NextResponse>,
+): (req: NextRequest, ctx: TCtx) => Promise<NextResponse>;
+
+// Implementation
+export function withErrorHandler(
+  handler: (req: NextRequest, ctx?: unknown) => Promise<NextResponse>,
+): (req: NextRequest, ctx?: unknown) => Promise<NextResponse> {
+  return async (req: NextRequest, ctx?: unknown): Promise<NextResponse> => {
     try {
-      return await handler(...args);
+      return await handler(req, ctx);
     } catch (error) {
       return err(error);
     }

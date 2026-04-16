@@ -1,73 +1,107 @@
 /**
- * BOILERPLATE — /api/v1/trees
+ * /api/v1/trees
  *
- * GET  /api/v1/trees      → list all public trees (Phase 3 will scope to authed user)
- * POST /api/v1/trees      → create a new tree
- *
- * This file demonstrates the full pattern every future route will follow:
- *  1. Import ONLY from lib/prisma, lib/api/*, types/api — never from components/
- *  2. Use withErrorHandler() so no route ever forgets a try/catch
- *  3. Return ok() / err() for a consistent JSON envelope
- *  4. Validate request body before touching the DB (Zod arrives in Phase 4)
+ * GET  /api/v1/trees   → list trees the authenticated user belongs to
+ * POST /api/v1/trees   → create a new tree + assign creator as ADMIN
  */
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
+import { requireAuthUser } from '@/lib/api/auth';
 import type { CreateTreeBody, TreeDto } from '@/types/api';
 
 // ─────────────────────────────────────────────
 // GET /api/v1/trees
+// Returns every tree the authenticated user is a member of.
 // ─────────────────────────────────────────────
 
 export const GET = withErrorHandler(async () => {
-  const trees = await prisma.tree.findMany({
-    // Phase 3: replace `where: {}` with `where: { members: { some: { user_id: session.user.id } } }`
-    where: { is_public: true },
+  const user = await requireAuthUser();
+
+  const memberships = await prisma.treeMember.findMany({
+    where: { user_id: user.id },
     select: {
-      id: true,
-      name: true,
-      description: true,
-      is_public: true,
-      created_at: true,
-      updated_at: true,
+      role: true,
+      tree: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          is_public: true,
+          strict_lineage_enforcement: true,
+          created_at: true,
+          updated_at: true,
+          _count: { select: { persons: true } },
+        },
+      },
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { joined_at: 'asc' },
   });
 
-  // Map to DTO — dates serialized to ISO strings by JSON.stringify automatically,
-  // but we cast the type explicitly so TypeScript stays happy.
-  return ok<TreeDto[]>(trees as unknown as TreeDto[]);
+  const trees = memberships.map(({ role, tree }) => ({
+    ...tree,
+    person_count: tree._count.persons,
+    my_role: role,
+    created_at: tree.created_at.toISOString(),
+    updated_at: tree.updated_at.toISOString(),
+  }));
+
+  return ok(trees);
 });
 
 // ─────────────────────────────────────────────
 // POST /api/v1/trees
+// Creates a tree and immediately adds the caller
+// as ADMIN in the same DB transaction.
 // ─────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  const user = await requireAuthUser();
   const body: CreateTreeBody = await req.json();
 
-  // Basic validation (Phase 4 replaces this with a Zod schema)
   if (!body.name?.trim()) {
     throw Errors.badRequest('`name` is required');
   }
 
-  const tree = await prisma.tree.create({
-    data: {
-      name: body.name.trim(),
-      description: body.description ?? null,
-      is_public: body.is_public ?? false,
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      is_public: true,
-      created_at: true,
-      updated_at: true,
-    },
+  // Atomic: tree + membership in one transaction so we never
+  // end up with an ownerless tree on partial failure.
+  const tree = await prisma.$transaction(async (tx) => {
+    const created = await tx.tree.create({
+      data: {
+        name:        body.name.trim(),
+        description: body.description?.trim() ?? null,
+        is_public:   body.is_public            ?? false,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        is_public: true,
+        strict_lineage_enforcement: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    await tx.treeMember.create({
+      data: {
+        tree_id: created.id,
+        user_id: user.id,
+        role:    'ADMIN',
+      },
+    });
+
+    return created;
   });
 
-  return ok<TreeDto>(tree as unknown as TreeDto, 201);
+  return ok<TreeDto>(
+    {
+      ...tree,
+      created_at: tree.created_at.toISOString(),
+      updated_at: tree.updated_at.toISOString(),
+    } as TreeDto,
+    201,
+  );
 });

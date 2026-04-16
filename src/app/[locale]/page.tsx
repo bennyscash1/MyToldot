@@ -1,19 +1,67 @@
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/prisma';
+import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
+import { Link } from '@/i18n/routing';
 
 // ──────────────────────────────────────────────
 // Home Page — Server Component.
-// Phase 2 placeholder: displays translated hero copy.
-// Interactive family tree content arrives in Phase 5.
+//
+// Resolves auth + tree data on the server, passes
+// minimal props to the Client Component section.
+// This keeps the interactive "Add Person" button
+// out of the server bundle while the hero content
+// stays statically rendered.
 // ──────────────────────────────────────────────
 
-export const metadata: Metadata = {
-  title: 'Home',
-};
+export const metadata: Metadata = { title: 'Home' };
 
-export default function HomePage(_props: LocalePageProps) {
-  const t = useTranslations('home');
+export default async function HomePage({ params }: LocalePageProps) {
+  await params; // consume params (locale handled by layout)
+  const t = await getTranslations('home');
+
+  // ── Resolve current user (server-side, validated JWT) ──
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // ── Resolve their first tree ──
+  let treeId:      string | null = null;
+  let personCount: number        = 0;
+  let strictMode:  boolean       = false;
+
+  if (user) {
+    try {
+      const membership = await prisma.treeMember.findFirst({
+        where:   { user_id: user.id },
+        orderBy: { joined_at: 'asc' },
+        select:  {
+          tree: {
+            select: {
+              id:                          true,
+              strict_lineage_enforcement:  true,
+              _count: { select: { persons: true } },
+            },
+          },
+        },
+      });
+
+      if (membership?.tree) {
+        treeId      = membership.tree.id;
+        strictMode  = membership.tree.strict_lineage_enforcement;
+        personCount = membership.tree._count.persons;
+      }
+    } catch (dbError) {
+      // Local-only fallback: keep page usable even when Prisma cannot
+      // connect to the database (e.g. direct DB host unavailable).
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[HomePage] Prisma unavailable, rendering empty tree state:', dbError);
+      } else {
+        throw dbError;
+      }
+    }
+  }
 
   return (
     <section className="flex flex-col items-center justify-center gap-6 px-4 py-24 text-center sm:py-36">
@@ -36,14 +84,30 @@ export default function HomePage(_props: LocalePageProps) {
 
       <p className="max-w-xl text-lg text-gray-500">{t('subtitle')}</p>
 
-      {/* CTA placeholder — will link to /tree in Phase 5 */}
-      <button
-        disabled
-        className="mt-2 cursor-not-allowed rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white opacity-50"
-        title="Coming soon"
-      >
-        {t('cta')}
-      </button>
+      {/* ── Interactive section (Client Component) ── */}
+      {user ? (
+        <AddPersonSection
+          treeId={treeId}
+          strictMode={strictMode}
+          personCount={personCount}
+        />
+      ) : (
+        /* Not logged in — invite user to sign up or log in */
+        <div className="flex items-center gap-3 mt-2">
+          <Link
+            href="/signup"
+            className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            {t('addFirstPerson')}
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            {t('cta')}
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

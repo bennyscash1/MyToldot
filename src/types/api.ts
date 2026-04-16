@@ -82,6 +82,8 @@ export interface CreatePersonBody {
   bio?: string;
   first_name_he?: string;
   last_name_he?: string;
+  /** Supabase Storage path (not a full URL). Set after image upload. */
+  profile_image?: string;
 }
 
 export type UpdatePersonBody = Partial<Omit<CreatePersonBody, 'tree_id'>>;

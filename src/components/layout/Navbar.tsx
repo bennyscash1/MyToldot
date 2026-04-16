@@ -2,16 +2,17 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import type { NavItem } from '@/types';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { NavbarActions } from './NavbarActions';
 
 // ──────────────────────────────────────────────
 // Navbar — Server Component.
 //
 // All data resolution (translations, nav items)
 // happens on the server. Only the LanguageSwitcher
-// is a Client Component (needs useRouter).
+// and NavbarActions are Client Components.
 //
 // Structure:
-//   [Logo]         [Nav Links]        [LanguageSwitcher]
+//   [Logo]         [Nav Links]        [Lang] [Auth]
 //
 // Tailwind uses logical properties (ms-/me-, ps-/pe-)
 // so the layout flips automatically in RTL without
@@ -26,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function Navbar() {
-  const t = useTranslations('nav');
+  const t       = useTranslations('nav');
   const tCommon = useTranslations('common');
 
   return (
@@ -40,7 +41,6 @@ export function Navbar() {
           href="/"
           className="flex items-center gap-2 text-lg font-bold text-gray-900 transition-opacity hover:opacity-80"
         >
-          {/* Tree icon — simple inline SVG, no external dependency */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -50,7 +50,7 @@ export function Navbar() {
           >
             <path d="M12 2C9.243 2 7 4.243 7 7c0 1.669.825 3.143 2.083 4.059C7.834 11.748 7 13.278 7 15c0 2.757 2.243 5 5 5s5-2.243 5-5c0-1.722-.834-3.252-2.083-3.941C16.175 10.143 17 8.669 17 7c0-2.757-2.243-5-5-5zm0 16c-1.654 0-3-1.346-3-3s1.346-3 3-3 3 1.346 3 3-1.346 3-3 3zm0-8c-1.654 0-3-1.346-3-3s1.346-3 3-3 3 1.346 3 3-1.346 3-3 3z" />
           </svg>
-          <span>ShorTree</span>
+          <span>Family Tree</span>
         </Link>
 
         {/* ── Navigation links ── */}
@@ -79,7 +79,7 @@ export function Navbar() {
         {/* ── Right-side actions ── */}
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
-          {/* Auth button placeholder — Phase 3 */}
+          <NavbarActions />
         </div>
       </nav>
     </header>

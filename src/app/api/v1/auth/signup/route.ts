@@ -13,7 +13,10 @@
  */
 
 import { NextRequest } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  createSupabaseServerClient,
+  isSupabaseServerConfigured,
+} from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
@@ -33,6 +36,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   if (body.password.length < 8) {
     throw Errors.unprocessable('Password must be at least 8 characters');
+  }
+
+  if (!isSupabaseServerConfigured()) {
+    throw Errors.internal('Supabase is not configured on this server');
   }
 
   const supabase = await createSupabaseServerClient();
@@ -60,16 +67,32 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // 2. Mirror the user into our public `users` table so Prisma relations work.
   //    upsert in case Supabase triggers or a previous partial signup left a row.
-  const user = await prisma.user.upsert({
-    where: { id: data.user.id },
-    update: { email: data.user.email!, full_name: body.full_name.trim() },
-    create: {
-      id: data.user.id,
-      email: data.user.email!,
-      full_name: body.full_name.trim(),
-    },
-    select: { id: true, email: true, full_name: true },
-  });
+  let user = {
+    id: data.user.id,
+    email: data.user.email,
+    full_name: body.full_name.trim(),
+  };
+
+  try {
+    user = await prisma.user.upsert({
+      where: { id: data.user.id },
+      update: { email: data.user.email!, full_name: body.full_name.trim() },
+      create: {
+        id: data.user.id,
+        email: data.user.email!,
+        full_name: body.full_name.trim(),
+      },
+      select: { id: true, email: true, full_name: true },
+    });
+  } catch (dbError) {
+    // Local-only fallback: allow signup to succeed when Prisma cannot
+    // reach Postgres (common on IPv6-restricted networks).
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[Auth] Signup mirrored user skipped (DB unavailable):', dbError);
+    } else {
+      throw dbError;
+    }
+  }
 
   return ok({ user }, 201);
 });

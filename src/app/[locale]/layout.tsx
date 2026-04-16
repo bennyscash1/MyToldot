@@ -10,14 +10,6 @@ import { LOCALE_DIR } from '@/types';
 import { Navbar } from '@/components/layout/Navbar';
 import '@/app/globals.css';
 
-// ──────────────────────────────────────────────
-// Fonts
-// Inter  → English (Latin)
-// Heebo  → Hebrew (Latin + Hebrew subsets)
-// Both are loaded upfront; we apply the correct
-// className to <html> based on the active locale.
-// ──────────────────────────────────────────────
-
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
@@ -30,30 +22,17 @@ const heebo = Heebo({
   display: 'swap',
 });
 
-// ──────────────────────────────────────────────
-// Static params — tell Next.js which locales to
-// pre-render at build time (SSG / ISR).
-// ──────────────────────────────────────────────
-
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-// ──────────────────────────────────────────────
-// Metadata
-// ──────────────────────────────────────────────
-
 export const metadata: Metadata = {
   title: {
-    template: '%s | ShorTree',
-    default: 'ShorTree — Family Tree',
+    template: '%s | Family Tree',
+    default: 'Family Tree',
   },
   description: 'Discover, connect, and preserve your family history.',
 };
-
-// ──────────────────────────────────────────────
-// Layout
-// ──────────────────────────────────────────────
 
 interface LocaleLayoutProps {
   children: ReactNode;
@@ -66,33 +45,34 @@ export default async function LocaleLayout({
 }: LocaleLayoutProps) {
   const { locale } = await params;
 
-  // Guard: show 404 for any unknown locale segment.
   if (!isValidLocale(locale)) {
     notFound();
   }
 
-  // Validate as the correct type after the guard.
   const safeLocale = locale as Locale;
-
-  // Load messages on the server — passed to the client provider below.
-  const messages = await getMessages();
-
-  const dir = LOCALE_DIR[safeLocale];
-  const fontClass = safeLocale === 'he' ? heebo.className : inter.className;
+  const messages   = await getMessages();
+  const dir        = LOCALE_DIR[safeLocale];
+  const fontClass  = safeLocale === 'he' ? heebo.className : inter.className;
 
   return (
     <html lang={safeLocale} dir={dir} className={fontClass}>
-      <body className="flex min-h-screen flex-col bg-white">
+      {/*
+        suppressHydrationWarning on <body>:
+        Browser extensions (Grammarly, Testim, LastPass, etc.) inject
+        their own attributes into <body> after SSR. React then sees a
+        mismatch and throws a hydration error we cannot prevent from our
+        code. suppressHydrationWarning tells React to accept any attribute
+        mismatch on this single element; children still hydrate normally.
+      */}
+      <body
+        className="flex min-h-screen flex-col bg-white"
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider messages={messages}>
-          {/* ── Persistent top navigation ── */}
           <Navbar />
-
-          {/* ── Page content ── */}
           <main className="flex-1">{children}</main>
-
-          {/* ── Footer placeholder (Phase 2 — kept minimal) ── */}
           <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-            © {new Date().getFullYear()} ShorTree
+            © {new Date().getFullYear()} Family Tree
           </footer>
         </NextIntlClientProvider>
       </body>

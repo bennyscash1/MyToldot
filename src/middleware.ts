@@ -16,6 +16,8 @@ import { updateSessionAndGetUser } from './lib/supabase/middleware';
 //
 // ── Protected route rules ────────────────────
 //  • GET  /api/v1/trees          → public (is_public trees visible without auth)
+//  • POST /api/v1/auth/login     → public
+//  • POST /api/v1/auth/signup    → public
 //  • ALL  /api/v1/**             → requires auth (write operations, private data)
 //  • GET  /[locale]/tree/**      → requires auth
 //  • /[locale]/login  /signup   → redirect to home if already authed
@@ -24,6 +26,8 @@ import { updateSessionAndGetUser } from './lib/supabase/middleware';
 // Routes that are always public, even for non-authed users.
 const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   { method: 'GET', pattern: /^\/api\/v1\/trees$/ }, // list public trees only
+  { method: 'POST', pattern: /^\/api\/v1\/auth\/login$/ },
+  { method: 'POST', pattern: /^\/api\/v1\/auth\/signup$/ },
 ];
 
 // UI pages that require the user to be authenticated.

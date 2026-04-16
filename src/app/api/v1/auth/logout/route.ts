@@ -8,11 +8,18 @@
  * No body required. Returns 200 on success.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  createSupabaseServerClient,
+  isSupabaseServerConfigured,
+} from '@/lib/supabase/server';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 
 export const POST = withErrorHandler(async () => {
+  if (!isSupabaseServerConfigured()) {
+    throw Errors.internal('Supabase is not configured on this server');
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { error } = await supabase.auth.signOut();
