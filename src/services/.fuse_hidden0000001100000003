@@ -33,7 +33,7 @@ export interface UploadResult {
 }
 
 export function validateFile(file: File): void {
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (\!ALLOWED_TYPES.includes(file.type)) {
     throw new ServiceError('UNSUPPORTED_FILE_TYPE', 'Please upload a JPEG, PNG, or WebP image.', 422);
   }
   if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -44,7 +44,7 @@ export function validateFile(file: File): void {
 /** Throws a clear error when Supabase env vars are not configured. */
 function requireClient() {
   const supabase = createSupabaseBrowserClient();
-  if (!supabase) {
+  if (\!supabase) {
     throw new ServiceError(
       'SUPABASE_NOT_CONFIGURED',
       'Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.',

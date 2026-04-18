@@ -28,8 +28,8 @@ export function isSupabaseBrowserConfigured(): boolean {
  * Always call isSupabaseBrowserConfigured() first, or null-check the result.
  */
 export function createSupabaseBrowserClient() {
-  if (!url || !key) {
-    if (process.env.NODE_ENV !== 'production') {
+  if (\!url || \!key) {
+    if (process.env.NODE_ENV \!== 'production') {
       console.warn(
         '[Supabase] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY ' +
         'is not set. Auth features are disabled until you add these to .env.local.',

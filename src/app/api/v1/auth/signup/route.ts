@@ -67,7 +67,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // 2. Mirror the user into our public `users` table so Prisma relations work.
   //    upsert in case Supabase triggers or a previous partial signup left a row.
-  let user = {
+  let user: { id: string; email: string | undefined; full_name: string | null } = {
     id: data.user.id,
     email: data.user.email,
     full_name: body.full_name.trim(),

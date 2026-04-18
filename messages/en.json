@@ -126,5 +126,17 @@
     "successSubtitle": "has been added as the root person.",
     "viewTree": "View Family Tree",
     "addAnother": "Add Another Person"
+  },
+  "treePage": {
+    "title": "Family Tree",
+    "noTreeTitle": "You do not have a family tree yet.",
+    "noTreeDescription": "Create your family tree to start adding people.",
+    "emptyTitle": "Your tree is empty",
+    "emptyDescription": "Add the first person to your family tree and start mapping your family history.",
+    "emptyAction": "Add First Person",
+    "notLoggedIn": "Please log in to view your family tree.",
+    "noTree": "You do not have a family tree yet.",
+    "noTreeAction": "Create My Tree",
+    "comingSoon": "Interactive tree visualization coming in the next phase."
   }
 }

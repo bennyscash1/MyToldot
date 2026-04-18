@@ -50,6 +50,21 @@ export function err(
     );
   }
 
+  // Prisma init/connectivity errors are common in local dev when
+  // DATABASE_URL/network access is misconfigured. Return a clear message.
+  if (isPrismaConnectionError(error)) {
+    return NextResponse.json(
+      {
+        data: null,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Database connection failed. Verify DATABASE_URL and database network access.',
+        },
+      },
+      { status: 500 },
+    );
+  }
+
   // Unknown error — log it, return a safe generic message.
   console.error('[API] Unhandled error:', error);
   return NextResponse.json(
@@ -58,6 +73,20 @@ export function err(
       error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' },
     },
     { status: fallbackStatus },
+  );
+}
+
+function isPrismaConnectionError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+
+  const maybeError = error as { name?: unknown; message?: unknown };
+  const name = typeof maybeError.name === 'string' ? maybeError.name : '';
+  const message = typeof maybeError.message === 'string' ? maybeError.message : '';
+
+  if (name === 'PrismaClientInitializationError') return true;
+
+  return /P1000|P1001|Can't reach database server|Authentication failed against database server/i.test(
+    message,
   );
 }
 

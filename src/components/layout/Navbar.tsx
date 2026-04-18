@@ -22,7 +22,7 @@ import { NavbarActions } from './NavbarActions';
 /** Navigation items. labelKey maps to messages/[locale].json nav.* */
 const NAV_ITEMS: NavItem[] = [
   { labelKey: 'home', href: '/' },
-  { labelKey: 'tree', href: '/tree', disabled: true }, // Phase 5
+  { labelKey: 'tree', href: '/tree' },
   { labelKey: 'about', href: '/about', disabled: true },
 ];
 

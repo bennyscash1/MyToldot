@@ -34,6 +34,8 @@ interface SetupRootFlowProps {
   /** Null when the user has no tree yet. */
   initialTreeId:  string | null;
   strictMode:     boolean;
+  /** Where to navigate after setup is complete. Defaults to '/tree'. */
+  redirectTo?:    string;
 }
 
 // ── Step indicator ────────────────────────────
@@ -150,10 +152,17 @@ function NameTreeStep({ onCreated }: NameTreeStepProps) {
 
 // ── Step 3: Success screen ────────────────────
 
-function SuccessScreen({ person, onAddAnother }: { person: PersonDto; onAddAnother: () => void }) {
-  const t       = useTranslations('setup');
-  const tCommon = useTranslations('common');
-  const router  = useRouter();
+function SuccessScreen({
+  person,
+  onAddAnother,
+  redirectTo = '/tree',
+}: {
+  person: PersonDto;
+  onAddAnother: () => void;
+  redirectTo?: string;
+}) {
+  const t      = useTranslations('setup');
+  const router = useRouter();
 
   return (
     <div className="flex flex-col items-center gap-6 py-4 text-center">
@@ -195,9 +204,9 @@ function SuccessScreen({ person, onAddAnother }: { person: PersonDto; onAddAnoth
         <Button
           size="lg"
           className="flex-1"
-          onClick={() => router.push('/')}
+          onClick={() => router.push(redirectTo as Parameters<typeof router.push>[0])}
         >
-          {t('goHome')}
+          {t('viewTree')}
         </Button>
       </div>
     </div>
@@ -206,7 +215,7 @@ function SuccessScreen({ person, onAddAnother }: { person: PersonDto; onAddAnoth
 
 // ── Main flow component ───────────────────────
 
-export function SetupRootFlow({ initialTreeId, strictMode }: SetupRootFlowProps) {
+export function SetupRootFlow({ initialTreeId, strictMode, redirectTo = '/tree' }: SetupRootFlowProps) {
   const t = useTranslations('setup');
 
   // Determine initial step based on whether a tree exists.
@@ -266,6 +275,7 @@ export function SetupRootFlow({ initialTreeId, strictMode }: SetupRootFlowProps)
         <SuccessScreen
           person={rootPerson}
           onAddAnother={handleAddAnother}
+          redirectTo={redirectTo}
         />
       )}
     </div>

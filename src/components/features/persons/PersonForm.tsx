@@ -9,7 +9,6 @@ import { cn }     from '@/lib/utils';
 import { personsService }  from '@/services/persons.service';
 import { storageService }  from '@/services/storage.service';
 import { ServiceError }    from '@/services/api.client';
-import { StorageError }    from '@/services/storage.service';
 import type { PersonDto }  from '@/types/api';
 
 // ──────────────────────────────────────────────

@@ -32,13 +32,13 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     // Guard: Supabase not yet configured — render as logged-out.
-    if (!isSupabaseBrowserConfigured()) {
+    if (\!isSupabaseBrowserConfigured()) {
       setLoading(false);
       return;
     }
 
     const supabase = createSupabaseBrowserClient();
-    if (!supabase) { setLoading(false); return; }
+    if (\!supabase) { setLoading(false); return; }
 
     // Initial load: server-validated JWT (not just a local cookie read).
     supabase.auth.getUser().then(({ data }) => {

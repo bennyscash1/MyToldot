@@ -11,9 +11,6 @@ import { SetupRootFlow } from '@/components/features/persons/SetupRootFlow';
 //
 // URL: /[locale]/setup-root
 //
-// This is the dedicated onboarding page for adding
-// the very first person to a family tree.
-//
 // Server-side responsibilities:
 //  1. Validate the user session.
 //  2. Check whether the user already has a tree.
@@ -53,24 +50,32 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
   }
 
   // ── 2. Resolve tree + person count ──
-  const membership = await prisma.treeMember.findFirst({
-    where:   { user_id: user.id },
-    orderBy: { joined_at: 'asc' },
-    select: {
-      tree: {
-        select: {
-          id:                         true,
-          strict_lineage_enforcement: true,
-          _count: { select: { persons: true } },
+  let treeId: string | null = null;
+  let strictMode = false;
+  let personCount = 0;
+
+  try {
+    const membership = await prisma.treeMember.findFirst({
+      where:   { user_id: user.id },
+      orderBy: { joined_at: 'asc' },
+      select: {
+        tree: {
+          select: {
+            id:                         true,
+            strict_lineage_enforcement: true,
+            _count: { select: { persons: true } },
+          },
         },
       },
-    },
-  });
+    });
 
-  const tree        = membership?.tree ?? null;
-  const treeId      = tree?.id ?? null;
-  const strictMode  = tree?.strict_lineage_enforcement ?? false;
-  const personCount = tree?._count.persons ?? 0;
+    const tree = membership?.tree ?? null;
+    treeId = tree?.id ?? null;
+    strictMode = tree?.strict_lineage_enforcement ?? false;
+    personCount = tree?._count.persons ?? 0;
+  } catch {
+    // DB unavailable in local dev — continue with onboarding UI.
+  }
 
   // Tree exists AND already has people — no need to re-run setup.
   if (treeId && personCount > 0) {
@@ -92,10 +97,10 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
           </div>
           <p className="font-medium text-gray-800">{t('alreadySetup')}</p>
           <Link
-            href="/"
+            href="/tree"
             className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
           >
-            {t('goHome')}
+            {t('viewTree')}
           </Link>
         </div>
       </SetupShell>
@@ -128,7 +133,6 @@ function SetupShell({
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl flex-col justify-center px-4 py-16">
       {/* Header */}
       <div className="mb-8 text-center">
-        {/* Tree icon */}
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
           <svg
             xmlns="http://www.w3.org/2000/svg"
