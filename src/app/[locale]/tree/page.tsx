@@ -1,11 +1,12 @@
 import { getTranslations } from 'next-intl/server';
-import { redirect }        from 'next/navigation';
-import type { Metadata }   from 'next';
+import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { prisma }  from '@/lib/prisma';
-import { Link }    from '@/i18n/routing';
+import { prisma } from '@/lib/prisma';
 import { EmptyTreeState } from '@/components/features/tree/EmptyTreeState';
+import { TreeCanvasWithModals } from '@/features/family-tree/components/TreeCanvasWithModals';
+import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
 
 // ──────────────────────────────────────────────
 // /[locale]/tree — Family Tree Dashboard
@@ -26,27 +27,32 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function TreePage({ params }: LocalePageProps) {
   await params;
-  const t = await getTranslations('treePage');
 
   // ── A. Auth guard ──
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // ── Resolve tree ──
-  let treeId:      string | null = null;
-  let treeName:    string | null = null;
-  let personCount: number        = 0;
+  // ── Resolve tree + membership role ──
+  let treeId: string | null = null;
+  let treeName: string | null = null;
+  let personCount = 0;
+  let membershipRole: 'VIEWER' | 'EDITOR' | 'ADMIN' | 'SUPER_ADMIN' | null = null;
+  let rootPersonId: string | null = null;
+  let linkedPersonId: string | null = null;
 
   try {
     const membership = await prisma.treeMember.findFirst({
-      where:   { user_id: user.id },
+      where: { user_id: user.id },
       orderBy: { joined_at: 'asc' },
       select: {
+        role: true,
+        linked_person_id: true,
         tree: {
           select: {
-            id:   true,
+            id: true,
             name: true,
+            root_person_id: true,
             _count: { select: { persons: true } },
           },
         },
@@ -54,9 +60,12 @@ export default async function TreePage({ params }: LocalePageProps) {
     });
 
     if (membership?.tree) {
-      treeId      = membership.tree.id;
-      treeName    = membership.tree.name;
+      treeId = membership.tree.id;
+      treeName = membership.tree.name;
       personCount = membership.tree._count.persons;
+      membershipRole = membership.role;
+      rootPersonId = membership.tree.root_person_id;
+      linkedPersonId = membership.linked_person_id;
     }
   } catch {
     // DB unavailable — fall through to "no tree" state
@@ -80,65 +89,95 @@ export default async function TreePage({ params }: LocalePageProps) {
     );
   }
 
-  // ── D. Tree has people — Phase 5 canvas placeholder ──
+  // ── D. Tree has people — interactive canvas ──
+  let initialPersons: PersonRow[] = [];
+  let initialRelationships: RelationshipRow[] = [];
+
+  try {
+    const [personRows, relRows] = await Promise.all([
+      prisma.person.findMany({
+        where: { tree_id: treeId },
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          maiden_name: true,
+          first_name_he: true,
+          last_name_he: true,
+          gender: true,
+          birth_date: true,
+          death_date: true,
+          birth_place: true,
+          bio: true,
+          profile_image: true,
+        },
+        orderBy: [{ last_name: 'asc' }, { first_name: 'asc' }],
+      }),
+      prisma.relationship.findMany({
+        where: { tree_id: treeId },
+        select: {
+          id: true,
+          relationship_type: true,
+          person1_id: true,
+          person2_id: true,
+          start_date: true,
+          end_date: true,
+        },
+      }),
+    ]);
+
+    initialPersons = personRows.map((p) => ({
+      ...p,
+      bio: p.bio ?? null,
+    }));
+
+    initialRelationships = relRows.map((r) => ({
+      id: r.id,
+      relationship_type: r.relationship_type as RelationshipRow['relationship_type'],
+      person1_id: r.person1_id,
+      person2_id: r.person2_id,
+      start_date: r.start_date,
+      end_date: r.end_date,
+    }));
+  } catch {
+    return (
+      <TreeShell>
+        <div className="flex flex-1 items-center justify-center px-4 py-20 text-center text-slate-500" dir="rtl">
+          לא ניתן לטעון את נתוני העץ. נסו שוב מאוחר יותר.
+        </div>
+      </TreeShell>
+    );
+  }
+
+  const initialFocalId =
+    linkedPersonId ?? rootPersonId ?? initialPersons[0]?.id ?? null;
+
+  const canEdit =
+    membershipRole === 'EDITOR' ||
+    membershipRole === 'ADMIN' ||
+    membershipRole === 'SUPER_ADMIN';
+  const canDeletePerson =
+    membershipRole === 'ADMIN' || membershipRole === 'SUPER_ADMIN';
+
   return (
     <TreeShell>
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-20 text-center">
-        {/* Phase 5 badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-          {treeName}
-        </div>
-
-        {/* Canvas placeholder */}
-        <div className="flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 px-8 py-16">
-          {/* Network / tree icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-12 w-12 text-gray-300"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="5"  r="2" />
-            <circle cx="5"  cy="19" r="2" />
-            <circle cx="19" cy="19" r="2" />
-            <line x1="12" y1="7"  x2="5"  y2="17" />
-            <line x1="12" y1="7"  x2="19" y2="17" />
-            <line x1="5"  y1="17" x2="19" y2="17" />
-          </svg>
-
-          <p className="text-sm font-medium text-gray-400">{t('comingSoon')}</p>
-          <p className="text-xs text-gray-300">{personCount} {personCount === 1 ? 'person' : 'people'} in your tree</p>
-        </div>
-
-        {/* Add another person CTA */}
-        <Link
-          href="/tree/setup"
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header
+          className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-2"
+          dir="rtl"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-            aria-hidden="true"
-          >
-            <circle cx="9" cy="7" r="4" />
-            <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-            <line x1="19" y1="8" x2="19" y2="14" />
-            <line x1="22" y1="11" x2="16" y2="11" />
-          </svg>
-          Add Another Person
-        </Link>
+          <h1 className="text-sm font-medium text-slate-800">{treeName}</h1>
+        </header>
+        <div className="min-h-0 flex-1">
+          <TreeCanvasWithModals
+            treeId={treeId}
+            initialPersons={initialPersons}
+            initialRelationships={initialRelationships}
+            initialFocalId={initialFocalId}
+            canEdit={canEdit}
+            canDeletePerson={canDeletePerson}
+          />
+        </div>
       </div>
     </TreeShell>
   );

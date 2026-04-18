@@ -21,18 +21,9 @@ export async function updateSessionAndGetUser(request: NextRequest) {
   // Start with a plain pass-through response that can be mutated.
   let response = NextResponse.next({ request });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // Local/dev fallback: allow app boot without Supabase env configured yet.
-  // Auth-only routes remain protected by middleware checks (user = null).
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return { response, user: null };
-  }
-
   const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {

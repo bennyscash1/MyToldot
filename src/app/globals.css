@@ -50,3 +50,23 @@
     transform: scaleX(-1);
   }
 }
+
+/* ──────────────────────────────────────────────
+   Family-tree canvas edges
+   ──────────────────────────────────────────────
+   React Flow lets us set a className on each edge; our hook emits
+   `shortree-edge-*` classes per edge kind. Stroke is applied to the
+   inner <path> the renderer draws, so we target the descendant. */
+.react-flow__edge.shortree-edge-spouse .react-flow__edge-path {
+  stroke: #94a3b8; /* slate-400 */
+  stroke-width: 2;
+}
+.react-flow__edge.shortree-edge-divorced .react-flow__edge-path {
+  stroke: #cbd5e1; /* slate-300 */
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+.react-flow__edge.shortree-edge-child .react-flow__edge-path {
+  stroke: #64748b; /* slate-500 */
+  stroke-width: 1.5;
+}

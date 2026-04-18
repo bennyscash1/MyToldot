@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
   // Enable strict mode for better React dev warnings.
   reactStrictMode: true,
 
+  webpack: (config) => {
+    config.output.workerChunkLoading = 'import';
+    return config;
+  },
+
   images: {
     // Supabase Storage URLs (Phase 4 — listed now so we never forget).
     remotePatterns: [

@@ -32,7 +32,7 @@ export function createSupabaseBrowserClient() {
     if (process.env.NODE_ENV !== 'production') {
       console.warn(
         '[Supabase] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY ' +
-        'is not set. Auth features are disabled until you add these to .env.local.',
+          'is not set. Auth features are disabled until you add these to .env.local.',
       );
     }
     return null;

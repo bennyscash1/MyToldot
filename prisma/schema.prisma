@@ -8,19 +8,19 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL") // הוסף את השורה הזו
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
+
 // ─────────────────────────────────────────────
 // ENUMS
 // ─────────────────────────────────────────────
 
 enum Role {
   SUPER_ADMIN // Platform-level: can manage any tree (future admin panel)
-  ADMIN       // Tree-level: full control over one tree
-  EDITOR      // Can add/edit persons and relationships
-  VIEWER      // Read-only access
+  ADMIN // Tree-level: full control over one tree
+  EDITOR // Can add/edit persons and relationships
+  VIEWER // Read-only access
 }
 
 enum Gender {
@@ -31,12 +31,12 @@ enum Gender {
 }
 
 enum RelationshipType {
-  SPOUSE          // husband / wife / partner
-  PARENT_CHILD    // directional: person1 is the PARENT of person2
-  SIBLING         // person1 and person2 are siblings
-  ENGAGED         // betrothed, not yet married
-  DIVORCED        // formerly married
-  ADOPTED_PARENT  // person1 is the adoptive parent of person2
+  SPOUSE // husband / wife / partner
+  PARENT_CHILD // directional: person1 is the PARENT of person2
+  SIBLING // person1 and person2 are siblings
+  ENGAGED // betrothed, not yet married
+  DIVORCED // formerly married
+  ADOPTED_PARENT // person1 is the adoptive parent of person2
 }
 
 // ─────────────────────────────────────────────
@@ -44,13 +44,18 @@ enum RelationshipType {
 // ─────────────────────────────────────────────
 
 model Tree {
-  id          String    @id @default(cuid())
-  name        String                          // e.g. "Asad Family"
-  description String?
-  is_public                  Boolean   @default(false) // privacy gate
-  strict_lineage_enforcement Boolean   @default(false) // when true: only blood/adoptive edges allowed; no informal links
-  created_at                 DateTime  @default(now())
-  updated_at                 DateTime  @updatedAt
+  id                         String   @id @default(cuid())
+  name                       String // e.g. "Asad Family"
+  description                String?
+  is_public                  Boolean  @default(false) // privacy gate
+  strict_lineage_enforcement Boolean  @default(false) // when true: only blood/adoptive edges allowed; no informal links
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+
+  // Default focal person when the tree is opened (fallback: first-created person).
+  // SetNull on delete so removing the person doesn't cascade into the tree.
+  root_person_id String? @unique
+  root_person    Person? @relation("TreeRootPerson", fields: [root_person_id], references: [id], onDelete: SetNull)
 
   // Relations
   members       TreeMember[]
@@ -65,7 +70,7 @@ model Tree {
 // ─────────────────────────────────────────────
 
 model User {
-  id         String   @id                    // matches Supabase auth.users.id (UUID)
+  id         String   @id // matches Supabase auth.users.id (UUID)
   email      String   @unique
   full_name  String?
   avatar_url String?
@@ -83,9 +88,9 @@ model User {
 // ─────────────────────────────────────────────
 
 model TreeMember {
-  id         String   @id @default(cuid())
-  role       Role     @default(VIEWER)
-  joined_at  DateTime @default(now())
+  id        String   @id @default(cuid())
+  role      Role     @default(VIEWER)
+  joined_at DateTime @default(now())
 
   // FK → Tree
   tree_id String
@@ -95,7 +100,13 @@ model TreeMember {
   user_id String
   user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@unique([tree_id, user_id])               // one membership per tree per user
+  // Per-user "home" focal person in this tree (MyHeritage-style). Optional; when
+  // null the viewer falls back to Tree.root_person_id.
+  linked_person_id String?
+  linked_person    Person? @relation("TreeMemberLinkedPerson", fields: [linked_person_id], references: [id], onDelete: SetNull)
+
+  @@unique([tree_id, user_id]) // one membership per tree per user
+  @@index([linked_person_id])
   @@map("tree_members")
 }
 
@@ -104,35 +115,40 @@ model TreeMember {
 // ─────────────────────────────────────────────
 
 model Person {
-  id             String    @id @default(cuid())
+  id String @id @default(cuid())
 
   // Core identity
-  first_name     String
-  last_name      String?
-  maiden_name    String?                      // name before marriage
-  gender         Gender    @default(UNKNOWN)
-  birth_date     DateTime?
-  death_date     DateTime?
-  birth_place    String?
-  bio            String?                      // free-text biography
+  first_name  String
+  last_name   String?
+  maiden_name String? // name before marriage
+  gender      Gender    @default(UNKNOWN)
+  birth_date  DateTime?
+  death_date  DateTime?
+  birth_place String?
+  bio         String? // free-text biography
 
   // Media (Supabase Storage path, not full URL)
-  profile_image  String?                      // e.g. "avatars/<person_id>.webp"
+  profile_image String? // e.g. "avatars/<person_id>.webp"
 
   // i18n display overrides (Hebrew names)
-  first_name_he  String?
-  last_name_he   String?
+  first_name_he String?
+  last_name_he  String?
 
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // ── Multi-tenancy FK ──
-  tree_id        String
-  tree           Tree      @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+  tree_id String
+  tree    Tree   @relation(fields: [tree_id], references: [id], onDelete: Cascade)
 
   // ── Relationship edges (both directions) ──
   relationships_as_person1 Relationship[] @relation("Person1Relationships")
   relationships_as_person2 Relationship[] @relation("Person2Relationships")
+
+  // Back-relations for focal-person FKs (no application code ever reads these
+  // directly; they exist so Prisma can resolve the opposing relation).
+  root_of_tree        Tree?        @relation("TreeRootPerson")
+  linked_tree_members TreeMember[] @relation("TreeMemberLinkedPerson")
 
   @@index([tree_id])
   @@map("persons")
@@ -150,28 +166,29 @@ model Relationship {
   relationship_type RelationshipType
 
   // Optional metadata
-  start_date        DateTime?        // marriage date, adoption date, etc.
-  end_date          DateTime?        // divorce date, death, etc.
-  notes             String?
+  start_date DateTime? // marriage date, adoption date, etc.
+  end_date   DateTime? // divorce date, death, etc.
+  notes      String?
 
-  created_at        DateTime         @default(now())
-  updated_at        DateTime         @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // ── Multi-tenancy FK ──
-  tree_id           String
-  tree              Tree             @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+  tree_id String
+  tree    Tree   @relation(fields: [tree_id], references: [id], onDelete: Cascade)
 
   // ── Person FKs ──
-  person1_id        String
-  person1           Person           @relation("Person1Relationships", fields: [person1_id], references: [id], onDelete: Cascade)
+  person1_id String
+  person1    Person @relation("Person1Relationships", fields: [person1_id], references: [id], onDelete: Cascade)
 
-  person2_id        String
-  person2           Person           @relation("Person2Relationships", fields: [person2_id], references: [id], onDelete: Cascade)
+  person2_id String
+  person2    Person @relation("Person2Relationships", fields: [person2_id], references: [id], onDelete: Cascade)
 
   // Prevent duplicate edges of the same type between the same two persons
   @@unique([tree_id, person1_id, person2_id, relationship_type])
   @@index([tree_id])
   @@index([person1_id])
   @@index([person2_id])
+  @@index([tree_id, relationship_type])
   @@map("relationships")
 }
