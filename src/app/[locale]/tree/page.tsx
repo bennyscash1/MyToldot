@@ -72,9 +72,9 @@ export default async function TreePage({ params }: LocalePageProps) {
         linkedPersonId = membership.linked_person_id;
       }
     } else {
-      // MVP/TESTING — Guest mode: show the first available tree as read-only.
+      // MVP/TESTING — Guest mode: find or auto-create the single family tree.
       // Remove this else-block when auth is re-enabled.
-      const firstTree = await prisma.tree.findFirst({
+      let firstTree = await prisma.tree.findFirst({
         orderBy: { created_at: 'asc' },
         select: {
           id: true,
@@ -84,25 +84,41 @@ export default async function TreePage({ params }: LocalePageProps) {
         },
       });
 
-      if (firstTree) {
-        treeId = firstTree.id;
-        treeName = firstTree.name;
-        personCount = firstTree._count.persons;
-        rootPersonId = firstTree.root_person_id;
-        // membershipRole stays null → canEdit / canDeletePerson both false
+      // Auto-create the default tree the very first time (empty DB).
+      if (!firstTree) {
+        const created = await prisma.tree.create({
+          data: { name: 'עץ המשפחה', is_public: true },
+          select: {
+            id: true,
+            name: true,
+            root_person_id: true,
+            _count: { select: { persons: true } },
+          },
+        });
+        firstTree = created;
       }
+
+      treeId      = firstTree.id;
+      treeName    = firstTree.name;
+      personCount = firstTree._count.persons;
+      rootPersonId = firstTree.root_person_id;
     }
   } catch {
     // DB unavailable — fall through to "no tree" state
   }
 
-  // MVP/TESTING: guests are always read-only (membershipRole is null when no user).
+  // MVP/TESTING: everyone is an editor — no auth/role gate.
+  // Restore role-based lines (commented below) when auth is re-enabled.
+  const canEdit = true;
+  const canDeletePerson = true;
+  /* ORIGINAL role-based check — restore when auth is re-enabled:
   const canEdit =
     membershipRole === 'EDITOR' ||
     membershipRole === 'ADMIN' ||
     membershipRole === 'SUPER_ADMIN';
   const canDeletePerson =
     membershipRole === 'ADMIN' || membershipRole === 'SUPER_ADMIN';
+  */
 
   // ── B. No tree ──
   if (!treeId) {

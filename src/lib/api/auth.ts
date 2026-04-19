@@ -55,7 +55,13 @@ const ROLE_RANK: Record<Role, number> = {
 export async function requireTreeRole(
   treeId: string,
   minimumRole: Role,
-): Promise<User> {
+): Promise<User | null> {
+  // MVP/TESTING — role check bypassed so unauthenticated visitors can mutate the tree.
+  // Restore the original body below when auth is re-enabled.
+  void treeId; void minimumRole; // suppress unused-var warnings
+  return null as unknown as User;
+
+  /* ORIGINAL — restore when auth is re-enabled:
   const user = await requireAuthUser();
 
   const membership = await prisma.treeMember.findUnique({
@@ -72,4 +78,5 @@ export async function requireTreeRole(
   }
 
   return user;
+  */
 }

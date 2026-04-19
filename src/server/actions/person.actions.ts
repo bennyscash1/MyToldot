@@ -46,7 +46,7 @@ export async function createPersonAction(
       select: PERSON_SELECT,
     });
 
-    revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+    revalidatePath('/[locale]/tree', 'page');
     return person;
   });
 }
@@ -75,7 +75,7 @@ export async function updatePersonAction(
       select: PERSON_SELECT,
     });
 
-    revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+    revalidatePath('/[locale]/tree', 'page');
     return person;
   });
 }
@@ -100,7 +100,7 @@ export async function deletePersonAction(
 
     await prisma.person.delete({ where: { id } });
 
-    revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+    revalidatePath('/[locale]/tree', 'page');
     return { id };
   });
 }

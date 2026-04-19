@@ -69,7 +69,7 @@ function normalizeSymmetric(
 }
 
 function revalidateTree(treeId: string): void {
-  revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+  revalidatePath('/[locale]/tree', 'page');
 }
 
 // ────────────────────────────────────────────────────────────────
