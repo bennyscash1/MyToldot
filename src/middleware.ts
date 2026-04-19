@@ -65,22 +65,24 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Step 3: UI route guards ───────────────
+  // MVP/TESTING — both guards commented out so unauthenticated visitors reach
+  // all pages directly. To restore auth, uncomment the two blocks below.
 
-  // Redirect unauthenticated users away from protected pages.
-  const isProtectedUiPath = PROTECTED_UI_PATHS.some((p) => p.test(pathname));
-  if (isProtectedUiPath && !user) {
-    const locale = pathname.split('/')[1] ?? routing.defaultLocale;
-    const loginUrl = new URL(`/${locale}/login`, request.url);
-    loginUrl.searchParams.set('next', pathname); // preserve intended destination
-    return NextResponse.redirect(loginUrl);
-  }
+  // // Redirect unauthenticated users away from protected pages.
+  // const isProtectedUiPath = PROTECTED_UI_PATHS.some((p) => p.test(pathname));
+  // if (isProtectedUiPath && !user) {
+  //   const locale = pathname.split('/')[1] ?? routing.defaultLocale;
+  //   const loginUrl = new URL(`/${locale}/login`, request.url);
+  //   loginUrl.searchParams.set('next', pathname); // preserve intended destination
+  //   return NextResponse.redirect(loginUrl);
+  // }
 
-  // Redirect already-authenticated users away from login/signup.
-  const isAuthUiPath = AUTH_UI_PATHS.some((p) => p.test(pathname));
-  if (isAuthUiPath && user) {
-    const locale = pathname.split('/')[1] ?? routing.defaultLocale;
-    return NextResponse.redirect(new URL(`/${locale}`, request.url));
-  }
+  // // Redirect already-authenticated users away from login/signup.
+  // const isAuthUiPath = AUTH_UI_PATHS.some((p) => p.test(pathname));
+  // if (isAuthUiPath && user) {
+  //   const locale = pathname.split('/')[1] ?? routing.defaultLocale;
+  //   return NextResponse.redirect(new URL(`/${locale}`, request.url));
+  // }
 
   // ── Step 4: i18n locale rewrite ──────────
   // Run the next-intl middleware and merge its response cookies with

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { redirect } from 'next/navigation';
+// import { redirect } from 'next/navigation'; // MVP/TESTING: unused while auth guard is off
 import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -29,9 +29,11 @@ export default async function TreePage({ params }: LocalePageProps) {
   await params;
 
   // ── A. Auth guard ──
+  // MVP/TESTING — auth redirect disabled; unauthenticated visitors land here as read-only guests.
+  // Restore the original guard below when auth is re-enabled.
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  // if (!user) redirect('/login'); // MVP/TESTING: commented out
 
   // ── Resolve tree + membership role ──
   let treeId: string | null = null;
@@ -42,35 +44,59 @@ export default async function TreePage({ params }: LocalePageProps) {
   let linkedPersonId: string | null = null;
 
   try {
-    const membership = await prisma.treeMember.findFirst({
-      where: { user_id: user.id },
-      orderBy: { joined_at: 'asc' },
-      select: {
-        role: true,
-        linked_person_id: true,
-        tree: {
-          select: {
-            id: true,
-            name: true,
-            root_person_id: true,
-            _count: { select: { persons: true } },
+    if (user) {
+      // ── Authenticated: resolve via membership (original path) ──
+      const membership = await prisma.treeMember.findFirst({
+        where: { user_id: user.id },
+        orderBy: { joined_at: 'asc' },
+        select: {
+          role: true,
+          linked_person_id: true,
+          tree: {
+            select: {
+              id: true,
+              name: true,
+              root_person_id: true,
+              _count: { select: { persons: true } },
+            },
           },
         },
-      },
-    });
+      });
 
-    if (membership?.tree) {
-      treeId = membership.tree.id;
-      treeName = membership.tree.name;
-      personCount = membership.tree._count.persons;
-      membershipRole = membership.role;
-      rootPersonId = membership.tree.root_person_id;
-      linkedPersonId = membership.linked_person_id;
+      if (membership?.tree) {
+        treeId = membership.tree.id;
+        treeName = membership.tree.name;
+        personCount = membership.tree._count.persons;
+        membershipRole = membership.role;
+        rootPersonId = membership.tree.root_person_id;
+        linkedPersonId = membership.linked_person_id;
+      }
+    } else {
+      // MVP/TESTING — Guest mode: show the first available tree as read-only.
+      // Remove this else-block when auth is re-enabled.
+      const firstTree = await prisma.tree.findFirst({
+        orderBy: { created_at: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          root_person_id: true,
+          _count: { select: { persons: true } },
+        },
+      });
+
+      if (firstTree) {
+        treeId = firstTree.id;
+        treeName = firstTree.name;
+        personCount = firstTree._count.persons;
+        rootPersonId = firstTree.root_person_id;
+        // membershipRole stays null → canEdit / canDeletePerson both false
+      }
     }
   } catch {
     // DB unavailable — fall through to "no tree" state
   }
 
+  // MVP/TESTING: guests are always read-only (membershipRole is null when no user).
   const canEdit =
     membershipRole === 'EDITOR' ||
     membershipRole === 'ADMIN' ||

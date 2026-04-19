@@ -151,6 +151,15 @@ export function NavbarActions() {
   }
 
   // ── Logged out ──
+  // MVP/TESTING — Login & Signup buttons hidden. Restore the block below when auth is re-enabled.
+  if (!user) {
+    return (
+      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">
+        Guest
+      </span>
+    );
+  }
+  /* MVP/TESTING — original logged-out UI (restore when auth is re-enabled):
   if (!user) {
     return (
       <div className="flex items-center gap-2">
@@ -169,6 +178,7 @@ export function NavbarActions() {
       </div>
     );
   }
+  */
 
   // ── Logged in ──
   const initials = getInitials(user.email, user.user_metadata?.full_name);

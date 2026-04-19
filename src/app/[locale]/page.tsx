@@ -1,10 +1,11 @@
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { prisma } from '@/lib/prisma';
-import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
 import { Link } from '@/i18n/routing';
+// MVP/TESTING — imports below are only needed when auth is active; restore alongside the auth block:
+// import { createSupabaseServerClient } from '@/lib/supabase/server';
+// import { prisma } from '@/lib/prisma';
+// import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
 
 // ──────────────────────────────────────────────
 // Home Page — Server Component.
@@ -22,11 +23,12 @@ export default async function HomePage({ params }: LocalePageProps) {
   await params; // consume params (locale handled by layout)
   const t = await getTranslations('home');
 
-  // ── Resolve current user (server-side, validated JWT) ──
+  // MVP/TESTING — auth + tree-membership lookup bypassed.
+  // Restore the original block below when auth is re-enabled.
+  /* ORIGINAL AUTH BLOCK — restore when auth is re-enabled:
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // ── Resolve their first tree ──
   let treeId:      string | null = null;
   let personCount: number        = 0;
   let strictMode:  boolean       = false;
@@ -53,8 +55,6 @@ export default async function HomePage({ params }: LocalePageProps) {
         personCount = membership.tree._count.persons;
       }
     } catch (dbError) {
-      // Local-only fallback: keep page usable even when Prisma cannot
-      // connect to the database (e.g. direct DB host unavailable).
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[HomePage] Prisma unavailable, rendering empty tree state:', dbError);
       } else {
@@ -62,6 +62,7 @@ export default async function HomePage({ params }: LocalePageProps) {
       }
     }
   }
+  */
 
   return (
     <section className="flex flex-col items-center justify-center gap-6 px-4 py-24 text-center sm:py-36">
@@ -84,7 +85,15 @@ export default async function HomePage({ params }: LocalePageProps) {
 
       <p className="max-w-xl text-lg text-gray-500">{t('subtitle')}</p>
 
-      {/* ── Interactive section (Client Component) ── */}
+      {/* MVP/TESTING — CTA goes straight to the tree dashboard.
+          Restore the original auth-conditional block below when auth is re-enabled. */}
+      <Link
+        href="/tree"
+        className="mt-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+      >
+        {t('cta')}
+      </Link>
+      {/* ORIGINAL CTA BLOCK — restore when auth is re-enabled:
       {user ? (
         <AddPersonSection
           treeId={treeId}
@@ -92,7 +101,6 @@ export default async function HomePage({ params }: LocalePageProps) {
           personCount={personCount}
         />
       ) : (
-        /* Not logged in — invite user to sign up or log in */
         <div className="flex items-center gap-3 mt-2">
           <Link
             href="/signup"
@@ -108,6 +116,7 @@ export default async function HomePage({ params }: LocalePageProps) {
           </Link>
         </div>
       )}
+      */}
     </section>
   );
 }
