@@ -16,8 +16,8 @@ import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/type
 // States:
 //  A. Not logged in       → redirect /login
 //  B. No tree             → "no tree" empty state  → /setup-root
-//  C. Tree, 0 persons     → "empty tree" state     → /tree/setup
-//  D. Tree, 1+ persons    → tree canvas (Phase 5 placeholder)
+//  C. Tree, 0 persons     → editors: empty canvas + add first person; viewers: empty state
+//  D. Tree, 1+ persons    → interactive canvas
 // ──────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -71,6 +71,13 @@ export default async function TreePage({ params }: LocalePageProps) {
     // DB unavailable — fall through to "no tree" state
   }
 
+  const canEdit =
+    membershipRole === 'EDITOR' ||
+    membershipRole === 'ADMIN' ||
+    membershipRole === 'SUPER_ADMIN';
+  const canDeletePerson =
+    membershipRole === 'ADMIN' || membershipRole === 'SUPER_ADMIN';
+
   // ── B. No tree ──
   if (!treeId) {
     return (
@@ -82,9 +89,33 @@ export default async function TreePage({ params }: LocalePageProps) {
 
   // ── C. Tree exists but has no people ──
   if (personCount === 0) {
+    if (!canEdit) {
+      return (
+        <TreeShell>
+          <EmptyTreeState mode="emptyTree" />
+        </TreeShell>
+      );
+    }
     return (
       <TreeShell>
-        <EmptyTreeState mode="emptyTree" />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <header
+            className="flex shrink-0 items-center justify-between border-b border-slate-200/60 bg-[#f4f3e9] px-4 py-2.5"
+            dir="rtl"
+          >
+            <h1 className="text-sm font-medium text-slate-800">{treeName}</h1>
+          </header>
+          <div className="min-h-0 flex-1">
+            <TreeCanvasWithModals
+              treeId={treeId}
+              initialPersons={[]}
+              initialRelationships={[]}
+              initialFocalId={null}
+              canEdit
+              canDeletePerson={canDeletePerson}
+            />
+          </div>
+        </div>
       </TreeShell>
     );
   }
@@ -152,18 +183,11 @@ export default async function TreePage({ params }: LocalePageProps) {
   const initialFocalId =
     linkedPersonId ?? rootPersonId ?? initialPersons[0]?.id ?? null;
 
-  const canEdit =
-    membershipRole === 'EDITOR' ||
-    membershipRole === 'ADMIN' ||
-    membershipRole === 'SUPER_ADMIN';
-  const canDeletePerson =
-    membershipRole === 'ADMIN' || membershipRole === 'SUPER_ADMIN';
-
   return (
     <TreeShell>
       <div className="flex min-h-0 flex-1 flex-col">
         <header
-          className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-2"
+          className="flex shrink-0 items-center justify-between border-b border-slate-200/60 bg-[#f4f3e9] px-4 py-2.5"
           dir="rtl"
         >
           <h1 className="text-sm font-medium text-slate-800">{treeName}</h1>

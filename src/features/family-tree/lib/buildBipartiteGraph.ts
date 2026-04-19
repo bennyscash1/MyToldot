@@ -41,10 +41,6 @@ function coupleKey(a: string, b: string): string {
   return a < b ? `c:${a}|${b}` : `c:${b}|${a}`;
 }
 
-function soloKey(a: string): string {
-  return `s:${a}`;
-}
-
 export function buildBipartiteGraph(
   persons: PersonRow[],
   relationships: RelationshipRow[],

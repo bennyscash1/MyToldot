@@ -76,7 +76,7 @@ function UserMenu({ email, initials, onLogout, isLoggingOut }: UserMenuProps) {
         onClick={() => setIsOpen((o) => !o)}
         aria-haspopup="true"
         aria-expanded={isOpen}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3e5045] text-sm font-semibold text-white transition-colors hover:bg-[#323d36] focus:outline-none focus:ring-2 focus:ring-[#3e5045]/40 focus:ring-offset-2"
       >
         {initials}
       </button>
@@ -155,16 +155,16 @@ export function NavbarActions() {
     return (
       <div className="flex items-center gap-2">
         <Link
-          href="/login"
-          className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-        >
-          {t('loginButton')}
-        </Link>
-        <Link
           href="/signup"
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          className="rounded-lg bg-[#fcdcd8] px-4 py-2 text-sm font-semibold text-slate-800 transition-colors hover:bg-[#fbc8c2]"
         >
           {t('signupButton')}
+        </Link>
+        <Link
+          href="/login"
+          className="rounded-lg bg-[#3e5045] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#323d36]"
+        >
+          {t('loginButton')}
         </Link>
       </div>
     );

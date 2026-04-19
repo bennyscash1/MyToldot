@@ -1,8 +1,9 @@
 // Rendered node sizes — these MUST match the CSS box of the corresponding
 // React component. ELK uses them to compute positions and route edges; any
 // mismatch will make edges connect to empty space next to the node.
-export const PERSON_NODE_WIDTH = 208;
-export const PERSON_NODE_HEIGHT = 96;
+// Vertical card: photo on top, name + years below (RTL tree UI).
+export const PERSON_NODE_WIDTH = 168;
+export const PERSON_NODE_HEIGHT = 212;
 
 // A small pill that sits between two spouses. Kept narrow so it visually
 // reads as a connector, not a card.

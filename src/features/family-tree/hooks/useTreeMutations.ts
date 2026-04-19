@@ -7,7 +7,9 @@ import {
   addParentAction,
   addSpouseAction,
 } from '@/server/actions/relationship.actions';
+import type { AddedRelativeDto } from '@/server/actions/relationship.actions';
 import {
+  createPersonAction,
   deletePersonAction,
   updatePersonAction,
 } from '@/server/actions/person.actions';
@@ -47,9 +49,12 @@ export interface UseTreeMutationsArgs {
 export interface UseTreeMutationsResult {
   persons: PersonRow[];
   relationships: RelationshipRow[];
+  /** Creates a standalone person (no relationships). Returns the new person's id, or null on failure. */
+  createPerson: (input: PersonInput) => Promise<string | null>;
   addParent: (args: { childId: string; parent: PersonInput; adoptive?: boolean }) => Promise<void>;
   addSpouse: (args: { personId: string; spouse: PersonInput; marriage_date?: Date | null }) => Promise<void>;
-  addChild: (args: { parent1Id: string; parent2Id?: string | null; child: PersonInput }) => Promise<void>;
+  /** Returns the new child's id after a successful create (real id, not temp). */
+  addChild: (args: { parent1Id: string; parent2Id?: string | null; child: PersonInput }) => Promise<string | null>;
   updatePerson: (args: { personId: string; patch: PersonPatch }) => Promise<void>;
   deletePerson: (personId: string) => Promise<void>;
   isSaving: boolean;
@@ -89,7 +94,7 @@ export function useTreeMutations({
   const [lastError, setLastError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  /** Insert optimistic rows, run the server call, swap ids on success, roll back on failure. */
+  /** Insert optimistic rows, run the server call, swap ids on success, roll back on failure. Returns server `data` on success. */
   const runOptimistic = useCallback(
     async <T,>(args: {
       tempPersons?: PersonRow[];
@@ -103,7 +108,7 @@ export function useTreeMutations({
         swapPersonIds?: Record<string, string>;
         swapRelationshipIds?: Record<string, string>;
       };
-    }) => {
+    }): Promise<T | undefined> => {
       const { tempPersons = [], tempRelationships = [], run, onSuccess } = args;
       const tempPersonIds = new Set(tempPersons.map((p) => p.id));
       const tempRelIds = new Set(tempRelationships.map((r) => r.id));
@@ -117,7 +122,7 @@ export function useTreeMutations({
           setLastError(result.error.message);
           setPersons((prev) => prev.filter((p) => !tempPersonIds.has(p.id)));
           setRelationships((prev) => prev.filter((r) => !tempRelIds.has(r.id)));
-          return;
+          return undefined;
         }
 
         const swaps = onSuccess?.(result.data) ?? {};
@@ -138,13 +143,40 @@ export function useTreeMutations({
           }),
         );
         setLastError(null);
+        return result.data;
       } catch (err) {
         setLastError(err instanceof Error ? err.message : 'Unknown error');
         setPersons((prev) => prev.filter((p) => !tempPersonIds.has(p.id)));
         setRelationships((prev) => prev.filter((r) => !tempRelIds.has(r.id)));
+        return undefined;
       }
     },
     [],
+  );
+
+  // ── createPerson ─────────────────────────────────────────────
+  const createPerson = useCallback<UseTreeMutationsResult['createPerson']>(
+    async (input) => {
+      const newPersonId = tmpId('person');
+      const tempPerson = inputToRow(newPersonId, input);
+      let out: string | null = null;
+      await new Promise<void>((resolve) => {
+        startTransition(async () => {
+          const data = await runOptimistic<{ id: string }>({
+            tempPersons: [tempPerson],
+            tempRelationships: [],
+            run: () => createPersonAction(treeId, input),
+            onSuccess: (dto) => ({
+              swapPersonIds: { [newPersonId]: dto.id },
+            }),
+          });
+          if (data) out = data.id;
+          resolve();
+        });
+      });
+      return out;
+    },
+    [treeId, runOptimistic],
   );
 
   // ── addParent ──────────────────────────────────────────────────
@@ -231,9 +263,10 @@ export function useTreeMutations({
         end_date: null,
       }));
       const tempPerson = inputToRow(newPersonId, child);
+      let out: string | null = null;
       await new Promise<void>((resolve) => {
         startTransition(async () => {
-          await runOptimistic({
+          const data = await runOptimistic<AddedRelativeDto>({
             tempPersons: [tempPerson],
             tempRelationships: tempRels,
             run: () =>
@@ -255,9 +288,11 @@ export function useTreeMutations({
               };
             },
           });
+          if (data) out = data.person.id;
           resolve();
         });
       });
+      return out;
     },
     [treeId, runOptimistic],
   );
@@ -351,6 +386,7 @@ export function useTreeMutations({
   return {
     persons,
     relationships,
+    createPerson,
     addParent,
     addSpouse,
     addChild,

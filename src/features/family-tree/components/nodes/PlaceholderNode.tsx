@@ -20,10 +20,10 @@ import {
 // ────────────────────────────────────────────────────────────────
 
 const LABEL: Record<PlaceholderNodeData['meta']['kind'], string> = {
-  'add-parent': 'Add parent',
-  'add-spouse': 'Add spouse',
-  'add-child': 'Add child',
-  'add-sibling': 'Add sibling',
+  'add-parent': 'הוספת הורה',
+  'add-spouse': 'הוספת בן/בת זוג',
+  'add-child': 'הוספת ילד',
+  'add-sibling': 'הוספת אח/אחות',
 };
 
 function PlaceholderNodeInner({ data }: NodeProps) {
@@ -33,7 +33,8 @@ function PlaceholderNodeInner({ data }: NodeProps) {
     <button
       type="button"
       style={{ width: PLACEHOLDER_NODE_WIDTH, height: PLACEHOLDER_NODE_HEIGHT }}
-      className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-white/60 text-slate-500 transition hover:border-sky-400 hover:bg-sky-50 hover:text-sky-600"
+      className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300/90 bg-white/80 text-slate-500 transition hover:border-[#3e5045]/50 hover:bg-[#f4f3e9] hover:text-[#3e5045]"
+      dir="rtl"
     >
       <Handle
         id="top"

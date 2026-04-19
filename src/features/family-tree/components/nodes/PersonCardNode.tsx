@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import clsx from 'clsx';
 
+import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import type { PersonNodeData } from '../../lib/types';
 import {
   PERSON_NODE_HEIGHT,
@@ -29,30 +30,28 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
   const birth = formatYear(person.birth_date);
   const death = formatYear(person.death_date);
   const years =
-    birth && death ? `${birth} – ${death}` : birth ? `${birth}–` : death ? `–${death}` : '';
+    birth && death ? `${birth} – ${death}` : birth ? `${birth} –` : death ? `– ${death}` : '';
+
+  const active = Boolean(is_focal || selected);
 
   return (
     <div
       style={{ width: PERSON_NODE_WIDTH, height: PERSON_NODE_HEIGHT }}
       className={clsx(
-        'relative flex items-center gap-3 rounded-xl border bg-white px-3 shadow-sm transition',
-        'hover:shadow-md',
-        is_focal
-          ? 'border-sky-500 ring-2 ring-sky-300'
-          : selected
-            ? 'border-sky-400'
-            : 'border-slate-200',
-        person.gender === 'MALE' && 'border-l-4 border-l-sky-400',
-        person.gender === 'FEMALE' && 'border-l-4 border-l-rose-400',
+        'relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-md transition',
+        'hover:shadow-lg',
+        active
+          ? 'border-[2px] border-[#3e5045] bg-[#f4f3e9]'
+          : 'border border-slate-200/90',
       )}
     >
-      {/* Incoming spouse edge — left side, same Y as the card centre. */}
+      {/* Incoming spouse edge — left side, mid card. */}
       <Handle
         type="target"
         position={Position.Left}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
-      {/* Incoming child edge — top. */}
+      {/* Incoming child edge — top centre. */}
       <Handle
         id="top"
         type="target"
@@ -62,16 +61,11 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
 
       <Avatar person={person} />
 
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-slate-900" title={displayName}>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 pb-2 pt-1 text-center">
+        <div className="line-clamp-2 w-full text-sm font-bold leading-tight text-slate-900" title={displayName}>
           {displayName || '—'}
         </div>
-        {years && <div className="text-xs text-slate-500">{years}</div>}
-        {person.birth_place && (
-          <div className="truncate text-[11px] text-slate-400" title={person.birth_place}>
-            {person.birth_place}
-          </div>
-        )}
+        {years ? <div className="mt-0.5 text-xs text-slate-500">{years}</div> : null}
       </div>
 
       {/* Outgoing spouse edge — right side. */}
@@ -81,7 +75,6 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
         position={Position.Right}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
-      {/* Outgoing child edge — bottom (only meaningful when this node acts as a union parent, which persons don't, but kept for symmetry/placeholders). */}
       <Handle
         id="bottom"
         type="source"
@@ -94,20 +87,19 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
 
 function Avatar({ person }: { person: PersonNodeData['person'] }) {
   const initials = (person.first_name_he?.[0] ?? person.first_name[0] ?? '?').toUpperCase();
-  if (person.profile_image) {
+  const src = profileImagePublicUrl(person.profile_image) ?? person.profile_image ?? null;
+  if (src) {
     return (
-      // Profile image path is a Supabase Storage key — callers should have
-      // it resolved to a public URL before passing it in via data.
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={person.profile_image}
+        src={src}
         alt=""
-        className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+        className="h-[132px] w-full flex-shrink-0 rounded-t-[10px] object-cover"
       />
     );
   }
   return (
-    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-500">
+    <div className="flex h-[132px] w-full flex-shrink-0 items-center justify-center rounded-t-[10px] bg-slate-100 text-2xl font-semibold text-slate-400">
       {initials}
     </div>
   );

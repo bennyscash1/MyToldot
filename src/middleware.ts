@@ -25,9 +25,11 @@ import { updateSessionAndGetUser } from './lib/supabase/middleware';
 
 // Routes that are always public, even for non-authed users.
 const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
-  { method: 'GET', pattern: /^\/api\/v1\/trees$/ }, // list public trees only
+  { method: 'GET', pattern: /^\/api\/v1\/trees$/ }, // still authenticated in route handler
   { method: 'POST', pattern: /^\/api\/v1\/auth\/login$/ },
   { method: 'POST', pattern: /^\/api\/v1\/auth\/signup$/ },
+  // Allow logout when session cookie is missing/expired (clear cookies; no 401 loop).
+  { method: 'POST', pattern: /^\/api\/v1\/auth\/logout$/ },
 ];
 
 // UI pages that require the user to be authenticated.

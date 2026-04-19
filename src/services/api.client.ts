@@ -45,6 +45,7 @@ async function request<T>(
 ): Promise<T> {
   const res = await fetch(path, {
     method,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       // Phase 3: inject `Authorization: Bearer <token>` here

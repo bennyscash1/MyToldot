@@ -1,19 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import {
-  ReactFlow,
-  Background,
-  BackgroundVariant,
-  Controls,
-  MiniMap,
-  ReactFlowProvider,
-  type NodeMouseHandler,
-  type NodeTypes,
-} from '@xyflow/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactFlowProvider, type NodeMouseHandler, type NodeTypes } from '@xyflow/react';
 
-import '@xyflow/react/dist/style.css';
-
+import { TreeCanvas } from '@/components/features/tree/TreeCanvas';
 import { useElkLayout } from '../hooks/useElkLayout';
 import { PersonCardNode } from './nodes/PersonCardNode';
 import { UnionNode } from './nodes/UnionNode';
@@ -35,6 +25,8 @@ export interface FamilyTreeViewerProps {
   canEdit: boolean;
   onSelectPerson?: (personId: string) => void;
   onAddRelative?: (meta: PlaceholderNodeData['meta'], screenX: number, screenY: number) => void;
+  /** When the tree has no people yet — centered “+” creates the first person and opens the editor. */
+  onAddFirstPerson?: () => void;
 }
 
 const NODE_TYPES: NodeTypes = {
@@ -43,8 +35,6 @@ const NODE_TYPES: NodeTypes = {
   placeholder: PlaceholderNode,
 };
 
-const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 0.85 };
-
 function FamilyTreeViewerInner({
   persons,
   relationships,
@@ -52,13 +42,25 @@ function FamilyTreeViewerInner({
   canEdit,
   onSelectPerson,
   onAddRelative,
+  onAddFirstPerson,
 }: Omit<FamilyTreeViewerProps, 'treeId'>) {
   const [focalId, setFocalId] = useState<string | null>(initialFocalId);
+
+  useEffect(() => {
+    if (persons.length === 0) return;
+    if (!focalId) setFocalId(persons[0]?.id ?? null);
+  }, [persons, focalId]);
+
+  /** ELK + placeholders need a focal immediately; state may lag one frame after the first person is added. */
+  const layoutFocalId = useMemo(
+    () => (persons.length === 0 ? null : focalId ?? persons[0]?.id ?? null),
+    [persons, focalId],
+  );
 
   const { nodes, edges, isLoading, error } = useElkLayout({
     persons,
     relationships,
-    focalId,
+    focalId: layoutFocalId,
     showPlaceholders: canEdit,
   });
 
@@ -77,57 +79,19 @@ function FamilyTreeViewerInner({
     [focalId, onSelectPerson, onAddRelative],
   );
 
-  const emptyState = useMemo(
-    () =>
-      persons.length === 0 && (
-        <div className="flex h-full items-center justify-center text-slate-500" dir="rtl">
-          העץ ריק. הוסיפו אדם ראשון כדי להתחיל.
-        </div>
-      ),
-    [persons.length],
-  );
+  const showEmptyAdd = persons.length === 0 && Boolean(canEdit && onAddFirstPerson);
 
   return (
-    <div className="relative h-full min-h-[480px] w-full">
-      {emptyState}
-
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={NODE_TYPES}
-        defaultViewport={DEFAULT_VIEWPORT}
-        fitView
-        fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-        minZoom={0.25}
-        maxZoom={1.5}
-        proOptions={{ hideAttribution: true }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable
-        onNodeClick={onNodeClick}
-        className="shortree-canvas"
-      >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-        <Controls showInteractive={false} />
-        <MiniMap pannable zoomable className="!bg-white/80" />
-      </ReactFlow>
-
-      {isLoading && (
-        <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-          <span className="rounded-full bg-slate-900/70 px-3 py-1 text-xs text-white" dir="rtl">
-            מסדר את העץ…
-          </span>
-        </div>
-      )}
-
-      {error && (
-        <div className="absolute inset-x-0 top-2 flex justify-center">
-          <span className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white" dir="rtl">
-            שגיאת פריסה: {error.message}
-          </span>
-        </div>
-      )}
-    </div>
+    <TreeCanvas
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={NODE_TYPES}
+      onNodeClick={onNodeClick}
+      showEmptyAdd={showEmptyAdd}
+      onAddFirstPerson={onAddFirstPerson}
+      isLayoutLoading={isLoading}
+      layoutError={error}
+    />
   );
 }
 

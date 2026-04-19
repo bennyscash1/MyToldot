@@ -38,17 +38,26 @@ export function useElkLayout({
   focalId,
   showPlaceholders = true,
 }: UseElkLayoutArgs): UseElkLayoutResult {
-  const topoHash = useMemo(
-    () => hashTopology(persons, relationships, focalId, showPlaceholders),
-    [persons, relationships, focalId, showPlaceholders],
-  );
+  const topoHash = useMemo(() => {
+    if (persons.length === 0) return '__empty__';
+    return hashTopology(persons, relationships, focalId, showPlaceholders);
+  }, [persons, relationships, focalId, showPlaceholders]);
 
   const [layout, setLayout] = useState<LayoutResult | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const lastHash = useRef<string | null>(null);
 
   useEffect(() => {
+    // No people → no graph layout. Avoid ELK and the “arranging…” loading state.
+    if (persons.length === 0) {
+      lastHash.current = '__empty__';
+      setLayout(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     if (topoHash === lastHash.current) return;
     let cancelled = false;
     setIsLoading(true);
@@ -81,7 +90,7 @@ export function useElkLayout({
     // We only want to re-run when the hash changes; the other deps are
     // encapsulated by it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topoHash]);
+  }, [topoHash, persons.length]);
 
   const { nodes, edges } = useMemo(
     () => toFlowElements(layout, focalId),
@@ -153,9 +162,8 @@ function toFlowElements(
     id: e.id,
     source: e.source,
     target: e.target,
-    // smoothstep = the orthogonal step look with rounded corners. This gives
-    // the classic family-tree right-angle connectors MyHeritage uses.
-    type: 'smoothstep',
+    // Sharp horizontal/vertical segments (orthogonal tree lines).
+    type: 'step',
     className:
       e.kind === 'spouse'
         ? e.meta?.is_divorced

@@ -65,6 +65,21 @@ export function err(
     );
   }
 
+  // Schema out of sync (tables/columns missing) — e.g. forgot `prisma db push` / migrate.
+  if (isPrismaSchemaDriftError(error)) {
+    return NextResponse.json(
+      {
+        data: null,
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message:
+            'Database schema is missing or outdated. Run `npx prisma db push` (or apply migrations) against DATABASE_URL.',
+        },
+      },
+      { status: 500 },
+    );
+  }
+
   // Unknown error — log it, return a safe generic message.
   console.error('[API] Unhandled error:', error);
   return NextResponse.json(
@@ -88,6 +103,13 @@ function isPrismaConnectionError(error: unknown): boolean {
   return /P1000|P1001|Can't reach database server|Authentication failed against database server/i.test(
     message,
   );
+}
+
+function isPrismaSchemaDriftError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: string }).code;
+  // P2021: table does not exist. P2022: column does not exist.
+  return code === 'P2021' || code === 'P2022';
 }
 
 /**
