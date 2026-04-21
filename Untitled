@@ -1,1 +1,26 @@
-גלו, חברו ושתפו את ההיסטוריה של משפחת שור — ענף אחד בכל פעם.
+Let me find the actual source files in the main project.
+
+Found the real source files. Let me read each one before overwriting:
+
+The real source files are completely unmodified — all my previous edits went to the worktree copy. Now writing the fixed versions directly to the real paths:
+
+Now verify the real source files are correct and run a type-check:
+
+All three real source files are patched. Only the pre-existing `tree.actions.ts` error remains — nothing new from our changes.
+
+Here's a summary of what's now applied to the actual source:
+
+---
+
+**[`src/features/family-tree/components/FamilyTreeViewer.tsx`](src/features/family-tree/components/FamilyTreeViewer.tsx)**
+- `focalRef` (a `useRef`) freezes the focal on first non-null value and **never changes again**
+- `setFocalId` is called only once — inside the init guard `if (focalRef.current !== null) return`
+- The click handler has **zero** focal writes — clicking a spouse only calls `onSelectPerson`
+
+**[`src/features/family-tree/hooks/useElkLayout.ts`](src/features/family-tree/hooks/useElkLayout.ts)**
+- `hashTopology` no longer includes `focalId` → **clicking any node cannot change the hash**
+- `focalId` changes are tracked via a separate `lastFocalId` ref — layout only re-runs when BOTH the hash AND focal are checked, catching the init transition without reacting to interaction
+
+**[`src/features/family-tree/lib/elkLayout.ts`](src/features/family-tree/lib/elkLayout.ts)**
+- Explicit `BASE_PARTITION = 1000` comment explains the partition → gen mapping
+- **Pass 2 nuclear Y-pin**: every `spouse` edge forces `person.y = union.y - UNION_Y_OFFSET` — spouses are **guaranteed** to share a row with their union regardless of ELK internals
