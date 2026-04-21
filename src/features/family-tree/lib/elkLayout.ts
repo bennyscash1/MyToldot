@@ -1,7 +1,13 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkNode } from 'elkjs';
-import { GEN_HEIGHT, NODE_GAP } from './constants';
+import { GEN_HEIGHT, NODE_GAP, PERSON_NODE_HEIGHT, UNION_NODE_HEIGHT } from './constants';
 import type { BipartiteEdge, BipartiteGraph, BipartiteNode } from './types';
+
+// Union nodes are tiny pills (UNION_NODE_HEIGHT = 12px) while person cards are
+// tall (PERSON_NODE_HEIGHT = 212px). Both live in the same generation row, so we
+// offset the union node downward so its vertical midpoint aligns with the
+// person card midpoint. This makes spouse edges perfectly horizontal.
+const UNION_Y_OFFSET = (PERSON_NODE_HEIGHT - UNION_NODE_HEIGHT) / 2; // = 100
 
 // ────────────────────────────────────────────────────────────────
 // ELK layout on the main thread.
@@ -66,10 +72,13 @@ export async function layoutBipartiteGraph(
 
   const nodes: PositionedNode[] = (positioned.children ?? []).map((c) => {
     const n = byId.get(c.id)!;
+    // Union nodes get a vertical offset so their midpoint aligns with
+    // the midpoint of person cards in the same generation row.
+    const yBase = (n.gen - minGen) * GEN_HEIGHT;
     return {
       ...n,
       x: c.x ?? 0,
-      y: (n.gen - minGen) * GEN_HEIGHT,
+      y: n.kind === 'union' ? yBase + UNION_Y_OFFSET : yBase,
     };
   });
 

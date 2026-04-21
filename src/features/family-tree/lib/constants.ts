@@ -13,8 +13,10 @@ export const UNION_NODE_HEIGHT = 12;
 export const PLACEHOLDER_NODE_WIDTH = 168;
 export const PLACEHOLDER_NODE_HEIGHT = 80;
 
-// Vertical space between generations. Larger = airier tree, smaller = denser.
-export const GEN_HEIGHT = 190;
+// Vertical space between generations (top-of-row to top-of-next-row).
+// Must be > PERSON_NODE_HEIGHT (212) to prevent generation rows from overlapping.
+// 280 = 212 (card height) + 68 (comfortable gap for the descent line).
+export const GEN_HEIGHT = 280;
 
 // Horizontal gap ELK leaves between nodes in the same layer (minimum).
 export const NODE_GAP = 48;

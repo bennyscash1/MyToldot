@@ -42,8 +42,10 @@ function PlaceholderNodeInner({ data }: NodeProps) {
         position={Position.Top}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
+      {/* Outgoing spouse edge — for when this placeholder is to the RIGHT of the union node. */}
       <Handle
-        type="target"
+        id="left"
+        type="source"
         position={Position.Left}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />

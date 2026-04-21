@@ -56,19 +56,32 @@
    ──────────────────────────────────────────────
    React Flow lets us set a className on each edge; our hook emits
    `shortree-edge-*` classes per edge kind. Stroke is applied to the
-   inner <path> the renderer draws, so we target the descendant. */
-.react-flow__edge.shortree-edge-spouse .react-flow__edge-path {
-  stroke: #94a3b8;
-  stroke-width: 1;
-}
-.react-flow__edge.shortree-edge-divorced .react-flow__edge-path {
-  stroke: #cbd5e1;
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
+   inner <path> the renderer draws, so we target the descendant.
+
+   Visual language:
+     • Bloodlines (child/descent) — solid dark-green, slightly heavier.
+       Uses the app's primary forest-green so descent feels "primary".
+     • Spouse / marriage          — solid warm neutral, thinner.
+       Deliberately lighter to avoid being mistaken for a bloodline.
+     • Divorced                   — dashed muted slate, thinnest. */
+
+/* Bloodline — descent from parent union down to each child */
 .react-flow__edge.shortree-edge-child .react-flow__edge-path {
-  stroke: #94a3b8;
+  stroke: #3e5045;   /* app primary forest-green */
+  stroke-width: 1.5;
+}
+
+/* Marriage / partnership — short horizontal connector between spouses */
+.react-flow__edge.shortree-edge-spouse .react-flow__edge-path {
+  stroke: #a8967c;   /* warm tan — distinct from bloodlines at a glance */
+  stroke-width: 1.5;
+}
+
+/* Divorced / ended partnership — dashed muted tone */
+.react-flow__edge.shortree-edge-divorced .react-flow__edge-path {
+  stroke: #b0bec5;
   stroke-width: 1;
+  stroke-dasharray: 6 4;
 }
 
 @keyframes toldot-drawer {

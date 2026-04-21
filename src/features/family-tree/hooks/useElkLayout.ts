@@ -158,22 +158,64 @@ function toFlowElements(
     } as FlowNode;
   });
 
-  const edges: FlowEdge[] = layout.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    // Sharp horizontal/vertical segments (orthogonal tree lines).
-    type: 'step',
-    className:
-      e.kind === 'spouse'
-        ? e.meta?.is_divorced
+  // Build a position lookup so we can determine which side of the union
+  // each spouse is on, and set explicit handle IDs accordingly.
+  const posById = new Map(layout.nodes.map((n) => [n.id, n]));
+
+  const edges: FlowEdge[] = layout.edges.map((e) => {
+    if (e.kind === 'spouse') {
+      // ── Spouse / marriage edge ─────────────────────────────────────────
+      // Drawn as a straight horizontal line between the person and the union
+      // pill. Because the union is vertically centred in the person row (via
+      // UNION_Y_OFFSET in elkLayout.ts), both handles sit at exactly the same
+      // Y — so 'straight' produces a clean horizontal rule.
+      //
+      // We determine which side of the union the person sits on so we can
+      // route from the person's facing handle to the union's matching handle:
+      //   • person LEFT  of union → person "right" source  → union "spouse-left"  target
+      //   • person RIGHT of union → person "left"  source  → union "spouse-right" target
+      const person = posById.get(e.source);
+      const union  = posById.get(e.target);
+      let sourceHandle: string | undefined;
+      let targetHandle: string | undefined;
+      if (person && union) {
+        const personCenterX = person.x + person.width  / 2;
+        const unionCenterX  = union.x  + union.width   / 2;
+        if (personCenterX <= unionCenterX) {
+          sourceHandle = 'right';        // person's right-side source handle
+          targetHandle = 'spouse-left';  // union's left-side target handle
+        } else {
+          sourceHandle = 'left';         // person's left-side source handle
+          targetHandle = 'spouse-right'; // union's right-side target handle
+        }
+      }
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        type: 'straight',
+        sourceHandle,
+        targetHandle,
+        className: e.meta?.is_divorced
           ? 'shortree-edge-divorced'
-          : 'shortree-edge-spouse'
-        : 'shortree-edge-child',
-    // Child edges carry an arrow-less straight aesthetic; spouse edges are
-    // short horizontal connectors. Both render without markers.
-    // The class hooks into globals.css for stroke colour & dash pattern.
-  }));
+          : 'shortree-edge-spouse',
+      } as FlowEdge;
+    }
+
+    // ── Child / descent edge ───────────────────────────────────────────
+    // Drawn as an orthogonal step path.  The union's bottom handle drops a
+    // vertical line, which then steps horizontally to each child's top
+    // handle — producing the classic genealogical "bracket" structure.
+    return {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      type: 'step',
+      sourceHandle: 'children', // union's bottom source handle
+      targetHandle: 'top',      // child's top target handle
+      className: 'shortree-edge-child',
+    } as FlowEdge;
+  });
 
   return { nodes, edges };
 }

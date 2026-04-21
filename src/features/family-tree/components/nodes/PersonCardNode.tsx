@@ -45,9 +45,10 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
           : 'border border-slate-200/90',
       )}
     >
-      {/* Incoming spouse edge — left side, mid card. */}
+      {/* Outgoing spouse edge — left side, for when this card is to the RIGHT of the union node. */}
       <Handle
-        type="target"
+        id="left"
+        type="source"
         position={Position.Left}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
