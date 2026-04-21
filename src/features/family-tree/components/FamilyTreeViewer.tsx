@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider, type NodeMouseHandler, type NodeTypes } from '@xyflow/react';
 
 import { TreeCanvas } from '@/components/features/tree/TreeCanvas';
@@ -25,7 +25,7 @@ export interface FamilyTreeViewerProps {
   canEdit: boolean;
   onSelectPerson?: (personId: string) => void;
   onAddRelative?: (meta: PlaceholderNodeData['meta'], screenX: number, screenY: number) => void;
-  /** When the tree has no people yet — centered “+” creates the first person and opens the editor. */
+  /** When the tree has no people yet — centered "+" creates the first person and opens the editor. */
   onAddFirstPerson?: () => void;
 }
 
@@ -44,17 +44,38 @@ function FamilyTreeViewerInner({
   onAddRelative,
   onAddFirstPerson,
 }: Omit<FamilyTreeViewerProps, 'treeId'>) {
+  // ─── Frozen focal ──────────────────────────────────────────────────────────
+  // The layout focal is FROZEN after the first non-null value is captured.
+  // It must NEVER change in response to user interaction (clicking a person,
+  // opening the edit panel, etc.) — doing so triggers a full ELK re-layout
+  // that shifts spouse nodes off their generation row.
+  //
+  // focalRef is the true stable anchor. focalId (state) mirrors it and exists
+  // only so that useElkLayout can detect the one-time null→real-id transition
+  // on initial load (when the RSC provides initialFocalId=null for an empty tree).
+  const focalRef = useRef<string | null>(initialFocalId);
   const [focalId, setFocalId] = useState<string | null>(initialFocalId);
 
   useEffect(() => {
+    // Only initialise once: when the first person is created but no focal was
+    // supplied yet. After focalRef is set it is never changed again.
+    if (focalRef.current !== null) return;
     if (persons.length === 0) return;
-    if (!focalId) setFocalId(persons[0]?.id ?? null);
-  }, [persons, focalId]);
+    const firstId = persons[0]?.id ?? null;
+    if (firstId) {
+      focalRef.current = firstId; // freeze permanently
+      setFocalId(firstId);        // signal the one-time layout re-run
+    }
+  // persons.length is the only dep: avoids re-running on cosmetic person updates.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persons.length]);
 
-  /** ELK + placeholders need a focal immediately; state may lag one frame after the first person is added. */
+  /** ELK + placeholders need a focal immediately; state may lag one frame. */
   const layoutFocalId = useMemo(
-    () => (persons.length === 0 ? null : focalId ?? persons[0]?.id ?? null),
-    [persons, focalId],
+    () => (persons.length === 0 ? null : focalRef.current ?? persons[0]?.id ?? null),
+    // focalId dep ensures this memo re-runs on the one-time null→id transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [persons.length, focalId],
   );
 
   const { nodes, edges, isLoading, error } = useElkLayout({
@@ -68,15 +89,17 @@ function FamilyTreeViewerInner({
     (event, node) => {
       const typed = node as FlowNode;
       if (typed.type === 'person') {
+        // IMPORTANT: do NOT touch focalId / focalRef here.
+        // Changing the focal triggers a full ELK re-layout and causes spouse
+        // nodes to drift to the wrong generation row.
         onSelectPerson?.(typed.id);
-        if (typed.id !== focalId) setFocalId(typed.id);
         return;
       }
       if (typed.type === 'placeholder') {
         onAddRelative?.(typed.data.meta, event.clientX, event.clientY);
       }
     },
-    [focalId, onSelectPerson, onAddRelative],
+    [onSelectPerson, onAddRelative],
   );
 
   const showEmptyAdd = persons.length === 0 && Boolean(canEdit && onAddFirstPerson);

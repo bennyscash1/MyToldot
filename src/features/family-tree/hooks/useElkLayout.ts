@@ -26,11 +26,13 @@ interface UseElkLayoutResult {
  * Turns raw tree data into positioned React Flow nodes/edges via ELK.
  *
  * Memoization strategy:
- *  - A topology hash is computed from (persons ids/gen-relevant fields,
- *    relationships ids+types+endpoints, focal, placeholder flag). Cosmetic
- *    edits like renaming a person don't change the hash → no re-layout.
- *  - Layout runs in an effect (ELK is async / worker-backed). While running,
- *    the previous positioned output is kept so the canvas doesn't flash.
+ *  - topoHash covers persons, relationships, and the placeholder flag.
+ *    It intentionally excludes focalId — changing the focal must not
+ *    trigger a re-layout (that causes spouse nodes to drift off their row).
+ *  - focalId is tracked via a separate ref so that the one-time
+ *    null→real-id initialisation transition still triggers a layout run.
+ *  - While an async ELK run is in-flight the previous output is kept so
+ *    the canvas does not flash.
  */
 export function useElkLayout({
   persons,
@@ -38,27 +40,36 @@ export function useElkLayout({
   focalId,
   showPlaceholders = true,
 }: UseElkLayoutArgs): UseElkLayoutResult {
+  // focalId is excluded from the hash — see jsdoc above.
   const topoHash = useMemo(() => {
     if (persons.length === 0) return '__empty__';
-    return hashTopology(persons, relationships, focalId, showPlaceholders);
-  }, [persons, relationships, focalId, showPlaceholders]);
+    return hashTopology(persons, relationships, showPlaceholders);
+  }, [persons, relationships, showPlaceholders]);
 
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const lastHash = useRef<string | null>(null);
+
+  const lastHash    = useRef<string | null>(null);
+  const lastFocalId = useRef<string | null | undefined>(undefined); // undefined = never seen
 
   useEffect(() => {
-    // No people → no graph layout. Avoid ELK and the “arranging…” loading state.
+    // No people → clear state, no ELK.
     if (persons.length === 0) {
-      lastHash.current = '__empty__';
+      lastHash.current    = '__empty__';
+      lastFocalId.current = focalId;
       setLayout(null);
       setIsLoading(false);
       setError(null);
       return;
     }
 
-    if (topoHash === lastHash.current) return;
+    const topoUnchanged  = topoHash === lastHash.current;
+    const focalUnchanged = focalId  === lastFocalId.current;
+
+    // Skip if nothing that affects layout has changed.
+    if (topoUnchanged && focalUnchanged) return;
+
     let cancelled = false;
     setIsLoading(true);
 
@@ -74,7 +85,8 @@ export function useElkLayout({
         if (cancelled) return;
         setLayout(result);
         setError(null);
-        lastHash.current = topoHash;
+        lastHash.current    = topoHash;
+        lastFocalId.current = focalId;
       })
       .catch((err) => {
         if (cancelled) return;
@@ -84,13 +96,11 @@ export function useElkLayout({
         if (!cancelled) setIsLoading(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
-    // We only want to re-run when the hash changes; the other deps are
-    // encapsulated by it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topoHash, persons.length]);
+    return () => { cancelled = true; };
+
+  // focalId dep: fires on the one-time null→real-id init; frozen thereafter.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topoHash, focalId, persons.length]);
 
   const { nodes, edges } = useMemo(
     () => toFlowElements(layout, focalId),
@@ -107,11 +117,10 @@ export function useElkLayout({
 function hashTopology(
   persons: PersonRow[],
   relationships: RelationshipRow[],
-  focalId: string | null,
   showPlaceholders: boolean,
 ): string {
-  // Only topology-relevant fields. Renaming / changing birth_date does NOT
-  // invalidate layout — those are cosmetic-only.
+  // focalId intentionally excluded — see hook jsdoc.
+  // Only topology-relevant fields; cosmetic edits (name, birth date) are ignored.
   const p = persons
     .map((x) => x.id)
     .sort()
@@ -120,7 +129,7 @@ function hashTopology(
     .map((x) => `${x.id}:${x.relationship_type}:${x.person1_id}>${x.person2_id}`)
     .sort()
     .join('|');
-  return `${focalId ?? '-'}|${showPlaceholders ? 1 : 0}|${p}|${r}`;
+  return `${showPlaceholders ? 1 : 0}|${p}|${r}`;
 }
 
 function toFlowElements(
@@ -158,35 +167,25 @@ function toFlowElements(
     } as FlowNode;
   });
 
-  // Build a position lookup so we can determine which side of the union
-  // each spouse is on, and set explicit handle IDs accordingly.
   const posById = new Map(layout.nodes.map((n) => [n.id, n]));
 
   const edges: FlowEdge[] = layout.edges.map((e) => {
     if (e.kind === 'spouse') {
-      // ── Spouse / marriage edge ─────────────────────────────────────────
-      // Drawn as a straight horizontal line between the person and the union
-      // pill. Because the union is vertically centred in the person row (via
-      // UNION_Y_OFFSET in elkLayout.ts), both handles sit at exactly the same
-      // Y — so 'straight' produces a clean horizontal rule.
-      //
-      // We determine which side of the union the person sits on so we can
-      // route from the person's facing handle to the union's matching handle:
-      //   • person LEFT  of union → person "right" source  → union "spouse-left"  target
-      //   • person RIGHT of union → person "left"  source  → union "spouse-right" target
+      // Straight horizontal line. Route from the person's facing handle to
+      // the union's matching handle based on relative X position.
       const person = posById.get(e.source);
       const union  = posById.get(e.target);
       let sourceHandle: string | undefined;
       let targetHandle: string | undefined;
       if (person && union) {
-        const personCenterX = person.x + person.width  / 2;
-        const unionCenterX  = union.x  + union.width   / 2;
+        const personCenterX = person.x + person.width / 2;
+        const unionCenterX  = union.x  + union.width  / 2;
         if (personCenterX <= unionCenterX) {
-          sourceHandle = 'right';        // person's right-side source handle
-          targetHandle = 'spouse-left';  // union's left-side target handle
+          sourceHandle = 'right';
+          targetHandle = 'spouse-left';
         } else {
-          sourceHandle = 'left';         // person's left-side source handle
-          targetHandle = 'spouse-right'; // union's right-side target handle
+          sourceHandle = 'left';
+          targetHandle = 'spouse-right';
         }
       }
       return {
@@ -202,17 +201,14 @@ function toFlowElements(
       } as FlowEdge;
     }
 
-    // ── Child / descent edge ───────────────────────────────────────────
-    // Drawn as an orthogonal step path.  The union's bottom handle drops a
-    // vertical line, which then steps horizontally to each child's top
-    // handle — producing the classic genealogical "bracket" structure.
+    // Child / descent edge — orthogonal step path.
     return {
       id: e.id,
       source: e.source,
       target: e.target,
       type: 'step',
-      sourceHandle: 'children', // union's bottom source handle
-      targetHandle: 'top',      // child's top target handle
+      sourceHandle: 'children',
+      targetHandle: 'top',
       className: 'shortree-edge-child',
     } as FlowEdge;
   });
