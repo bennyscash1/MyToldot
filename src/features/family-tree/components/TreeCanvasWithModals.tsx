@@ -9,53 +9,11 @@ import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { AddRelativePopover } from './panels/AddRelativePopover';
 import { PersonSidePanel } from './panels/PersonSidePanel';
 
-const PLACEHOLDER_CHILD: PersonInput = {
-  first_name: 'Child',
-  last_name: null,
-  maiden_name: null,
-  first_name_he: 'ילד חדש',
-  last_name_he: null,
-  gender: 'UNKNOWN',
-  birth_date: null,
-  death_date: null,
-  birth_place: null,
-  bio: null,
-  profile_image: null,
-};
-
-const PLACEHOLDER_SPOUSE: PersonInput = {
-  first_name: 'Spouse',
-  last_name: null,
-  maiden_name: null,
-  first_name_he: 'בן/בת זוג',
-  last_name_he: null,
-  gender: 'UNKNOWN',
-  birth_date: null,
-  death_date: null,
-  birth_place: null,
-  bio: null,
-  profile_image: null,
-};
-
 const FIRST_PERSON: PersonInput = {
   first_name: 'Person',
   last_name: null,
   maiden_name: null,
   first_name_he: 'אדם ראשון',
-  last_name_he: null,
-  gender: 'UNKNOWN',
-  birth_date: null,
-  death_date: null,
-  birth_place: null,
-  bio: null,
-  profile_image: null,
-};
-
-const PLACEHOLDER_PARENT: PersonInput = {
-  first_name: 'Parent',
-  last_name: null,
-  maiden_name: null,
-  first_name_he: 'הורה חדש',
   last_name_he: null,
   gender: 'UNKNOWN',
   birth_date: null,
@@ -130,32 +88,34 @@ export function TreeCanvasWithModals({
     if (id) setSidePersonId(id);
   }, [clearError, createPerson]);
 
-  const handleAddChildFromPanel = useCallback(async () => {
-    if (!sidePersonId) return;
-    clearError();
-    const id = await addChild({
-      parent1Id: sidePersonId,
-      parent2Id: null,
-      child: PLACEHOLDER_CHILD,
-    });
-    if (id) setSidePersonId(id);
-  }, [sidePersonId, addChild, clearError]);
-
-  const handleAddSpouseFromPanel = useCallback(async () => {
-    if (!sidePersonId) return;
-    clearError();
-    await addSpouse({
-      personId: sidePersonId,
-      spouse: PLACEHOLDER_SPOUSE,
-      marriage_date: null,
-    });
-  }, [sidePersonId, addSpouse, clearError]);
+  const handleOpenAddFromPanel = useCallback(
+    (kind: 'add-parent' | 'add-spouse' | 'add-child') => {
+      if (!sidePersonId || typeof window === 'undefined') return;
+      clearError();
+      const meta: PlaceholderMeta =
+        kind === 'add-child'
+          ? { kind, anchor_id: sidePersonId, parent_ids: [sidePersonId] as [string] }
+          : { kind, anchor_id: sidePersonId };
+      setPopover({
+        meta,
+        screenX: Math.round(window.innerWidth / 2),
+        screenY: Math.round(window.innerHeight / 2),
+      });
+    },
+    [sidePersonId, clearError],
+  );
 
   const handleAddParentFromPanel = useCallback(async () => {
-    if (!sidePersonId) return;
-    clearError();
-    await addParent({ childId: sidePersonId, parent: PLACEHOLDER_PARENT });
-  }, [sidePersonId, addParent, clearError]);
+    handleOpenAddFromPanel('add-parent');
+  }, [handleOpenAddFromPanel]);
+
+  const handleAddSpouseFromPanel = useCallback(async () => {
+    handleOpenAddFromPanel('add-spouse');
+  }, [handleOpenAddFromPanel]);
+
+  const handleAddChildFromPanel = useCallback(async () => {
+    handleOpenAddFromPanel('add-child');
+  }, [handleOpenAddFromPanel]);
 
   const handleAddSubmit = useCallback(
     async (input: PersonInput) => {
@@ -201,6 +161,7 @@ export function TreeCanvasWithModals({
       {popover && (
         <AddRelativePopover
           meta={popover.meta}
+          anchorGender={persons.find((p) => p.id === popover.meta.anchor_id)?.gender ?? null}
           screenX={popover.screenX}
           screenY={popover.screenY}
           onClose={() => setPopover(null)}

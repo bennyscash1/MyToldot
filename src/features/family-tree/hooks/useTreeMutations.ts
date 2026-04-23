@@ -66,6 +66,14 @@ function tmpId(prefix: string): string {
   return `tmp:${prefix}:${crypto.randomUUID()}`;
 }
 
+function oppositeBinaryGender(
+  gender: PersonRow['gender'],
+): 'MALE' | 'FEMALE' | null {
+  if (gender === 'MALE') return 'FEMALE';
+  if (gender === 'FEMALE') return 'MALE';
+  return null;
+}
+
 /** Shapes a PersonInput into the PersonRow used by the renderer. */
 function inputToRow(id: string, input: PersonInput): PersonRow {
   return {
@@ -214,9 +222,20 @@ export function useTreeMutations({
   // ── addSpouse ──────────────────────────────────────────────────
   const addSpouse = useCallback<UseTreeMutationsResult['addSpouse']>(
     async ({ personId, spouse, marriage_date }) => {
+      const focusedPerson = persons.find((p) => p.id === personId);
+      if (!focusedPerson) {
+        setLastError('Focused person was not found');
+        return;
+      }
+      const spouseGender = oppositeBinaryGender(focusedPerson.gender);
+      if (!spouseGender) {
+        setLastError('Cannot add spouse unless the focused person is male or female.');
+        return;
+      }
+      const normalizedSpouse: PersonInput = { ...spouse, gender: spouseGender };
       const newPersonId = tmpId('person');
       const newRelId = tmpId('rel');
-      const tempPerson = inputToRow(newPersonId, spouse);
+      const tempPerson = inputToRow(newPersonId, normalizedSpouse);
       const tempRel: RelationshipRow = {
         id: newRelId,
         relationship_type: 'SPOUSE',
@@ -234,7 +253,7 @@ export function useTreeMutations({
               addSpouseAction({
                 treeId,
                 personId,
-                spouse,
+                spouse: normalizedSpouse,
                 marriage_date: marriage_date ?? null,
               }),
             onSuccess: (data) => ({
@@ -246,7 +265,7 @@ export function useTreeMutations({
         });
       });
     },
-    [treeId, runOptimistic],
+    [treeId, persons, runOptimistic],
   );
 
   // ── addChild ───────────────────────────────────────────────────

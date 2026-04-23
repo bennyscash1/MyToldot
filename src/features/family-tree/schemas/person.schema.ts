@@ -19,7 +19,7 @@ export const PersonInputSchema = z.object({
   maiden_name: z.string().trim().max(100).optional().nullable(),
   first_name_he: z.string().trim().max(100).optional().nullable(),
   last_name_he: z.string().trim().max(100).optional().nullable(),
-  gender: GenderSchema.default('UNKNOWN'),
+  gender: GenderSchema,
   birth_date: optionalIsoDate,
   death_date: optionalIsoDate,
   birth_place: z.string().trim().max(200).optional().nullable(),

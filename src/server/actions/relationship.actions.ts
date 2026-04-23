@@ -11,7 +11,6 @@ import { withAction, type ActionResult } from '@/lib/api/action-result';
 import {
   PersonInputSchema,
   CuidSchema,
-  type PersonInput,
 } from '@/features/family-tree/schemas/person.schema';
 
 // ────────────────────────────────────────────────────────────────
@@ -68,7 +67,13 @@ function normalizeSymmetric(
   return symmetric.includes(type) && a > b ? [b, a] : [a, b];
 }
 
-function revalidateTree(treeId: string): void {
+function oppositeBinaryGender(gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN'): 'MALE' | 'FEMALE' {
+  if (gender === 'MALE') return 'FEMALE';
+  if (gender === 'FEMALE') return 'MALE';
+  throw Errors.badRequest('Cannot add spouse unless the focused person gender is male or female');
+}
+
+function revalidateTree(): void {
   revalidatePath('/[locale]/tree', 'page');
 }
 
@@ -99,7 +104,7 @@ export async function linkSpouseAction(
       });
     });
 
-    revalidateTree(treeId);
+    revalidateTree();
     return rel;
   });
 }
@@ -125,7 +130,7 @@ export async function linkParentChildAction(
       });
     });
 
-    revalidateTree(treeId);
+    revalidateTree();
     return rel;
   });
 }
@@ -145,7 +150,7 @@ export async function deleteRelationshipAction(
     if (!existing) throw Errors.notFound('Relationship');
 
     await prisma.relationship.delete({ where: { id } });
-    revalidateTree(treeId);
+    revalidateTree();
     return { id };
   });
 }
@@ -181,7 +186,7 @@ export async function updateRelationshipAction(
       data,
       select: { id: true },
     });
-    revalidateTree(treeId);
+    revalidateTree();
     return rel;
   });
 }
@@ -213,10 +218,15 @@ export async function addSpouseAction(
     await requireTreeRole(treeId, 'EDITOR');
 
     const result = await prisma.$transaction(async (tx) => {
-      await assertPersonsInTree(tx, treeId, [personId]);
+      const focusedPerson = await tx.person.findFirst({
+        where: { id: personId, tree_id: treeId },
+        select: { id: true, gender: true },
+      });
+      if (!focusedPerson) throw Errors.notFound('Person');
+      const enforcedSpouseGender = oppositeBinaryGender(focusedPerson.gender);
 
       const newPerson = await tx.person.create({
-        data: { ...spouse, tree_id: treeId },
+        data: { ...spouse, gender: enforcedSpouseGender, tree_id: treeId },
         select: { id: true, first_name: true, last_name: true },
       });
 
@@ -235,7 +245,7 @@ export async function addSpouseAction(
       return { person: newPerson, relationship_ids: [rel.id] };
     });
 
-    revalidateTree(treeId);
+    revalidateTree();
     return result;
   });
 }
@@ -286,7 +296,7 @@ export async function addParentAction(
       return { person: newPerson, relationship_ids: [rel.id] };
     });
 
-    revalidateTree(treeId);
+    revalidateTree();
     return result;
   });
 }
@@ -335,7 +345,7 @@ export async function addChildAction(
       return { person: newPerson, relationship_ids: rels.map((r) => r.id) };
     });
 
-    revalidateTree(treeId);
+    revalidateTree();
     return result;
   });
 }
@@ -407,7 +417,7 @@ export async function addSiblingAction(
       return { person: newPerson, relationship_ids };
     });
 
-    revalidateTree(treeId);
+    revalidateTree();
     return result;
   });
 }

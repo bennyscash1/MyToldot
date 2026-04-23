@@ -27,6 +27,7 @@ const TITLE: Record<PlaceholderMeta['kind'], string> = {
 
 export interface AddRelativePopoverProps {
   meta: PlaceholderMeta;
+  anchorGender?: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN' | null;
   /** Viewport coordinates where the placeholder was clicked. */
   screenX: number;
   screenY: number;
@@ -52,6 +53,7 @@ function clampPosition(x: number, y: number): { left: number; top: number } {
 
 export function AddRelativePopover({
   meta,
+  anchorGender,
   screenX,
   screenY,
   onClose,
@@ -80,10 +82,14 @@ export function AddRelativePopover({
 
   const { left, top } = clampPosition(screenX, screenY);
 
-  // For +child on a 2-parent union, the form should default to MALE if the
-  // anchor person is female (so the quick pick is "the other parent-shaped
-  // child"), but really gender is user-driven. Keep it simple: default MALE.
-  const defaultGender = meta.kind === 'add-spouse' ? 'FEMALE' : 'MALE';
+  const forcedSpouseGender =
+    meta.kind === 'add-spouse'
+      ? anchorGender === 'MALE'
+        ? 'FEMALE'
+        : anchorGender === 'FEMALE'
+          ? 'MALE'
+          : undefined
+      : undefined;
 
   return (
     <div
@@ -107,7 +113,7 @@ export function AddRelativePopover({
 
       <PersonForm
         variant="quick"
-        defaultGender={defaultGender}
+        forcedGender={forcedSpouseGender}
         submitLabel="שמור"
         cancelLabel="ביטול"
         onSubmit={onSubmit}

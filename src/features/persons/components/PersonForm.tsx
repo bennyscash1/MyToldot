@@ -23,6 +23,7 @@ const L = {
   bio: 'ביוגרפיה',
   hebrewDatePrefix: 'תאריך עברי:',
   requiredFirstName: 'שם פרטי הוא שדה חובה',
+  requiredGender: 'יש לבחור מין',
 } as const;
 
 export interface PersonFormProps {
@@ -32,6 +33,8 @@ export interface PersonFormProps {
   initialValue?: Partial<PersonInput>;
   /** Override default first-name gender — useful for "add father" vs "add mother". */
   defaultGender?: 'MALE' | 'FEMALE';
+  /** Locks gender to a fixed value (used by spouse auto-assignment). */
+  forcedGender?: 'MALE' | 'FEMALE';
   submitLabel: string;
   cancelLabel?: string;
   onSubmit: (value: PersonInput) => Promise<void> | void;
@@ -45,6 +48,7 @@ export function PersonForm({
   variant,
   initialValue,
   defaultGender,
+  forcedGender,
   submitLabel,
   cancelLabel,
   onSubmit,
@@ -57,8 +61,8 @@ export function PersonForm({
   const [firstNameHe, setFirstNameHe] = useState(initialValue?.first_name_he ?? '');
   const [lastNameHe, setLastNameHe] = useState(initialValue?.last_name_he ?? '');
   const [maidenName, setMaidenName] = useState(initialValue?.maiden_name ?? '');
-  const [gender, setGender] = useState<'MALE' | 'FEMALE'>(
-    (initialValue?.gender as 'MALE' | 'FEMALE' | undefined) ?? defaultGender ?? 'MALE',
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(
+    forcedGender ?? (initialValue?.gender as 'MALE' | 'FEMALE' | undefined) ?? defaultGender ?? null,
   );
   const [birthDate, setBirthDate] = useState(toDateInputValue(initialValue?.birth_date));
   const [deathDate, setDeathDate] = useState(toDateInputValue(initialValue?.death_date));
@@ -73,7 +77,14 @@ export function PersonForm({
       setLocalError(L.requiredFirstName);
       return;
     }
+    if (!forcedGender && !gender) {
+      setLocalError(L.requiredGender);
+      return;
+    }
     setLocalError(null);
+
+    const effectiveGender = forcedGender ?? gender;
+    if (!effectiveGender) return;
 
     const value: PersonInput = {
       first_name: firstName.trim(),
@@ -81,7 +92,7 @@ export function PersonForm({
       first_name_he: firstNameHe.trim() || null,
       last_name_he: lastNameHe.trim() || null,
       maiden_name: maidenName.trim() || null,
-      gender,
+      gender: effectiveGender,
       birth_date: birthDate ? new Date(birthDate) : null,
       death_date: deathDate ? new Date(deathDate) : null,
       birth_place: birthPlace.trim() || null,
@@ -147,12 +158,26 @@ export function PersonForm({
       )}
 
       {/* Gender — restricted to Male/Female per audience requirements */}
-      <FieldLabel label={L.gender}>
+      <FieldLabel label={L.gender} required>
         <div className="flex gap-2">
-          <GenderButton active={gender === 'MALE'} onClick={() => setGender('MALE')}>
+          <GenderButton
+            active={(forcedGender ?? gender) === 'MALE'}
+            onClick={() => {
+              if (forcedGender) return;
+              setGender('MALE');
+            }}
+            disabled={Boolean(forcedGender)}
+          >
             {L.male}
           </GenderButton>
-          <GenderButton active={gender === 'FEMALE'} onClick={() => setGender('FEMALE')}>
+          <GenderButton
+            active={(forcedGender ?? gender) === 'FEMALE'}
+            onClick={() => {
+              if (forcedGender) return;
+              setGender('FEMALE');
+            }}
+            disabled={Boolean(forcedGender)}
+          >
             {L.female}
           </GenderButton>
         </div>
@@ -242,21 +267,24 @@ function FieldLabel({
 function GenderButton({
   active,
   onClick,
+  disabled = false,
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={clsx(
-        'flex-1 rounded-md border px-3 py-1.5 text-sm transition',
+        'flex-1 rounded-md border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed',
         active
           ? 'border-sky-500 bg-sky-50 text-sky-700'
-          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:hover:bg-white',
       )}
     >
       {children}
