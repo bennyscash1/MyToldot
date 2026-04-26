@@ -1,4 +1,5 @@
-import { useTranslations } from 'next-intl';
+import Image from 'next/image';
+import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import type { NavItem } from '@/types';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -27,30 +28,33 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function Navbar() {
+  const locale  = useLocale();
   const t       = useTranslations('nav');
   const tCommon = useTranslations('common');
+  const isHebrew = locale === 'he';
+  const logoSrc = isHebrew ? '/images/LOGO-he.png' : '/images/LOGO-en.png';
+  const logoAlt = isHebrew ? 'תולדותיי' : 'Toldotay';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-[#f4f3e9]/95 backdrop-blur-sm">
       <nav
-        className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
         aria-label="Main navigation"
       >
         {/* ── Brand / Logo ── */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-lg font-bold text-gray-900 transition-opacity hover:opacity-80"
+          className="flex items-center transition-opacity hover:opacity-80"
+          aria-label={logoAlt}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-6 w-6 text-emerald-600"
-            aria-hidden="true"
-          >
-            <path d="M12 2C9.243 2 7 4.243 7 7c0 1.669.825 3.143 2.083 4.059C7.834 11.748 7 13.278 7 15c0 2.757 2.243 5 5 5s5-2.243 5-5c0-1.722-.834-3.252-2.083-3.941C16.175 10.143 17 8.669 17 7c0-2.757-2.243-5-5-5zm0 16c-1.654 0-3-1.346-3-3s1.346-3 3-3 3 1.346 3 3-1.346 3-3 3zm0-8c-1.654 0-3-1.346-3-3s1.346-3 3-3 3 1.346 3 3-1.346 3-3 3z" />
-          </svg>
-          <span>Family Tree</span>
+          <Image
+            src={logoSrc}
+            alt={logoAlt}
+            width={260}
+            height={56}
+            className="h-20 w-auto sm:h-24"
+            priority
+          />
         </Link>
 
         {/* ── Navigation links ── */}

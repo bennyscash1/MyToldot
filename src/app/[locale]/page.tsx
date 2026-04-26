@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
@@ -20,8 +21,11 @@ import { Link } from '@/i18n/routing';
 export const metadata: Metadata = { title: 'Home' };
 
 export default async function HomePage({ params }: LocalePageProps) {
-  await params; // consume params (locale handled by layout)
+  const { locale } = await params;
   const t = await getTranslations('home');
+  const isHebrew = locale === 'he';
+  const logoSrc = isHebrew ? '/images/LOGO-he.png' : '/images/LOGO-en.png';
+  const logoAlt = isHebrew ? 'תולדותיי' : 'Toldotay';
 
   // MVP/TESTING — auth + tree-membership lookup bypassed.
   // Restore the original block below when auth is re-enabled.
@@ -66,18 +70,14 @@ export default async function HomePage({ params }: LocalePageProps) {
 
   return (
     <section className="flex flex-col items-center justify-center gap-6 px-4 py-24 text-center sm:py-36">
-      {/* Decorative tree mark */}
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="h-9 w-9 text-emerald-600"
-          aria-hidden="true"
-        >
-          <path d="M12 2C9.243 2 7 4.243 7 7c0 1.669.825 3.143 2.083 4.059C7.834 11.748 7 13.278 7 15c0 2.757 2.243 5 5 5s5-2.243 5-5c0-1.722-.834-3.252-2.083-3.941C16.175 10.143 17 8.669 17 7c0-2.757-2.243-5-5-5zm0 16c-1.654 0-3-1.346-3-3s1.346-3 3-3 3 1.346 3 3-1.346 3-3 3zm0-8c-1.654 0-3-1.346-3-3s1.346-3 3-3 3 1.346 3 3-1.346 3-3 3z" />
-        </svg>
-      </div>
+      <Image
+        src={logoSrc}
+        alt={logoAlt}
+        width={420}
+        height={72}
+        className="h-auto w-auto"
+        priority
+      />
 
       <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
         {t('title')}
