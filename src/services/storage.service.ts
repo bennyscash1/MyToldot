@@ -1,93 +1,144 @@
 'use client';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { profileImagePublicUrl } from '@/lib/supabase/public-url';
+import type { ApiEnvelope } from '@/types/api';
 import { ServiceError } from './api.client';
 
 // ──────────────────────────────────────────────
 // Storage Service — Browser-side
 //
-// Uploads files directly from the browser to
-// Supabase Storage, bypassing the Next.js API route.
+// Uploads are routed through our Next.js API endpoint
+// (`POST /api/v1/uploads/profile-image`) which performs
+// the actual upload using the Supabase service-role key.
 //
-// Required Supabase bucket: "profile-pictures" (public)
-// Required RLS policies (run once in Supabase SQL editor):
+// Why not call Supabase Storage directly from the browser?
+//   In the anonymous MVP we don't have a logged-in user.
+//   The browser Supabase client still tries to attach a JWT
+//   from the auth cookie; if that cookie is empty/stale,
+//   Supabase rejects the upload with `Invalid Compact JWS`.
+//   Posting to our own server-side route avoids that path
+//   entirely and bypasses RLS via the service-role client.
 //
-//   CREATE POLICY "Authenticated users can upload"
-//   ON storage.objects FOR INSERT TO authenticated
-//   WITH CHECK (bucket_id = 'profile-pictures');
-//
-//   CREATE POLICY "Anyone can view profile pictures"
-//   ON storage.objects FOR SELECT TO public
-//   USING (bucket_id = 'profile-pictures');
+// Bucket convention (server-enforced):
+//   profile-pictures/{treeId}/{personId}-{timestamp}.{ext}
 // ──────────────────────────────────────────────
 
-const BUCKET           = 'profile-pictures';
+const UPLOAD_ENDPOINT = '/api/v1/uploads/profile-image';
+
 const MAX_FILE_SIZE_MB = 5;
-const ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 export interface UploadResult {
   /** Storage path relative to bucket root e.g. "tree-xyz/person-abc-1234.jpg" */
-  path:      string;
+  path: string;
   /** Full public URL for immediate display in the UI */
   publicUrl: string;
 }
 
+/**
+ * Client-side guardrail. The server enforces the same limits, but
+ * checking up-front gives the user a fast, clear error.
+ */
 export function validateFile(file: File): void {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new ServiceError('UNSUPPORTED_FILE_TYPE', 'Please upload a JPEG, PNG, or WebP image.', 422);
-  }
-  if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-    throw new ServiceError('FILE_TOO_LARGE', `File is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`, 422);
-  }
-}
-
-/** Throws a clear error when Supabase env vars are not configured. */
-function requireClient() {
-  const supabase = createSupabaseBrowserClient();
-  if (!supabase) {
+  if (!ALLOWED_TYPES.includes(file.type as (typeof ALLOWED_TYPES)[number])) {
     throw new ServiceError(
-      'SUPABASE_NOT_CONFIGURED',
-      'Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.',
-      503,
+      'UNSUPPORTED_FILE_TYPE',
+      'Please upload a JPEG, PNG, or WebP image.',
+      422,
     );
   }
-  return supabase;
+  if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+    throw new ServiceError(
+      'FILE_TOO_LARGE',
+      `File is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`,
+      422,
+    );
+  }
 }
 
 export const storageService = {
   /**
-   * Uploads a profile image directly to Supabase Storage.
-   * Path pattern: `{treeId}/{personId}-{timestamp}.{ext}`
-   * Call AFTER person creation so the real personId is available.
-   * Pass the returned path to personsService.update().
+   * Uploads a profile image via the server-side route.
+   * Path pattern (built server-side): `{treeId}/{personId}-{timestamp}.{ext}`.
+   *
+   * Call AFTER person creation so the real personId is available, then pass
+   * the returned `path` to `personsService.update({ profile_image })`.
    */
-  async uploadProfileImage(file: File, treeId: string, personId: string): Promise<UploadResult> {
+  async uploadProfileImage(
+    file: File,
+    treeId: string,
+    personId: string,
+  ): Promise<UploadResult> {
     validateFile(file);
 
-    const supabase = requireClient();
-    const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const path = `${treeId}/${personId}-${Date.now()}.${ext}`;
+    const form = new FormData();
+    form.append('file', file, file.name);
+    form.append('treeId', treeId);
+    form.append('personId', personId);
 
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+    let response: Response;
+    try {
+      response = await fetch(UPLOAD_ENDPOINT, {
+        method: 'POST',
+        // No Content-Type header — the browser sets the multipart boundary.
+        // No Authorization header either: the route uses service-role on the
+        // server, which is the whole point of this refactor.
+        credentials: 'include',
+        body: form,
+      });
+    } catch (networkError) {
+      console.error('[storageService] network error during upload:', networkError);
+      throw new ServiceError(
+        'UPLOAD_NETWORK_ERROR',
+        'Could not reach the upload service. Check your connection and try again.',
+        0,
+      );
+    }
 
-    if (error) throw new ServiceError('UPLOAD_FAILED', error.message, 500);
+    let envelope: ApiEnvelope<UploadResult>;
+    try {
+      envelope = (await response.json()) as ApiEnvelope<UploadResult>;
+    } catch (parseError) {
+      console.error('[storageService] could not parse upload response:', {
+        status: response.status,
+        parseError,
+      });
+      throw new ServiceError(
+        'UPLOAD_INVALID_RESPONSE',
+        `Upload service returned a non-JSON response (status ${response.status}).`,
+        response.status,
+      );
+    }
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return { path, publicUrl: data.publicUrl };
+    if (envelope.error !== null) {
+      console.error('[storageService] upload failed:', {
+        status: response.status,
+        code: envelope.error.code,
+        message: envelope.error.message,
+      });
+      throw new ServiceError(
+        envelope.error.code,
+        envelope.error.message,
+        response.status,
+      );
+    }
+
+    return envelope.data;
   },
 
-  /** Resolves a stored path to a full public URL (no network request). */
+  /**
+   * Resolves a stored path to a full public URL (no network request).
+   * Uses NEXT_PUBLIC_SUPABASE_URL — safe in client bundles.
+   */
   getPublicUrl(storagePath: string): string {
-    const supabase = requireClient();
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-    return data.publicUrl;
-  },
-
-  /** Deletes a file from storage (used when replacing a profile photo). */
-  async remove(storagePath: string): Promise<void> {
-    const supabase = requireClient();
-    await supabase.storage.from(BUCKET).remove([storagePath]);
+    const url = profileImagePublicUrl(storagePath);
+    if (!url) {
+      throw new ServiceError(
+        'SUPABASE_NOT_CONFIGURED',
+        'Supabase URL is not configured.',
+        503,
+      );
+    }
+    return url;
   },
 };

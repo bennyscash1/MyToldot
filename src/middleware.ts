@@ -34,6 +34,11 @@ const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   // Once auth is re-enabled, drop PATCH from this list so editor checks apply.
   { method: 'GET', pattern: /^\/api\/v1\/trees\/[^/]+\/about$/ },
   { method: 'PATCH', pattern: /^\/api\/v1\/trees\/[^/]+\/about$/ },
+  // MVP/TESTING — profile-image uploads are open while there is no login.
+  // The route itself enforces that personId belongs to the supplied treeId,
+  // and uploads use the service-role key (bypasses Storage RLS / JWT checks).
+  // Drop this once auth is re-enabled and the route checks tree role.
+  { method: 'POST', pattern: /^\/api\/v1\/uploads\/profile-image$/ },
 ];
 
 // UI pages that require the user to be authenticated.
