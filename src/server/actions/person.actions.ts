@@ -2,35 +2,17 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { prisma } from '@/lib/prisma';
-import { requireTreeRole } from '@/lib/api/auth';
-import { Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
 import {
-  PersonInputSchema,
-  PersonPatchSchema,
-  CuidSchema,
   type PersonInput,
   type PersonPatch,
 } from '@/features/family-tree/schemas/person.schema';
-
-export interface PersonDto {
-  id: string;
-  first_name: string;
-  last_name: string | null;
-  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
-  birth_date: Date | null;
-  death_date: Date | null;
-}
-
-const PERSON_SELECT = {
-  id: true,
-  first_name: true,
-  last_name: true,
-  gender: true,
-  birth_date: true,
-  death_date: true,
-} as const;
+import {
+  createPersonInTree,
+  updatePersonInTree,
+  removePersonFromTree,
+  type PersonDto,
+} from '@/server/services/tree.service';
 
 /** Creates a standalone person (no relationships). Used for the tree root, or prior to wiring. */
 export async function createPersonAction(
@@ -38,14 +20,7 @@ export async function createPersonAction(
   input: PersonInput,
 ): Promise<ActionResult<PersonDto>> {
   return withAction(async () => {
-    await requireTreeRole(treeId, 'EDITOR');
-    const data = PersonInputSchema.parse(input);
-
-    const person = await prisma.person.create({
-      data: { ...data, tree_id: treeId },
-      select: PERSON_SELECT,
-    });
-
+    const person = await createPersonInTree(treeId, input);
     revalidatePath('/[locale]/tree', 'page');
     return person;
   });
@@ -57,24 +32,7 @@ export async function updatePersonAction(
   patch: PersonPatch,
 ): Promise<ActionResult<PersonDto>> {
   return withAction(async () => {
-    await requireTreeRole(treeId, 'EDITOR');
-    const id = CuidSchema.parse(personId);
-    const data = PersonPatchSchema.parse(patch);
-
-    // Guard: ensure the person actually belongs to this tree (prevents a
-    // cross-tree write by crafting a foreign personId).
-    const existing = await prisma.person.findFirst({
-      where: { id, tree_id: treeId },
-      select: { id: true },
-    });
-    if (!existing) throw Errors.notFound('Person');
-
-    const person = await prisma.person.update({
-      where: { id },
-      data,
-      select: PERSON_SELECT,
-    });
-
+    const person = await updatePersonInTree(treeId, personId, patch);
     revalidatePath('/[locale]/tree', 'page');
     return person;
   });
@@ -89,18 +47,8 @@ export async function deletePersonAction(
   personId: string,
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
-    await requireTreeRole(treeId, 'EDITOR');
-    const id = CuidSchema.parse(personId);
-
-    const existing = await prisma.person.findFirst({
-      where: { id, tree_id: treeId },
-      select: { id: true },
-    });
-    if (!existing) throw Errors.notFound('Person');
-
-    await prisma.person.delete({ where: { id } });
-
+    const removed = await removePersonFromTree(treeId, personId);
     revalidatePath('/[locale]/tree', 'page');
-    return { id };
+    return removed;
   });
 }

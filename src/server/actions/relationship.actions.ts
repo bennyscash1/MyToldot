@@ -12,6 +12,15 @@ import {
   PersonInputSchema,
   CuidSchema,
 } from '@/features/family-tree/schemas/person.schema';
+import {
+  addParentInTree,
+  addChildInTree,
+  addSpouseInTree,
+  AddParentSchema,
+  AddChildSchema,
+  AddSpouseSchema,
+  type AddedRelativeDto,
+} from '@/server/services/tree.service';
 
 // ────────────────────────────────────────────────────────────────
 // Zod helpers
@@ -65,12 +74,6 @@ function normalizeSymmetric(
 ): [string, string] {
   const symmetric: RelationshipType[] = ['SPOUSE', 'SIBLING', 'ENGAGED', 'DIVORCED'];
   return symmetric.includes(type) && a > b ? [b, a] : [a, b];
-}
-
-function oppositeBinaryGender(gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN'): 'MALE' | 'FEMALE' {
-  if (gender === 'MALE') return 'FEMALE';
-  if (gender === 'FEMALE') return 'MALE';
-  throw Errors.badRequest('Cannot add spouse unless the focused person gender is male or female');
 }
 
 function revalidateTree(): void {
@@ -198,153 +201,31 @@ export async function updateRelationshipAction(
 // transaction so a partial failure never leaves an orphan person on the canvas.
 // ────────────────────────────────────────────────────────────────
 
-export interface AddedRelativeDto {
-  person: { id: string; first_name: string; last_name: string | null };
-  relationship_ids: string[];
-}
-
-const AddSpouseSchema = z.object({
-  treeId: CuidSchema,
-  personId: CuidSchema,
-  spouse: PersonInputSchema,
-  marriage_date: OptionalDate,
-});
-
 export async function addSpouseAction(
   input: z.infer<typeof AddSpouseSchema>,
 ): Promise<ActionResult<AddedRelativeDto>> {
   return withAction(async () => {
-    const { treeId, personId, spouse, marriage_date } = AddSpouseSchema.parse(input);
-    await requireTreeRole(treeId, 'EDITOR');
-
-    const result = await prisma.$transaction(async (tx) => {
-      const focusedPerson = await tx.person.findFirst({
-        where: { id: personId, tree_id: treeId },
-        select: { id: true, gender: true },
-      });
-      if (!focusedPerson) throw Errors.notFound('Person');
-      const enforcedSpouseGender = oppositeBinaryGender(focusedPerson.gender);
-
-      const newPerson = await tx.person.create({
-        data: { ...spouse, gender: enforcedSpouseGender, tree_id: treeId },
-        select: { id: true, first_name: true, last_name: true },
-      });
-
-      const [p1, p2] = normalizeSymmetric(personId, newPerson.id, 'SPOUSE');
-      const rel = await tx.relationship.create({
-        data: {
-          tree_id: treeId,
-          relationship_type: 'SPOUSE',
-          person1_id: p1,
-          person2_id: p2,
-          start_date: marriage_date ?? null,
-        },
-        select: { id: true },
-      });
-
-      return { person: newPerson, relationship_ids: [rel.id] };
-    });
-
+    const result = await addSpouseInTree(input);
     revalidateTree();
     return result;
   });
 }
-
-const AddParentSchema = z.object({
-  treeId: CuidSchema,
-  childId: CuidSchema,
-  parent: PersonInputSchema,
-  adoptive: z.boolean().optional(),
-});
 
 export async function addParentAction(
   input: z.infer<typeof AddParentSchema>,
 ): Promise<ActionResult<AddedRelativeDto>> {
   return withAction(async () => {
-    const { treeId, childId, parent, adoptive } = AddParentSchema.parse(input);
-    await requireTreeRole(treeId, 'EDITOR');
-
-    const result = await prisma.$transaction(async (tx) => {
-      await assertPersonsInTree(tx, treeId, [childId]);
-
-      // Enforce the biological-parent cap: Person can have at most two non-
-      // adoptive parents. Adoptive parents are uncapped.
-      if (!adoptive) {
-        const bioParentCount = await tx.relationship.count({
-          where: { tree_id: treeId, person2_id: childId, relationship_type: 'PARENT_CHILD' },
-        });
-        if (bioParentCount >= 2) {
-          throw Errors.conflict('This person already has two biological parents');
-        }
-      }
-
-      const newPerson = await tx.person.create({
-        data: { ...parent, tree_id: treeId },
-        select: { id: true, first_name: true, last_name: true },
-      });
-
-      const rel = await tx.relationship.create({
-        data: {
-          tree_id: treeId,
-          relationship_type: adoptive ? 'ADOPTED_PARENT' : 'PARENT_CHILD',
-          person1_id: newPerson.id,
-          person2_id: childId,
-        },
-        select: { id: true },
-      });
-
-      return { person: newPerson, relationship_ids: [rel.id] };
-    });
-
+    const result = await addParentInTree(input);
     revalidateTree();
     return result;
   });
 }
 
-const AddChildSchema = z.object({
-  treeId: CuidSchema,
-  parent1Id: CuidSchema,
-  parent2Id: CuidSchema.optional().nullable(), // single-parent case
-  child: PersonInputSchema,
-});
-
 export async function addChildAction(
   input: z.infer<typeof AddChildSchema>,
 ): Promise<ActionResult<AddedRelativeDto>> {
   return withAction(async () => {
-    const { treeId, parent1Id, parent2Id, child } = AddChildSchema.parse(input);
-    await requireTreeRole(treeId, 'EDITOR');
-    if (parent2Id && parent1Id === parent2Id) {
-      throw Errors.badRequest('parent1 and parent2 must differ');
-    }
-
-    const parentIds = parent2Id ? [parent1Id, parent2Id] : [parent1Id];
-
-    const result = await prisma.$transaction(async (tx) => {
-      await assertPersonsInTree(tx, treeId, parentIds);
-
-      const newPerson = await tx.person.create({
-        data: { ...child, tree_id: treeId },
-        select: { id: true, first_name: true, last_name: true },
-      });
-
-      const rels = await Promise.all(
-        parentIds.map((pid) =>
-          tx.relationship.create({
-            data: {
-              tree_id: treeId,
-              relationship_type: 'PARENT_CHILD',
-              person1_id: pid,
-              person2_id: newPerson.id,
-            },
-            select: { id: true },
-          }),
-        ),
-      );
-
-      return { person: newPerson, relationship_ids: rels.map((r) => r.id) };
-    });
-
+    const result = await addChildInTree(input);
     revalidateTree();
     return result;
   });

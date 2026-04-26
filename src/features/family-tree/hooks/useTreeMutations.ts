@@ -1,22 +1,17 @@
 'use client';
 
 import { useCallback, useState, useTransition } from 'react';
+import { useLocale } from 'next-intl';
 
+import type { AddedRelativeDto } from '@/server/services/tree.service';
 import {
-  addChildAction,
-  addParentAction,
-  addSpouseAction,
-} from '@/server/actions/relationship.actions';
-import type { AddedRelativeDto } from '@/server/actions/relationship.actions';
-import {
-  createPersonAction,
-  deletePersonAction,
   updatePersonAction,
 } from '@/server/actions/person.actions';
 import type {
   PersonInput,
   PersonPatch,
 } from '@/features/family-tree/schemas/person.schema';
+import { apiClient, ServiceError } from '@/services/api.client';
 import type { PersonRow, RelationshipRow } from '../lib/types';
 
 // ────────────────────────────────────────────────────────────────
@@ -28,7 +23,7 @@ import type { PersonRow, RelationshipRow } from '../lib/types';
 // Every mutation follows the same pattern:
 //   1. Generate a temporary id (`tmp:...`).
 //   2. Insert the row(s) into local state immediately → canvas updates.
-//   3. Await the server action.
+//   3. Await the server call.
 //   4. On success, swap tmp ids for real ones (no re-fetch; we have
 //      everything we need).
 //   5. On failure, roll back the temp rows and surface an error.
@@ -97,10 +92,29 @@ export function useTreeMutations({
   initialPersons,
   initialRelationships,
 }: UseTreeMutationsArgs): UseTreeMutationsResult {
+  const locale = useLocale();
+  const treeRouteBase = `/${locale}/tree`;
   const [persons, setPersons] = useState<PersonRow[]>(initialPersons);
   const [relationships, setRelationships] = useState<RelationshipRow[]>(initialRelationships);
   const [lastError, setLastError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const asMutationResult = useCallback(
+    async <T,>(run: () => Promise<T>) => {
+      try {
+        return { ok: true as const, data: await run() };
+      } catch (err) {
+        if (err instanceof ServiceError) {
+          return {
+            ok: false as const,
+            error: { code: err.code, message: err.message },
+          };
+        }
+        throw err;
+      }
+    },
+    [],
+  );
 
   /** Insert optimistic rows, run the server call, swap ids on success, roll back on failure. Returns server `data` on success. */
   const runOptimistic = useCallback(
@@ -173,7 +187,13 @@ export function useTreeMutations({
           const data = await runOptimistic<{ id: string }>({
             tempPersons: [tempPerson],
             tempRelationships: [],
-            run: () => createPersonAction(treeId, input),
+            run: () =>
+              asMutationResult(() =>
+                apiClient.post<{ id: string }>(`${treeRouteBase}/add`, {
+                  treeId,
+                  person: input,
+                }),
+              ),
             onSuccess: (dto) => ({
               swapPersonIds: { [newPersonId]: dto.id },
             }),
@@ -184,7 +204,7 @@ export function useTreeMutations({
       });
       return out;
     },
-    [treeId, runOptimistic],
+    [asMutationResult, treeId, treeRouteBase, runOptimistic],
   );
 
   // ── addParent ──────────────────────────────────────────────────
@@ -206,7 +226,15 @@ export function useTreeMutations({
           await runOptimistic({
             tempPersons: [tempPerson],
             tempRelationships: [tempRel],
-            run: () => addParentAction({ treeId, childId, parent, adoptive }),
+            run: () =>
+              asMutationResult(() =>
+                apiClient.post<AddedRelativeDto>(`${treeRouteBase}/add-parent`, {
+                  treeId,
+                  childId,
+                  parent,
+                  adoptive,
+                }),
+              ),
             onSuccess: (data) => ({
               swapPersonIds: { [newPersonId]: data.person.id },
               swapRelationshipIds: { [newRelId]: data.relationship_ids[0] },
@@ -216,7 +244,7 @@ export function useTreeMutations({
         });
       });
     },
-    [treeId, runOptimistic],
+    [asMutationResult, treeId, treeRouteBase, runOptimistic],
   );
 
   // ── addSpouse ──────────────────────────────────────────────────
@@ -250,12 +278,14 @@ export function useTreeMutations({
             tempPersons: [tempPerson],
             tempRelationships: [tempRel],
             run: () =>
-              addSpouseAction({
-                treeId,
-                personId,
-                spouse: normalizedSpouse,
-                marriage_date: marriage_date ?? null,
-              }),
+              asMutationResult(() =>
+                apiClient.post<AddedRelativeDto>(`${treeRouteBase}/add-spouse`, {
+                  treeId,
+                  personId,
+                  spouse: normalizedSpouse,
+                  marriage_date: marriage_date ?? null,
+                }),
+              ),
             onSuccess: (data) => ({
               swapPersonIds: { [newPersonId]: data.person.id },
               swapRelationshipIds: { [newRelId]: data.relationship_ids[0] },
@@ -265,7 +295,7 @@ export function useTreeMutations({
         });
       });
     },
-    [treeId, persons, runOptimistic],
+    [asMutationResult, treeId, treeRouteBase, persons, runOptimistic],
   );
 
   // ── addChild ───────────────────────────────────────────────────
@@ -289,12 +319,14 @@ export function useTreeMutations({
             tempPersons: [tempPerson],
             tempRelationships: tempRels,
             run: () =>
-              addChildAction({
-                treeId,
-                parent1Id,
-                parent2Id: parent2Id ?? null,
-                child,
-              }),
+              asMutationResult(() =>
+                apiClient.post<AddedRelativeDto>(`${treeRouteBase}/add-child`, {
+                  treeId,
+                  parent1Id,
+                  parent2Id: parent2Id ?? null,
+                  child,
+                }),
+              ),
             onSuccess: (data) => {
               const swapRelationshipIds: Record<string, string> = {};
               tempRels.forEach((tr, i) => {
@@ -313,7 +345,7 @@ export function useTreeMutations({
       });
       return out;
     },
-    [treeId, runOptimistic],
+    [asMutationResult, treeId, treeRouteBase, runOptimistic],
   );
 
   // ── updatePerson ───────────────────────────────────────────────
@@ -382,9 +414,14 @@ export function useTreeMutations({
       await new Promise<void>((resolve) => {
         startTransition(async () => {
           try {
-            const result = await deletePersonAction(treeId, personId);
-            if (!result.ok) {
-              setLastError(result.error.message);
+            const mappedResult = await asMutationResult(() =>
+              apiClient.delete<{ id: string }>(`${treeRouteBase}/remove-person`, {
+                treeId,
+                personId,
+              }),
+            );
+            if (!mappedResult.ok) {
+              setLastError(mappedResult.error.message);
               setPersons((prev) => [...prev, personSnapshot]);
               setRelationships((prev) => [...prev, ...relSnapshot]);
             } else {
@@ -399,7 +436,7 @@ export function useTreeMutations({
         });
       });
     },
-    [treeId, persons, relationships],
+    [asMutationResult, treeId, treeRouteBase, persons, relationships],
   );
 
   return {

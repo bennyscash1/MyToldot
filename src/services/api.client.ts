@@ -82,6 +82,6 @@ export const apiClient = {
   patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     request<T>(path, { method: 'PATCH', body, headers }),
 
-  delete: <T>(path: string, headers?: Record<string, string>) =>
-    request<T>(path, { method: 'DELETE', headers }),
+  delete: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
+    request<T>(path, { method: 'DELETE', body, headers }),
 };

@@ -1,0 +1,423 @@
+import { z } from 'zod';
+import type { Prisma, RelationshipType, Role } from '@prisma/client';
+
+import { prisma } from '@/lib/prisma';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { deleteProfileImage } from '@/lib/supabase/storage';
+import { requireTreeRole } from '@/lib/api/auth';
+import { Errors } from '@/lib/api/errors';
+import {
+  PersonInputSchema,
+  PersonPatchSchema,
+  CuidSchema,
+  type PersonInput,
+  type PersonPatch,
+} from '@/features/family-tree/schemas/person.schema';
+import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
+
+export interface PersonDto {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
+  birth_date: Date | null;
+  death_date: Date | null;
+}
+
+export interface AddedRelativeDto {
+  person: { id: string; first_name: string; last_name: string | null };
+  relationship_ids: string[];
+}
+
+export interface TreePageData {
+  treeId: string | null;
+  treeName: string | null;
+  personCount: number;
+  membershipRole: Role | null;
+  rootPersonId: string | null;
+  linkedPersonId: string | null;
+  initialPersons: PersonRow[];
+  initialRelationships: RelationshipRow[];
+  initialFocalId: string | null;
+}
+
+const PERSON_SELECT = {
+  id: true,
+  first_name: true,
+  last_name: true,
+  gender: true,
+  birth_date: true,
+  death_date: true,
+} as const;
+
+const OptionalDate = z
+  .union([z.string().min(1), z.date()])
+  .transform((v) => (v instanceof Date ? v : new Date(v)))
+  .refine((d) => !Number.isNaN(d.getTime()), { message: 'Invalid date' })
+  .optional()
+  .nullable();
+
+export const AddSpouseSchema = z.object({
+  treeId: CuidSchema,
+  personId: CuidSchema,
+  spouse: PersonInputSchema,
+  marriage_date: OptionalDate,
+});
+
+export const AddParentSchema = z.object({
+  treeId: CuidSchema,
+  childId: CuidSchema,
+  parent: PersonInputSchema,
+  adoptive: z.boolean().optional(),
+});
+
+export const AddChildSchema = z.object({
+  treeId: CuidSchema,
+  parent1Id: CuidSchema,
+  parent2Id: CuidSchema.optional().nullable(),
+  child: PersonInputSchema,
+});
+
+export const RemovePersonSchema = z.object({
+  treeId: CuidSchema,
+  personId: CuidSchema,
+});
+
+async function assertPersonsInTree(
+  tx: Prisma.TransactionClient,
+  treeId: string,
+  personIds: string[],
+): Promise<void> {
+  const uniqueIds = [...new Set(personIds)];
+  const count = await tx.person.count({
+    where: { id: { in: uniqueIds }, tree_id: treeId },
+  });
+  if (count !== uniqueIds.length) throw Errors.notFound('Person');
+}
+
+function normalizeSymmetric(
+  a: string,
+  b: string,
+  type: RelationshipType,
+): [string, string] {
+  const symmetric: RelationshipType[] = ['SPOUSE', 'SIBLING', 'ENGAGED', 'DIVORCED'];
+  return symmetric.includes(type) && a > b ? [b, a] : [a, b];
+}
+
+function oppositeBinaryGender(
+  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN',
+): 'MALE' | 'FEMALE' {
+  if (gender === 'MALE') return 'FEMALE';
+  if (gender === 'FEMALE') return 'MALE';
+  throw Errors.badRequest('Cannot add spouse unless the focused person gender is male or female');
+}
+
+export async function resolveTreePageData(): Promise<TreePageData> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let treeId: string | null = null;
+  let treeName: string | null = null;
+  let personCount = 0;
+  let membershipRole: Role | null = null;
+  let rootPersonId: string | null = null;
+  let linkedPersonId: string | null = null;
+
+  try {
+    if (user) {
+      const membership = await prisma.treeMember.findFirst({
+        where: { user_id: user.id },
+        orderBy: { joined_at: 'asc' },
+        select: {
+          role: true,
+          linked_person_id: true,
+          tree: {
+            select: {
+              id: true,
+              name: true,
+              root_person_id: true,
+              _count: { select: { persons: true } },
+            },
+          },
+        },
+      });
+
+      if (membership?.tree) {
+        treeId = membership.tree.id;
+        treeName = membership.tree.name;
+        personCount = membership.tree._count.persons;
+        membershipRole = membership.role;
+        rootPersonId = membership.tree.root_person_id;
+        linkedPersonId = membership.linked_person_id;
+      }
+    } else {
+      let firstTree = await prisma.tree.findFirst({
+        orderBy: { created_at: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          root_person_id: true,
+          _count: { select: { persons: true } },
+        },
+      });
+
+      if (!firstTree) {
+        firstTree = await prisma.tree.create({
+          data: { name: 'עץ המשפחה', is_public: true },
+          select: {
+            id: true,
+            name: true,
+            root_person_id: true,
+            _count: { select: { persons: true } },
+          },
+        });
+      }
+
+      treeId = firstTree.id;
+      treeName = firstTree.name;
+      personCount = firstTree._count.persons;
+      rootPersonId = firstTree.root_person_id;
+    }
+  } catch {
+    // DB unavailable: preserve page behavior by returning no-tree state.
+  }
+
+  if (!treeId) {
+    return {
+      treeId: null,
+      treeName: null,
+      personCount: 0,
+      membershipRole: null,
+      rootPersonId: null,
+      linkedPersonId: null,
+      initialPersons: [],
+      initialRelationships: [],
+      initialFocalId: null,
+    };
+  }
+
+  let initialPersons: PersonRow[] = [];
+  let initialRelationships: RelationshipRow[] = [];
+
+  if (personCount > 0) {
+    const [personRows, relRows] = await Promise.all([
+      prisma.person.findMany({
+        where: { tree_id: treeId },
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          maiden_name: true,
+          first_name_he: true,
+          last_name_he: true,
+          gender: true,
+          birth_date: true,
+          death_date: true,
+          birth_place: true,
+          bio: true,
+          profile_image: true,
+        },
+        orderBy: [{ last_name: 'asc' }, { first_name: 'asc' }],
+      }),
+      prisma.relationship.findMany({
+        where: { tree_id: treeId },
+        select: {
+          id: true,
+          relationship_type: true,
+          person1_id: true,
+          person2_id: true,
+          start_date: true,
+          end_date: true,
+        },
+      }),
+    ]);
+
+    initialPersons = personRows.map((p) => ({ ...p, bio: p.bio ?? null }));
+    initialRelationships = relRows.map((r) => ({
+      id: r.id,
+      relationship_type: r.relationship_type as RelationshipRow['relationship_type'],
+      person1_id: r.person1_id,
+      person2_id: r.person2_id,
+      start_date: r.start_date,
+      end_date: r.end_date,
+    }));
+  }
+
+  return {
+    treeId,
+    treeName,
+    personCount,
+    membershipRole,
+    rootPersonId,
+    linkedPersonId,
+    initialPersons,
+    initialRelationships,
+    initialFocalId: linkedPersonId ?? rootPersonId ?? initialPersons[0]?.id ?? null,
+  };
+}
+
+export async function createPersonInTree(
+  treeId: string,
+  input: PersonInput,
+): Promise<PersonDto> {
+  await requireTreeRole(treeId, 'EDITOR');
+  const data = PersonInputSchema.parse(input);
+  return prisma.person.create({
+    data: { ...data, tree_id: treeId },
+    select: PERSON_SELECT,
+  });
+}
+
+export async function updatePersonInTree(
+  treeId: string,
+  personId: string,
+  patch: PersonPatch,
+): Promise<PersonDto> {
+  await requireTreeRole(treeId, 'EDITOR');
+  const id = CuidSchema.parse(personId);
+  const data = PersonPatchSchema.parse(patch);
+
+  const existing = await prisma.person.findFirst({
+    where: { id, tree_id: treeId },
+    select: { id: true },
+  });
+  if (!existing) throw Errors.notFound('Person');
+
+  return prisma.person.update({
+    where: { id },
+    data,
+    select: PERSON_SELECT,
+  });
+}
+
+export async function removePersonFromTree(
+  treeId: string,
+  personId: string,
+): Promise<{ id: string }> {
+  await requireTreeRole(treeId, 'EDITOR');
+  const id = CuidSchema.parse(personId);
+
+  const existing = await prisma.person.findFirst({
+    where: { id, tree_id: treeId },
+    select: { id: true, profile_image: true },
+  });
+  if (!existing) throw Errors.notFound('Person');
+
+  if (existing.profile_image) {
+    await deleteProfileImage(existing.profile_image);
+  }
+
+  await prisma.person.delete({ where: { id } });
+  return { id };
+}
+
+export async function addParentInTree(
+  input: z.infer<typeof AddParentSchema>,
+): Promise<AddedRelativeDto> {
+  const { treeId, childId, parent, adoptive } = AddParentSchema.parse(input);
+  await requireTreeRole(treeId, 'EDITOR');
+
+  return prisma.$transaction(async (tx) => {
+    await assertPersonsInTree(tx, treeId, [childId]);
+
+    if (!adoptive) {
+      const bioParentCount = await tx.relationship.count({
+        where: { tree_id: treeId, person2_id: childId, relationship_type: 'PARENT_CHILD' },
+      });
+      if (bioParentCount >= 2) {
+        throw Errors.conflict('This person already has two biological parents');
+      }
+    }
+
+    const newPerson = await tx.person.create({
+      data: { ...parent, tree_id: treeId },
+      select: { id: true, first_name: true, last_name: true },
+    });
+
+    const rel = await tx.relationship.create({
+      data: {
+        tree_id: treeId,
+        relationship_type: adoptive ? 'ADOPTED_PARENT' : 'PARENT_CHILD',
+        person1_id: newPerson.id,
+        person2_id: childId,
+      },
+      select: { id: true },
+    });
+
+    return { person: newPerson, relationship_ids: [rel.id] };
+  });
+}
+
+export async function addChildInTree(
+  input: z.infer<typeof AddChildSchema>,
+): Promise<AddedRelativeDto> {
+  const { treeId, parent1Id, parent2Id, child } = AddChildSchema.parse(input);
+  await requireTreeRole(treeId, 'EDITOR');
+  if (parent2Id && parent1Id === parent2Id) {
+    throw Errors.badRequest('parent1 and parent2 must differ');
+  }
+
+  const parentIds = parent2Id ? [parent1Id, parent2Id] : [parent1Id];
+
+  return prisma.$transaction(async (tx) => {
+    await assertPersonsInTree(tx, treeId, parentIds);
+
+    const newPerson = await tx.person.create({
+      data: { ...child, tree_id: treeId },
+      select: { id: true, first_name: true, last_name: true },
+    });
+
+    const rels = await Promise.all(
+      parentIds.map((pid) =>
+        tx.relationship.create({
+          data: {
+            tree_id: treeId,
+            relationship_type: 'PARENT_CHILD',
+            person1_id: pid,
+            person2_id: newPerson.id,
+          },
+          select: { id: true },
+        }),
+      ),
+    );
+
+    return { person: newPerson, relationship_ids: rels.map((r) => r.id) };
+  });
+}
+
+export async function addSpouseInTree(
+  input: z.infer<typeof AddSpouseSchema>,
+): Promise<AddedRelativeDto> {
+  const { treeId, personId, spouse, marriage_date } = AddSpouseSchema.parse(input);
+  await requireTreeRole(treeId, 'EDITOR');
+
+  return prisma.$transaction(async (tx) => {
+    const focusedPerson = await tx.person.findFirst({
+      where: { id: personId, tree_id: treeId },
+      select: { id: true, gender: true },
+    });
+    if (!focusedPerson) throw Errors.notFound('Person');
+    const enforcedSpouseGender = oppositeBinaryGender(focusedPerson.gender);
+
+    const newPerson = await tx.person.create({
+      data: { ...spouse, gender: enforcedSpouseGender, tree_id: treeId },
+      select: { id: true, first_name: true, last_name: true },
+    });
+
+    const [p1, p2] = normalizeSymmetric(personId, newPerson.id, 'SPOUSE');
+    const rel = await tx.relationship.create({
+      data: {
+        tree_id: treeId,
+        relationship_type: 'SPOUSE',
+        person1_id: p1,
+        person2_id: p2,
+        start_date: marriage_date ?? null,
+      },
+      select: { id: true },
+    });
+
+    return { person: newPerson, relationship_ids: [rel.id] };
+  });
+}
