@@ -163,6 +163,11 @@ export async function setUserLinkedPersonAction(
 ): Promise<ActionResult<{ linked_person_id: string | null }>> {
   return withAction(async () => {
     const user = await requireTreeRole(treeId, 'VIEWER');
+    // requireTreeRole returns User | null while the MVP auth bypass is active;
+    // this action specifically needs a user to update the TreeMember row, so
+    // we hard-fail here instead of guessing. When auth is re-enabled, the
+    // bypass goes away and this guard becomes unreachable in normal flow.
+    if (!user?.id) throw Errors.unauthorized();
 
     if (personId !== null) {
       const id = CuidSchema.parse(personId);

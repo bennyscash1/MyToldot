@@ -41,11 +41,10 @@ const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   { method: 'POST', pattern: /^\/api\/v1\/uploads\/profile-image$/ },
 ];
 
-// UI pages that require the user to be authenticated.
-const PROTECTED_UI_PATHS = [/^\/[a-z]{2}\/tree/, /^\/[a-z]{2}\/settings/];
-
-// UI pages that should redirect to home when the user IS authenticated.
-const AUTH_UI_PATHS = [/^\/[a-z]{2}\/login/, /^\/[a-z]{2}\/signup/];
+// MVP/TESTING — the UI route guards below are disabled. When restoring auth,
+// re-introduce these path lists alongside the matching guards in `middleware()`:
+//   const PROTECTED_UI_PATHS = [/^\/[a-z]{2}\/tree/, /^\/[a-z]{2}\/settings/];
+//   const AUTH_UI_PATHS      = [/^\/[a-z]{2}\/login/, /^\/[a-z]{2}\/signup/];
 
 const intlMiddleware = createIntlMiddleware(routing);
 

@@ -42,15 +42,7 @@ export async function requireAuthUser(): Promise<User> {
  *
  * Role hierarchy: SUPER_ADMIN > ADMIN > EDITOR > VIEWER
  */
-import { prisma } from '@/lib/prisma';
 import type { Role } from '@prisma/client';
-
-const ROLE_RANK: Record<Role, number> = {
-  VIEWER: 0,
-  EDITOR: 1,
-  ADMIN: 2,
-  SUPER_ADMIN: 3,
-};
 
 export async function requireTreeRole(
   treeId: string,
@@ -61,22 +53,31 @@ export async function requireTreeRole(
   void treeId; void minimumRole; // suppress unused-var warnings
   return null as unknown as User;
 
-  /* ORIGINAL — restore when auth is re-enabled:
-  const user = await requireAuthUser();
-
-  const membership = await prisma.treeMember.findUnique({
-    where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
-    select: { role: true },
-  });
-
-  if (!membership) throw Errors.forbidden();
-
-  if (ROLE_RANK[membership.role] < ROLE_RANK[minimumRole]) {
-    throw Errors.forbidden(
-      `This action requires at least the '${minimumRole}' role on this tree.`,
-    );
-  }
-
-  return user;
-  */
+  /* ORIGINAL — restore when auth is re-enabled.
+   * Steps to restore:
+   *   1. Add at the top of this file:
+   *        import { prisma } from '@/lib/prisma';
+   *   2. Add next to the existing imports:
+   *        const ROLE_RANK: Record<Role, number> = {
+   *          VIEWER: 0, EDITOR: 1, ADMIN: 2, SUPER_ADMIN: 3,
+   *        };
+   *   3. Replace the body above with:
+   *
+   *  const user = await requireAuthUser();
+   *
+   *  const membership = await prisma.treeMember.findUnique({
+   *    where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+   *    select: { role: true },
+   *  });
+   *
+   *  if (!membership) throw Errors.forbidden();
+   *
+   *  if (ROLE_RANK[membership.role] < ROLE_RANK[minimumRole]) {
+   *    throw Errors.forbidden(
+   *      `This action requires at least the '${minimumRole}' role on this tree.`,
+   *    );
+   *  }
+   *
+   *  return user;
+   */
 }

@@ -2,9 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link, useRouter } from '@/i18n/routing';
+import { useRouter } from '@/i18n/routing';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/auth.service';
+// MVP/TESTING — `Link` and the `auth` namespace `t()` are only referenced from
+// the commented-out logged-out branch below. Re-add them when restoring the
+// `Log in` / `Sign up` buttons.
 
 // ──────────────────────────────────────────────
 // NavbarActions — Client Component
@@ -124,7 +127,6 @@ function UserMenu({ email, initials, onLogout, isLoggingOut }: UserMenuProps) {
 // ── Main export ───────────────────────────────
 
 export function NavbarActions() {
-  const t                               = useTranslations('auth');
   const { user, isLoading }             = useAuth();
   const router                          = useRouter();
   const [isLoggingOut, setLoggingOut]   = useState(false);
