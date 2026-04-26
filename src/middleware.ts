@@ -30,6 +30,10 @@ const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   { method: 'POST', pattern: /^\/api\/v1\/auth\/signup$/ },
   // Allow logout when session cookie is missing/expired (clear cookies; no 401 loop).
   { method: 'POST', pattern: /^\/api\/v1\/auth\/logout$/ },
+  // MVP/TESTING — About page reads/writes are open while requireTreeRole is bypassed.
+  // Once auth is re-enabled, drop PATCH from this list so editor checks apply.
+  { method: 'GET', pattern: /^\/api\/v1\/trees\/[^/]+\/about$/ },
+  { method: 'PATCH', pattern: /^\/api\/v1\/trees\/[^/]+\/about$/ },
 ];
 
 // UI pages that require the user to be authenticated.

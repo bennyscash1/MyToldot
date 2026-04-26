@@ -30,6 +30,8 @@ export interface TreeDto {
   name: string;
   description: string | null;
   is_public: boolean;
+  about_text: string | null;
+  main_surnames: string[];
   created_at: string; // ISO 8601
   updated_at: string;
 }
@@ -46,6 +48,26 @@ export interface UpdateTreeBody {
   name?: string;
   description?: string;
   is_public?: boolean;
+}
+
+/**
+ * About payload returned by GET /api/v1/trees/:treeId/about.
+ * Only the fields needed by the About page — keeps the surface tight.
+ */
+export interface TreeAboutDto {
+  id: string;
+  about_text: string | null;
+  main_surnames: string[];
+}
+
+/**
+ * Body for PATCH /api/v1/trees/:treeId/about.
+ * Both fields optional so callers can update either independently.
+ * `about_text: null` explicitly clears the description.
+ */
+export interface UpdateTreeAboutBody {
+  about_text?: string | null;
+  main_surnames?: string[];
 }
 
 // ─────────────────────────────────────────────

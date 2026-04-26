@@ -50,6 +50,10 @@ model Tree {
   description                String?
   is_public                  Boolean  @default(false) // privacy gate
   strict_lineage_enforcement Boolean  @default(false) // when true: only blood/adoptive edges allowed; no informal links
+  // Long-form heritage description shown on the About page.
+  about_text                 String?
+  // Short list of family surnames highlighted on the About page.
+  main_surnames              String[] @default([])
   created_at                 DateTime @default(now())
   updated_at                 DateTime @updatedAt
 

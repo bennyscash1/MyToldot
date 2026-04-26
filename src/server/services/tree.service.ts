@@ -112,6 +112,39 @@ function oppositeBinaryGender(
   throw Errors.badRequest('Cannot add spouse unless the focused person gender is male or female');
 }
 
+/**
+ * Lightweight tree-scope resolver for pages that only need a treeId
+ * (e.g. About page). Mirrors the resolution rules of `resolveTreePageData`:
+ *  - Authenticated user → first tree they are a member of.
+ *  - Otherwise (guest/MVP) → first tree in the database.
+ *  - Returns null when the DB is unreachable or no tree exists.
+ */
+export async function resolveCurrentTreeId(): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  try {
+    if (user) {
+      const membership = await prisma.treeMember.findFirst({
+        where: { user_id: user.id },
+        orderBy: { joined_at: 'asc' },
+        select: { tree_id: true },
+      });
+      if (membership?.tree_id) return membership.tree_id;
+    }
+
+    const firstTree = await prisma.tree.findFirst({
+      orderBy: { created_at: 'asc' },
+      select: { id: true },
+    });
+    return firstTree?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveTreePageData(): Promise<TreePageData> {
   const supabase = await createSupabaseServerClient();
   const {

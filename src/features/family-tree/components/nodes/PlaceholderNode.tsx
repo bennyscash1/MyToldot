@@ -21,7 +21,7 @@ import {
 
 const LABEL: Record<PlaceholderNodeData['meta']['kind'], string> = {
   'add-parent': 'הוספת הורה',
-  'add-spouse': 'הוספת בן/בת זוג',
+  'add-spouse': 'הוספת בעל/אשה',
   'add-child': 'הוספת ילד',
   'add-sibling': 'הוספת אח/אחות',
 };

@@ -1,5 +1,11 @@
 import { apiClient } from './api.client';
-import type { TreeDto, CreateTreeBody, UpdateTreeBody } from '@/types/api';
+import type {
+  TreeDto,
+  CreateTreeBody,
+  UpdateTreeBody,
+  TreeAboutDto,
+  UpdateTreeAboutBody,
+} from '@/types/api';
 
 // ──────────────────────────────────────────────
 // Trees Service
@@ -37,5 +43,15 @@ export const treesService = {
   /** DELETE /api/v1/trees/:id */
   remove(id: string): Promise<void> {
     return apiClient.delete<void>(`${BASE}/${id}`);
+  },
+
+  /** GET /api/v1/trees/:treeId/about — fetch heritage description and main surnames */
+  getAbout(treeId: string): Promise<TreeAboutDto> {
+    return apiClient.get<TreeAboutDto>(`${BASE}/${treeId}/about`);
+  },
+
+  /** PATCH /api/v1/trees/:treeId/about — partial update of about_text and/or main_surnames */
+  updateAbout(treeId: string, body: UpdateTreeAboutBody): Promise<TreeAboutDto> {
+    return apiClient.patch<TreeAboutDto>(`${BASE}/${treeId}/about`, body);
   },
 };

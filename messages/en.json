@@ -138,5 +138,21 @@
     "noTree": "You do not have a family tree yet.",
     "noTreeAction": "Create My Tree",
     "comingSoon": "Interactive tree visualization coming in the next phase."
+  },
+  "aboutPage": {
+    "title": "About this family",
+    "description": "A short heritage description and the main surnames featured in this tree.",
+    "aboutLabel": "Heritage description",
+    "aboutPlaceholder": "Tell the story of this family — where it began, where it grew, and what it stands for…",
+    "mainSurnames": "Main surnames",
+    "surnamesPlaceholder": "Type a surname and press Enter",
+    "surnamesHint": "Press Enter or comma to add. Click × to remove.",
+    "removeSurname": "Remove surname",
+    "editAbout": "Edit",
+    "saveAbout": "Save",
+    "noAboutYet": "No description yet. Use the Edit button to add one.",
+    "noSurnamesYet": "No surnames added yet.",
+    "noTree": "There is no family tree to describe yet.",
+    "saveFailed": "Could not save the about page. Please try again."
   }
 }

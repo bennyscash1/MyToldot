@@ -23,7 +23,7 @@ import { NavbarActions } from './NavbarActions';
 const NAV_ITEMS: NavItem[] = [
   { labelKey: 'home', href: '/' },
   { labelKey: 'tree', href: '/tree' },
-  { labelKey: 'about', href: '/about', disabled: true },
+  { labelKey: 'about', href: '/about' },
 ];
 
 export function Navbar() {
