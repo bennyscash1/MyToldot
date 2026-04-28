@@ -28,10 +28,15 @@ export function generateStaticParams() {
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Family Tree',
-    default: 'Family Tree',
+    template: '%s | Toldotay',
+    default: 'Toldotay',
   },
   description: 'Discover, connect, and preserve your family history.',
+  icons: {
+    icon: '/images/LOGO-en.png',
+    shortcut: '/images/LOGO-en.png',
+    apple: '/images/LOGO-en.png',
+  },
 };
 
 interface LocaleLayoutProps {
