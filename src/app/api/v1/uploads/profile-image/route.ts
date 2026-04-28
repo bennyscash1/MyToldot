@@ -27,6 +27,7 @@ import { z } from 'zod';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { prisma } from '@/lib/prisma';
+import { requireApprovedEditor } from '@/lib/api/auth';
 import {
   ALLOWED_PROFILE_IMAGE_TYPES,
   PROFILE_IMAGE_MAX_BYTES,
@@ -47,6 +48,9 @@ interface UploadResponseDto {
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // Only approved editors/admins may upload profile images.
+  await requireApprovedEditor();
+
   if (!isSupabaseAdminConfigured()) {
     console.error(
       '[uploads/profile-image] Missing SUPABASE_SERVICE_ROLE_KEY — server-side uploads are disabled.',
@@ -108,9 +112,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  // Authorisation: confirm the person actually belongs to the supplied tree.
-  // This is the single check that protects multi-tenant isolation while
-  // requireTreeRole is bypassed for the MVP.
+  // Authorisation: confirm the person actually belongs to the supplied tree
+  // (defence-in-depth on top of requireApprovedEditor above).
   const person = await prisma.person.findFirst({
     where: { id: personId, tree_id: treeId },
     select: { id: true },

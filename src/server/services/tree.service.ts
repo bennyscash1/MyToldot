@@ -4,7 +4,7 @@ import type { Prisma, RelationshipType, Role } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { deleteProfileImage } from '@/lib/supabase/storage';
-import { requireTreeRole } from '@/lib/api/auth';
+import { requireApprovedEditor, requireApprovedAdmin } from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
 import {
   PersonInputSchema,
@@ -295,7 +295,7 @@ export async function createPersonInTree(
   treeId: string,
   input: PersonInput,
 ): Promise<PersonDto> {
-  await requireTreeRole(treeId, 'EDITOR');
+  await requireApprovedEditor();
   const data = PersonInputSchema.parse(input);
   return prisma.person.create({
     data: { ...data, tree_id: treeId },
@@ -308,7 +308,7 @@ export async function updatePersonInTree(
   personId: string,
   patch: PersonPatch,
 ): Promise<PersonDto> {
-  await requireTreeRole(treeId, 'EDITOR');
+  await requireApprovedEditor();
   const id = CuidSchema.parse(personId);
   const data = PersonPatchSchema.parse(patch);
 
@@ -329,7 +329,8 @@ export async function removePersonFromTree(
   treeId: string,
   personId: string,
 ): Promise<{ id: string }> {
-  await requireTreeRole(treeId, 'EDITOR');
+  // Destructive action: ADMIN-only.
+  await requireApprovedAdmin();
   const id = CuidSchema.parse(personId);
 
   const existing = await prisma.person.findFirst({
@@ -350,7 +351,7 @@ export async function addParentInTree(
   input: z.infer<typeof AddParentSchema>,
 ): Promise<AddedRelativeDto> {
   const { treeId, childId, parent, adoptive } = AddParentSchema.parse(input);
-  await requireTreeRole(treeId, 'EDITOR');
+  await requireApprovedEditor();
 
   return prisma.$transaction(async (tx) => {
     await assertPersonsInTree(tx, treeId, [childId]);
@@ -387,7 +388,7 @@ export async function addChildInTree(
   input: z.infer<typeof AddChildSchema>,
 ): Promise<AddedRelativeDto> {
   const { treeId, parent1Id, parent2Id, child } = AddChildSchema.parse(input);
-  await requireTreeRole(treeId, 'EDITOR');
+  await requireApprovedEditor();
   if (parent2Id && parent1Id === parent2Id) {
     throw Errors.badRequest('parent1 and parent2 must differ');
   }
@@ -424,7 +425,7 @@ export async function addSpouseInTree(
   input: z.infer<typeof AddSpouseSchema>,
 ): Promise<AddedRelativeDto> {
   const { treeId, personId, spouse, marriage_date } = AddSpouseSchema.parse(input);
-  await requireTreeRole(treeId, 'EDITOR');
+  await requireApprovedEditor();
 
   return prisma.$transaction(async (tx) => {
     const focusedPerson = await tx.person.findFirst({

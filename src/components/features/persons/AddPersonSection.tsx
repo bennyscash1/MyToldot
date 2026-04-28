@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button }     from '@/components/ui/Button';
 import { PersonForm } from './PersonForm';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { PersonDto } from '@/types/api';
 
 // ──────────────────────────────────────────────
@@ -12,6 +13,12 @@ import type { PersonDto } from '@/types/api';
 // Receives the resolved treeId (and strictMode flag)
 // from the parent Server Component (page.tsx) and
 // manages the open/closed state of the form overlay.
+//
+// Defence-in-depth: the component also checks the global
+// RBAC via usePermissions and renders nothing when the
+// caller is not an approved editor/admin. The server route
+// behind PersonForm.submit() is the authoritative gate;
+// hiding the UI is purely a UX nicety.
 // ──────────────────────────────────────────────
 
 interface AddPersonSectionProps {
@@ -25,6 +32,7 @@ export function AddPersonSection({ treeId, strictMode, personCount }: AddPersonS
   const t       = useTranslations('home');
   const tForm   = useTranslations('personForm');
   const tCommon = useTranslations('common');
+  const { canEdit } = usePermissions();
 
   const [isOpen, setIsOpen]       = useState(false);
   const [lastAdded, setLastAdded] = useState<PersonDto | null>(null);
@@ -33,6 +41,8 @@ export function AddPersonSection({ treeId, strictMode, personCount }: AddPersonS
     setLastAdded(person);
     setIsOpen(false);
   }
+
+  if (!canEdit) return null;
 
   if (!treeId) {
     return (

@@ -1,16 +1,16 @@
 /**
  * /api/v1/persons/[personId]
  *
- * GET    → fetch a single person  (requires VIEWER+)
- * PATCH  → update person fields   (requires EDITOR+)
- * DELETE → remove person          (requires ADMIN+)
+ * GET    → fetch a single person  (public — anonymous read)
+ * PATCH  → update person fields   (requires approved EDITOR or ADMIN)
+ * DELETE → remove person          (requires approved ADMIN)
  */
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireTreeRole } from '@/lib/api/auth';
+import { requireApprovedEditor, requireApprovedAdmin } from '@/lib/api/auth';
 import { deleteProfileImage } from '@/lib/supabase/storage';
 import type { UpdatePersonBody, PersonDto } from '@/types/api';
 
@@ -46,21 +46,22 @@ async function findPersonOrThrow(personId: string) {
 
 // ─────────────────────────────────────────────
 // GET /api/v1/persons/:id
+// Public read.
 // ─────────────────────────────────────────────
 export const GET = withErrorHandler(async (_req: NextRequest, ctx: RouteContext) => {
   const { personId } = await ctx.params;
   const person = await findPersonOrThrow(personId);
-  await requireTreeRole(person.tree_id, 'VIEWER');
   return ok<PersonDto>(person as unknown as PersonDto);
 });
 
 // ─────────────────────────────────────────────
 // PATCH /api/v1/persons/:id
+// Requires an admin-approved editor (EDITOR or ADMIN).
 // ─────────────────────────────────────────────
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
   const { personId } = await ctx.params;
-  const person = await findPersonOrThrow(personId);
-  await requireTreeRole(person.tree_id, 'EDITOR');
+  await findPersonOrThrow(personId); // 404 if missing
+  await requireApprovedEditor();
 
   const body: UpdatePersonBody = await req.json();
 
@@ -87,11 +88,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
 
 // ─────────────────────────────────────────────
 // DELETE /api/v1/persons/:id
+// Requires an admin-approved ADMIN.
 // ─────────────────────────────────────────────
 export const DELETE = withErrorHandler(async (_req: NextRequest, ctx: RouteContext) => {
   const { personId } = await ctx.params;
   const person = await findPersonOrThrow(personId);
-  await requireTreeRole(person.tree_id, 'ADMIN');
+  await requireApprovedAdmin();
 
   // Clean up storage before deleting the DB record.
   if (person.profile_image) {

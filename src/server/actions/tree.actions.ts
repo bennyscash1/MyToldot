@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
-import { requireAuthUser, requireTreeRole } from '@/lib/api/auth';
+import {
+  requireAuthUser,
+  requireApprovedEditor,
+  requireApprovedAdmin,
+} from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
 import {
@@ -111,7 +115,7 @@ export async function updateTreeSettingsAction(
   patch: z.infer<typeof UpdateTreeSchema>,
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
-    await requireTreeRole(treeId, 'ADMIN');
+    await requireApprovedAdmin();
     const data = UpdateTreeSchema.parse(patch);
 
     const tree = await prisma.tree.update({
@@ -131,7 +135,7 @@ export async function setRootPersonAction(
   personId: string,
 ): Promise<ActionResult<{ root_person_id: string }>> {
   return withAction(async () => {
-    await requireTreeRole(treeId, 'ADMIN');
+    await requireApprovedAdmin();
     const id = CuidSchema.parse(personId);
 
     const person = await prisma.person.findFirst({
@@ -162,11 +166,9 @@ export async function setUserLinkedPersonAction(
   personId: string | null,
 ): Promise<ActionResult<{ linked_person_id: string | null }>> {
   return withAction(async () => {
-    const user = await requireTreeRole(treeId, 'VIEWER');
-    // requireTreeRole returns User | null while the MVP auth bypass is active;
-    // this action specifically needs a user to update the TreeMember row, so
-    // we hard-fail here instead of guessing. When auth is re-enabled, the
-    // bypass goes away and this guard becomes unreachable in normal flow.
+    // Personal "home person" preference — requires an approved editor/admin.
+    // Guests don't have a TreeMember row to update.
+    const { user } = await requireApprovedEditor();
     if (!user?.id) throw Errors.unauthorized();
 
     if (personId !== null) {

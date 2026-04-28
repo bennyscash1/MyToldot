@@ -24,6 +24,16 @@ enum Role {
   VIEWER // Read-only access
 }
 
+// Global app-wide access role used for the admin-approval RBAC.
+// Independent from Tree-level Role (which gates per-tree membership in
+// future multi-tenant flows). Defaults to GUEST until an admin manually
+// upgrades the user via the Supabase dashboard.
+enum AccessRole {
+  GUEST  // signed up, awaiting approval — read-only
+  EDITOR // approved: may add/edit persons & relationships
+  ADMIN  // approved: editor rights + delete + admin actions
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -79,6 +89,14 @@ model User {
   email      String   @unique
   full_name  String?
   avatar_url String?
+
+  // ── App-wide RBAC ──
+  // Admin manually flips `is_approved` to true (and bumps `access_role`
+  // to EDITOR/ADMIN) via the Supabase dashboard. Until then the user
+  // can browse but cannot mutate any data.
+  is_approved Boolean    @default(false)
+  access_role AccessRole @default(GUEST)
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 

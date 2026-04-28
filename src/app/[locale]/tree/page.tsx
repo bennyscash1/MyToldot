@@ -7,6 +7,7 @@ import { EmptyTreeState } from '@/components/features/tree/EmptyTreeState';
 import { TreeCanvasWithModals } from '@/features/family-tree/components/TreeCanvasWithModals';
 import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
 import type { TreePageData } from '@/server/services/tree.service';
+import { getCurrentUserWithProfile } from '@/lib/api/auth';
 
 // ──────────────────────────────────────────────
 // /[locale]/tree — Family Tree Dashboard
@@ -40,18 +41,15 @@ export default async function TreePage({ params }: LocalePageProps) {
     );
   }
 
-  // MVP/TESTING: everyone is an editor — no auth/role gate.
-  // Restore role-based lines (commented below) when auth is re-enabled.
-  const canEdit = true;
-  const canDeletePerson = true;
-  /* ORIGINAL role-based check — restore when auth is re-enabled:
+  // RBAC: derive permissions from the global User profile so that SSR
+  // already sends the correct add/edit/delete UI in the canvas markup.
+  const session = await getCurrentUserWithProfile();
+  const profile = session?.profile ?? null;
   const canEdit =
-    membershipRole === 'EDITOR' ||
-    membershipRole === 'ADMIN' ||
-    membershipRole === 'SUPER_ADMIN';
+    !!profile?.is_approved &&
+    (profile.access_role === 'EDITOR' || profile.access_role === 'ADMIN');
   const canDeletePerson =
-    membershipRole === 'ADMIN' || membershipRole === 'SUPER_ADMIN';
-  */
+    !!profile?.is_approved && profile.access_role === 'ADMIN';
 
   // ── B. No tree ──
   if (!treeData.treeId) {

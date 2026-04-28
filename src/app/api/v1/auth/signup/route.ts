@@ -78,9 +78,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       where: { id: data.user.id },
       update: { email: data.user.email!, full_name: body.full_name.trim() },
       create: {
-        id: data.user.id,
-        email: data.user.email!,
-        full_name: body.full_name.trim(),
+        id:          data.user.id,
+        email:       data.user.email!,
+        full_name:   body.full_name.trim(),
+        // Explicit defaults for the admin-approval RBAC. Schema defaults
+        // already enforce these, but spelling them out makes the intent
+        // visible at the call site.
+        is_approved: false,
+        access_role: 'GUEST',
       },
       select: { id: true, email: true, full_name: true },
     });

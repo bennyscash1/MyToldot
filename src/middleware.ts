@@ -15,36 +15,39 @@ import { updateSessionAndGetUser } from './lib/supabase/middleware';
 //     correct locale prefix (/en or /he).
 //
 // ── Protected route rules ────────────────────
-//  • GET  /api/v1/trees          → public (is_public trees visible without auth)
-//  • POST /api/v1/auth/login     → public
-//  • POST /api/v1/auth/signup    → public
-//  • ALL  /api/v1/**             → requires auth (write operations, private data)
-//  • GET  /[locale]/tree/**      → requires auth
-//  • /[locale]/login  /signup   → redirect to home if already authed
+//  • Anonymous visitors can READ the tree (all GET endpoints below).
+//  • All POST/PATCH/DELETE endpoints require an authenticated session;
+//    the route handler then checks `is_approved` + `access_role` for
+//    editor/admin gating.
+//  • Auth endpoints (login/signup/logout/me) are intentionally public.
 // ──────────────────────────────────────────────
 
 // Routes that are always public, even for non-authed users.
+// All are READ endpoints (or the auth endpoints themselves). Every write
+// route is omitted on purpose — the middleware will 401 unauthenticated
+// callers, then the handler enforces approval/role.
 const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
-  { method: 'GET', pattern: /^\/api\/v1\/trees$/ }, // still authenticated in route handler
+  // Auth endpoints
   { method: 'POST', pattern: /^\/api\/v1\/auth\/login$/ },
   { method: 'POST', pattern: /^\/api\/v1\/auth\/signup$/ },
   // Allow logout when session cookie is missing/expired (clear cookies; no 401 loop).
   { method: 'POST', pattern: /^\/api\/v1\/auth\/logout$/ },
-  // MVP/TESTING — About page reads/writes are open while requireTreeRole is bypassed.
-  // Once auth is re-enabled, drop PATCH from this list so editor checks apply.
+  // Public profile lookup — returns `{ user: null }` for anonymous visitors.
+  { method: 'GET', pattern: /^\/api\/v1\/auth\/me$/ },
+
+  // Tree reads (anonymous browsing of the family tree).
+  { method: 'GET', pattern: /^\/api\/v1\/trees$/ },
   { method: 'GET', pattern: /^\/api\/v1\/trees\/[^/]+\/about$/ },
-  { method: 'PATCH', pattern: /^\/api\/v1\/trees\/[^/]+\/about$/ },
-  // MVP/TESTING — profile-image uploads are open while there is no login.
-  // The route itself enforces that personId belongs to the supplied treeId,
-  // and uploads use the service-role key (bypasses Storage RLS / JWT checks).
-  // Drop this once auth is re-enabled and the route checks tree role.
-  { method: 'POST', pattern: /^\/api\/v1\/uploads\/profile-image$/ },
+
+  // Person reads.
+  { method: 'GET', pattern: /^\/api\/v1\/persons$/ },
+  { method: 'GET', pattern: /^\/api\/v1\/persons\/[^/]+$/ },
 ];
 
-// MVP/TESTING — the UI route guards below are disabled. When restoring auth,
-// re-introduce these path lists alongside the matching guards in `middleware()`:
-//   const PROTECTED_UI_PATHS = [/^\/[a-z]{2}\/tree/, /^\/[a-z]{2}\/settings/];
-//   const AUTH_UI_PATHS      = [/^\/[a-z]{2}\/login/, /^\/[a-z]{2}\/signup/];
+// All UI routes (including /tree) are publicly accessible so anonymous
+// visitors can browse the family tree in read-only mode. Per-page server
+// components (e.g. /[locale]/login) handle their own redirect logic when
+// an authenticated visitor lands there.
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -72,25 +75,10 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ── Step 3: UI route guards ───────────────
-  // MVP/TESTING — both guards commented out so unauthenticated visitors reach
-  // all pages directly. To restore auth, uncomment the two blocks below.
-
-  // // Redirect unauthenticated users away from protected pages.
-  // const isProtectedUiPath = PROTECTED_UI_PATHS.some((p) => p.test(pathname));
-  // if (isProtectedUiPath && !user) {
-  //   const locale = pathname.split('/')[1] ?? routing.defaultLocale;
-  //   const loginUrl = new URL(`/${locale}/login`, request.url);
-  //   loginUrl.searchParams.set('next', pathname); // preserve intended destination
-  //   return NextResponse.redirect(loginUrl);
-  // }
-
-  // // Redirect already-authenticated users away from login/signup.
-  // const isAuthUiPath = AUTH_UI_PATHS.some((p) => p.test(pathname));
-  // if (isAuthUiPath && user) {
-  //   const locale = pathname.split('/')[1] ?? routing.defaultLocale;
-  //   return NextResponse.redirect(new URL(`/${locale}`, request.url));
-  // }
+  // ── Step 3: UI routes are public ──────────
+  // Anonymous visitors can browse every page (read-only). Login/signup pages
+  // and other protected screens enforce their own server-side redirects.
+  void user; // hint to the linter that the resolved user is intentionally unused here
 
   // ── Step 4: i18n locale rewrite ──────────
   // Run the next-intl middleware and merge its response cookies with
