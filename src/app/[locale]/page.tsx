@@ -69,21 +69,21 @@ export default async function HomePage({ params }: LocalePageProps) {
   */
 
   return (
-    <section className="flex flex-col items-center justify-center gap-6 px-4 py-24 text-center sm:py-36">
+    <section className="flex h-[calc(100dvh-4rem)] flex-col items-center justify-center gap-6 px-4 text-center">
       <Image
         src={logoSrc}
         alt={logoAlt}
         width={420}
         height={72}
-        className="h-auto w-auto"
+        className="h-auto w-full max-w-[260px] sm:max-w-[360px] md:max-w-[420px]"
         priority
       />
 
-      <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+      <h1 className="max-w-2xl text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl md:text-5xl">
         {t('title')}
       </h1>
 
-      <p className="max-w-xl text-lg text-gray-500">{t('subtitle')}</p>
+      <p className="max-w-xl text-base text-gray-500 sm:text-lg">{t('subtitle')}</p>
 
       {/* MVP/TESTING — CTA goes straight to the tree dashboard.
           Restore the original auth-conditional block below when auth is re-enabled. */}

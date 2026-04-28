@@ -65,7 +65,7 @@ export default async function LocaleLayout({
         mismatch on this single element; children still hydrate normally.
       */}
       <body
-        className="flex min-h-screen flex-col bg-white"
+        className="flex min-h-screen flex-col overflow-x-hidden bg-white"
         suppressHydrationWarning
       >
         <NextIntlClientProvider messages={messages}>
