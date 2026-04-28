@@ -18,7 +18,7 @@ import { Link } from '@/i18n/routing';
 // stays statically rendered.
 // ──────────────────────────────────────────────
 
-export const metadata: Metadata = { title: 'Home' };
+export const metadata: Metadata = { title: { absolute: 'Toldotay' } };
 
 export default async function HomePage({ params }: LocalePageProps) {
   const { locale } = await params;
