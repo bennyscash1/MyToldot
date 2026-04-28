@@ -38,7 +38,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-[#f4f3e9]/95 backdrop-blur-sm">
       <nav
-        className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
         aria-label="Main navigation"
       >
         {/* ── Brand / Logo ── */}
@@ -52,7 +52,7 @@ export function Navbar() {
             alt={logoAlt}
             width={260}
             height={56}
-            className="h-20 w-auto sm:h-24"
+            className="h-12 w-auto sm:h-16"
             priority
           />
         </Link>
