@@ -340,9 +340,9 @@ export async function resolveTreePageDataBySlug(slug: string): Promise<TreePageD
     linkedPersonId = membership?.linked_person_id ?? null;
   }
 
-  if (!tree.is_public && !membershipRole) {
-    throw Errors.forbidden();
-  }
+  // Public-by-link access rule:
+  // any visitor with a valid tree slug may view tree data.
+  // Editing/deletion remains protected by RBAC checks in mutation paths.
 
   const personCount = tree._count.persons;
   let initialPersons: PersonRow[] = [];
