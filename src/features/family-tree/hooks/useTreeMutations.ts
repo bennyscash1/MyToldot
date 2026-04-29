@@ -37,6 +37,7 @@ import type { PersonRow, RelationshipRow } from '../lib/types';
 
 export interface UseTreeMutationsArgs {
   treeId: string;
+  treeSlug: string;
   initialPersons: PersonRow[];
   initialRelationships: RelationshipRow[];
 }
@@ -89,11 +90,12 @@ function inputToRow(id: string, input: PersonInput): PersonRow {
 
 export function useTreeMutations({
   treeId,
+  treeSlug,
   initialPersons,
   initialRelationships,
 }: UseTreeMutationsArgs): UseTreeMutationsResult {
   const locale = useLocale();
-  const treeRouteBase = `/${locale}/tree`;
+  const treeRouteBase = `/${locale}/tree/${treeSlug}`;
   const [persons, setPersons] = useState<PersonRow[]>(initialPersons);
   const [relationships, setRelationships] = useState<RelationshipRow[]>(initialRelationships);
   const [lastError, setLastError] = useState<string | null>(null);

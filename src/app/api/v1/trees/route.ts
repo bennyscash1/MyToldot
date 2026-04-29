@@ -6,10 +6,12 @@
  */
 
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireAuthUser } from '@/lib/api/auth';
+import { generateUniqueTreeSlug } from '@/lib/tree/slug';
 import type { CreateTreeBody, TreeDto } from '@/types/api';
 
 // GET /api/v1/trees
@@ -25,6 +27,7 @@ export const GET = withErrorHandler(async () => {
       tree: {
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           is_public: true,
@@ -69,53 +72,78 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw Errors.badRequest('`name` is required');
   }
 
-  // Atomic: upsert user mirror + create tree + add membership.
-  const tree = await prisma.$transaction(async (tx) => {
-    // 1. Ensure the caller has a row in public.users (FK requirement).
-    await tx.user.upsert({
-      where:  { id: user.id },
-      update: { email: user.email ?? '' },
-      create: {
-        id:        user.id,
-        email:     user.email ?? '',
-        full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
-      },
-    });
+  let tree: {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    is_public: boolean;
+    strict_lineage_enforcement: boolean;
+    about_text: string | null;
+    main_surnames: string[];
+    created_at: Date;
+    updated_at: Date;
+  } | null = null;
 
-    // 2. Create the tree.
-    const created = await tx.tree.create({
-      data: {
-        name:        body.name.trim(),
-        description: body.description?.trim() ?? null,
-        is_public:   body.is_public ?? false,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        is_public: true,
-        strict_lineage_enforcement: true,
-        about_text: true,
-        main_surnames: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      tree = await prisma.$transaction(async (tx) => {
+        await tx.user.upsert({
+          where:  { id: user.id },
+          update: { email: user.email ?? '' },
+          create: {
+            id:        user.id,
+            email:     user.email ?? '',
+            full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
+          },
+        });
 
-    // 3. Add the creator as ADMIN.
-    await tx.treeMember.create({
-      data: {
-        tree_id: created.id,
-        user_id: user.id,
-        role:    'ADMIN',
-      },
-    });
+        const slug = await generateUniqueTreeSlug(tx);
+        const created = await tx.tree.create({
+          data: {
+            slug,
+            name:        body.name.trim(),
+            description: body.description?.trim() ?? null,
+            is_public:   body.is_public ?? false,
+          },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            description: true,
+            is_public: true,
+            strict_lineage_enforcement: true,
+            about_text: true,
+            main_surnames: true,
+            created_at: true,
+            updated_at: true,
+          },
+        });
 
-    return created;
-  }).catch((error) => {
-    console.error('[TREES_API_ERROR] POST /api/v1/trees failed:', error);
-    throw error;
-  });
+        await tx.treeMember.create({
+          data: {
+            tree_id: created.id,
+            user_id: user.id,
+            role:    'ADMIN',
+          },
+        });
+
+        return created;
+      });
+      break;
+    } catch (error) {
+      const isSlugCollision =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        String(error.meta?.target).includes('slug');
+      if (!isSlugCollision || attempt === 4) {
+        console.error('[TREES_API_ERROR] POST /api/v1/trees failed:', error);
+        throw error;
+      }
+    }
+  }
+
+  if (!tree) throw Errors.internal('Tree creation failed after slug retries');
 
   return ok<TreeDto>(
     {

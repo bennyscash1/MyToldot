@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import {
@@ -15,6 +16,8 @@ import {
   PersonInputSchema,
   CuidSchema,
 } from '@/features/family-tree/schemas/person.schema';
+import { generateUniqueTreeSlug } from '@/lib/tree/slug';
+import { resolveTreeSlugFromId } from '@/server/services/tree.service';
 
 // ────────────────────────────────────────────────────────────────
 // Schemas
@@ -42,6 +45,7 @@ const UpdateTreeSchema = z.object({
 
 export interface CreatedTreeDto {
   id: string;
+  slug: string;
   name: string;
   root_person_id: string | null;
 }
@@ -69,16 +73,21 @@ export async function createTreeAction(
       },
     });
 
-    const tree = await prisma.$transaction(async (tx) => {
-      const created = await tx.tree.create({
-        data: {
-          name: data.name,
-          description: data.description ?? null,
-          is_public: data.is_public ?? false,
-          strict_lineage_enforcement: data.strict_lineage_enforcement ?? false,
-        },
-        select: { id: true, name: true },
-      });
+    let tree: CreatedTreeDto | null = null;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        tree = await prisma.$transaction(async (tx) => {
+          const slug = await generateUniqueTreeSlug(tx);
+          const created = await tx.tree.create({
+            data: {
+              slug,
+              name: data.name,
+              description: data.description ?? null,
+              is_public: data.is_public ?? false,
+              strict_lineage_enforcement: data.strict_lineage_enforcement ?? false,
+            },
+            select: { id: true, slug: true, name: true },
+          });
 
       await tx.treeMember.create({
         data: { tree_id: created.id, user_id: user.id, role: 'ADMIN' },
@@ -102,8 +111,19 @@ export async function createTreeAction(
         });
       }
 
-      return { ...created, root_person_id: rootPersonId };
-    });
+          return { ...created, root_person_id: rootPersonId };
+        });
+        break;
+      } catch (error) {
+        const isSlugCollision =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002' &&
+          String(error.meta?.target).includes('slug');
+        if (!isSlugCollision || attempt === 4) throw error;
+      }
+    }
+
+    if (!tree) throw Errors.internal('Tree creation failed after slug retries');
 
     revalidatePath('/[locale]', 'layout');
     return tree;
@@ -124,7 +144,8 @@ export async function updateTreeSettingsAction(
       select: { id: true },
     });
 
-    revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+    const slug = await resolveTreeSlugFromId(treeId);
+    if (slug) revalidatePath(`/[locale]/tree/${slug}`, 'page');
     return tree;
   });
 }
@@ -149,7 +170,8 @@ export async function setRootPersonAction(
       data: { root_person_id: id },
     });
 
-    revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+    const slug = await resolveTreeSlugFromId(treeId);
+    if (slug) revalidatePath(`/[locale]/tree/${slug}`, 'page');
     return { root_person_id: id };
   });
 }
@@ -185,7 +207,8 @@ export async function setUserLinkedPersonAction(
       data: { linked_person_id: personId },
     });
 
-    revalidatePath(`/[locale]/(app)/tree/${treeId}`, 'page');
+    const slug = await resolveTreeSlugFromId(treeId);
+    if (slug) revalidatePath(`/[locale]/tree/${slug}`, 'page');
     return { linked_person_id: personId };
   });
 }

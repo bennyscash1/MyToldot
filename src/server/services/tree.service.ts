@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { deleteProfileImage } from '@/lib/supabase/storage';
 import { requireApprovedEditor, requireApprovedAdmin } from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
+import { generateUniqueTreeSlug } from '@/lib/tree/slug';
 import {
   PersonInputSchema,
   PersonPatchSchema,
@@ -145,6 +146,23 @@ export async function resolveCurrentTreeId(): Promise<string | null> {
   }
 }
 
+export async function resolveTreeIdFromSlug(slug: string): Promise<string> {
+  const tree = await prisma.tree.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!tree) throw Errors.notFound('Tree');
+  return tree.id;
+}
+
+export async function resolveTreeSlugFromId(treeId: string): Promise<string | null> {
+  const tree = await prisma.tree.findUnique({
+    where: { id: treeId },
+    select: { slug: true },
+  });
+  return tree?.slug ?? null;
+}
+
 export async function resolveTreePageData(): Promise<TreePageData> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -197,10 +215,12 @@ export async function resolveTreePageData(): Promise<TreePageData> {
       });
 
       if (!firstTree) {
+        const slug = await generateUniqueTreeSlug(prisma);
         firstTree = await prisma.tree.create({
-          data: { name: 'עץ המשפחה', is_public: true },
+          data: { slug, name: 'עץ המשפחה', is_public: true },
           select: {
             id: true,
+            slug: true,
             name: true,
             root_person_id: true,
             _count: { select: { persons: true } },
@@ -288,6 +308,100 @@ export async function resolveTreePageData(): Promise<TreePageData> {
     initialPersons,
     initialRelationships,
     initialFocalId: linkedPersonId ?? rootPersonId ?? initialPersons[0]?.id ?? null,
+  };
+}
+
+export async function resolveTreePageDataBySlug(slug: string): Promise<TreePageData> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const tree = await prisma.tree.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      name: true,
+      is_public: true,
+      root_person_id: true,
+      _count: { select: { persons: true } },
+    },
+  });
+  if (!tree) throw Errors.notFound('Tree');
+
+  let membershipRole: Role | null = null;
+  let linkedPersonId: string | null = null;
+  if (user) {
+    const membership = await prisma.treeMember.findUnique({
+      where: { tree_id_user_id: { tree_id: tree.id, user_id: user.id } },
+      select: { role: true, linked_person_id: true },
+    });
+    membershipRole = membership?.role ?? null;
+    linkedPersonId = membership?.linked_person_id ?? null;
+  }
+
+  if (!tree.is_public && !membershipRole) {
+    throw Errors.forbidden();
+  }
+
+  const personCount = tree._count.persons;
+  let initialPersons: PersonRow[] = [];
+  let initialRelationships: RelationshipRow[] = [];
+
+  if (personCount > 0) {
+    const [personRows, relRows] = await Promise.all([
+      prisma.person.findMany({
+        where: { tree_id: tree.id },
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          maiden_name: true,
+          first_name_he: true,
+          last_name_he: true,
+          gender: true,
+          birth_date: true,
+          death_date: true,
+          birth_place: true,
+          bio: true,
+          profile_image: true,
+        },
+        orderBy: [{ last_name: 'asc' }, { first_name: 'asc' }],
+      }),
+      prisma.relationship.findMany({
+        where: { tree_id: tree.id },
+        select: {
+          id: true,
+          relationship_type: true,
+          person1_id: true,
+          person2_id: true,
+          start_date: true,
+          end_date: true,
+        },
+      }),
+    ]);
+
+    initialPersons = personRows.map((p) => ({ ...p, bio: p.bio ?? null }));
+    initialRelationships = relRows.map((r) => ({
+      id: r.id,
+      relationship_type: r.relationship_type as RelationshipRow['relationship_type'],
+      person1_id: r.person1_id,
+      person2_id: r.person2_id,
+      start_date: r.start_date,
+      end_date: r.end_date,
+    }));
+  }
+
+  return {
+    treeId: tree.id,
+    treeName: tree.name,
+    personCount,
+    membershipRole,
+    rootPersonId: tree.root_person_id,
+    linkedPersonId,
+    initialPersons,
+    initialRelationships,
+    initialFocalId: linkedPersonId ?? tree.root_person_id ?? initialPersons[0]?.id ?? null,
   };
 }
 

@@ -56,6 +56,7 @@ enum RelationshipType {
 
 model Tree {
   id                         String   @id @default(cuid())
+  slug                       String   @unique
   name                       String // e.g. "Asad Family"
   description                String?
   is_public                  Boolean  @default(false) // privacy gate

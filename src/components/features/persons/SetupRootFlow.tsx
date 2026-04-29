@@ -33,8 +33,9 @@ type Step = 'name-tree' | 'add-person' | 'success';
 interface SetupRootFlowProps {
   /** Null when the user has no tree yet. */
   initialTreeId:  string | null;
+  initialTreeSlug?: string | null;
   strictMode:     boolean;
-  /** Where to navigate after setup is complete. Defaults to '/tree'. */
+  /** Where to navigate after setup is complete. Defaults to '/tree/setup'. */
   redirectTo?:    string;
 }
 
@@ -81,7 +82,7 @@ function StepIndicator({ current }: { current: Step }) {
 // ── Step 1: Name the tree ─────────────────────
 
 interface NameTreeStepProps {
-  onCreated: (treeId: string) => void;
+  onCreated: (tree: { id: string; slug: string }) => void;
 }
 
 function NameTreeStep({ onCreated }: NameTreeStepProps) {
@@ -103,7 +104,7 @@ function NameTreeStep({ onCreated }: NameTreeStepProps) {
         description: description.trim() || undefined,
         is_public: false,
       });
-      onCreated(tree.id);
+      onCreated({ id: tree.id, slug: tree.slug });
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : t('treeErrorGeneric'));
     } finally {
@@ -155,7 +156,7 @@ function NameTreeStep({ onCreated }: NameTreeStepProps) {
 function SuccessScreen({
   person,
   onAddAnother,
-  redirectTo = '/tree',
+  redirectTo = '/tree/setup',
 }: {
   person: PersonDto;
   onAddAnother: () => void;
@@ -215,16 +216,23 @@ function SuccessScreen({
 
 // ── Main flow component ───────────────────────
 
-export function SetupRootFlow({ initialTreeId, strictMode, redirectTo = '/tree' }: SetupRootFlowProps) {
+export function SetupRootFlow({
+  initialTreeId,
+  initialTreeSlug = null,
+  strictMode,
+  redirectTo = '/tree/setup',
+}: SetupRootFlowProps) {
   const t = useTranslations('setup');
 
   // Determine initial step based on whether a tree exists.
   const [step, setStep]           = useState<Step>(initialTreeId ? 'add-person' : 'name-tree');
   const [treeId, setTreeId]       = useState<string | null>(initialTreeId);
+  const [treeSlug, setTreeSlug]   = useState<string | null>(initialTreeSlug);
   const [rootPerson, setRootPerson] = useState<PersonDto | null>(null);
 
-  function handleTreeCreated(id: string) {
-    setTreeId(id);
+  function handleTreeCreated(tree: { id: string; slug: string }) {
+    setTreeId(tree.id);
+    setTreeSlug(tree.slug);
     setStep('add-person');
   }
 
@@ -275,7 +283,7 @@ export function SetupRootFlow({ initialTreeId, strictMode, redirectTo = '/tree' 
         <SuccessScreen
           person={rootPerson}
           onAddAnother={handleAddAnother}
-          redirectTo={redirectTo}
+          redirectTo={treeSlug ? `/tree/${treeSlug}` : redirectTo}
         />
       )}
     </div>
