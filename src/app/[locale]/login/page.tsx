@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { redirect }         from 'next/navigation';
 import type { Metadata }    from 'next';
 import type { LocalePageProps } from '@/types';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCurrentUserWithProfile } from '@/lib/api/auth';
 import { Link }             from '@/i18n/routing';
 import { LoginForm }        from '@/components/features/auth/LoginForm';
 
@@ -12,9 +12,10 @@ import { LoginForm }        from '@/components/features/auth/LoginForm';
 // URL: /[locale]/login
 //
 // Responsibilities:
-//  1. If the user is already authenticated → redirect
-//     to "/" immediately (no flicker on the client).
-//  2. Otherwise render the AuthShell + LoginForm.
+//  1. If already authenticated AND approved → redirect to "/".
+//  2. If already authenticated but NOT approved → redirect to
+//     "/pending-approval" so the user lands on the right screen.
+//  3. Otherwise render the AuthShell + LoginForm.
 //
 // The middleware also protects this route so that
 // authed users never land here — this is an extra
@@ -27,12 +28,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ params }: LocalePageProps) {
-  await params;
+  const { locale } = await params;
 
-  // Guard: redirect authenticated users away.
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect('/');
+  const session = await getCurrentUserWithProfile();
+  if (session) {
+    const approved =
+      !!session.profile?.is_approved &&
+      session.profile.access_role !== 'GUEST';
+    redirect(approved ? `/${locale}` : `/${locale}/pending-approval`);
+  }
 
   const t = await getTranslations('auth');
 

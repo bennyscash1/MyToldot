@@ -6,6 +6,7 @@ import type { LocalePageProps } from '@/types';
 import type { ApiEnvelope, TreeAboutDto } from '@/types/api';
 import { resolveCurrentTreeId } from '@/server/services/tree.service';
 import { AboutSection } from '@/features/about/components/AboutSection';
+import { getCurrentUserWithProfile } from '@/lib/api/auth';
 
 // ──────────────────────────────────────────────
 // /[locale]/about — Family heritage description.
@@ -13,8 +14,9 @@ import { AboutSection } from '@/features/about/components/AboutSection';
 // Server Component. Resolves the current tree, fetches its
 // about_text + main_surnames, and hydrates the client section.
 //
-// MVP/TESTING — auth/role checks are bypassed inside
-// requireTreeRole, so canEdit defaults to true here.
+// `canEdit` is derived from the global RBAC profile so anonymous
+// visitors see read-only content while approved editors/admins
+// see the in-place editor.
 // ──────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -52,9 +54,10 @@ export default async function AboutPage({ params }: LocalePageProps) {
     // its own empty state and the editor still works.
   }
 
-  // MVP/TESTING — everyone is an editor on the About page.
-  // Restore role-based check when auth is re-enabled.
-  const canEdit = true;
+  // RBAC: only approved editors/admins may modify the About page.
+  const session = await getCurrentUserWithProfile();
+  const canEdit =
+    !!session?.profile?.is_approved && session.profile.access_role !== 'GUEST';
 
   return (
     <AboutSection treeId={treeId} initial={initial} canEdit={canEdit} />

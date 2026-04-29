@@ -6,7 +6,18 @@ import { Link, useRouter } from '@/i18n/routing';
 import { Input }  from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { authService } from '@/services/auth.service';
-import { ServiceError } from '@/services/api.client';
+import { apiClient, ServiceError } from '@/services/api.client';
+
+// Shape returned by /api/v1/auth/me — kept in sync with usePermissions.
+interface MeResponse {
+  user: {
+    id:          string;
+    email:       string;
+    full_name:   string | null;
+    is_approved: boolean;
+    access_role: 'GUEST' | 'EDITOR' | 'ADMIN';
+  } | null;
+}
 
 // ──────────────────────────────────────────────
 // LoginForm — Client Component
@@ -45,9 +56,21 @@ export function LoginForm() {
 
     try {
       await authService.login(email.trim(), password);
-      // Redirect to home — the home page will show the appropriate
-      // content based on the user's tree state.
-      router.push('/');
+
+      // Branch on RBAC profile — unapproved users see the waiting screen.
+      let target = '/';
+      try {
+        const me = await apiClient.get<MeResponse>('/api/v1/auth/me');
+        const profile = me.user;
+        const approved =
+          !!profile?.is_approved && profile.access_role !== 'GUEST';
+        target = approved ? '/' : '/pending-approval';
+      } catch {
+        // /me failed — fall back to home; the page-level guard will redirect.
+        target = '/';
+      }
+
+      router.push(target);
       router.refresh(); // Ensure server components re-render with new session.
     } catch (err) {
       if (err instanceof ServiceError) {

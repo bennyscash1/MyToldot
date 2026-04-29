@@ -27,6 +27,7 @@ export type { ApiEnvelope };
 /** What the API returns for a Tree record. */
 export interface TreeDto {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
   is_public: boolean;

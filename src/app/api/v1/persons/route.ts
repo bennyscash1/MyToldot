@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireTreeRole } from '@/lib/api/auth';
+import { requireApprovedEditor } from '@/lib/api/auth';
 import { isStrictLineageActive } from '@/lib/api/lineage';
 import type { CreatePersonBody, PersonDto } from '@/types/api';
 
@@ -37,13 +37,11 @@ const PERSON_SELECT = {
 
 // ─────────────────────────────────────────────
 // GET /api/v1/persons?tree_id=xxx
+// Public read — anyone can browse persons in a tree.
 // ─────────────────────────────────────────────
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const treeId = req.nextUrl.searchParams.get('tree_id');
   if (!treeId) throw Errors.badRequest('`tree_id` query param is required');
-
-  // Require at least VIEWER role — also validates the tree exists.
-  await requireTreeRole(treeId, 'VIEWER');
 
   const persons = await prisma.person.findMany({
     where: { tree_id: treeId },
@@ -56,16 +54,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
 // ─────────────────────────────────────────────
 // POST /api/v1/persons
+// Requires an authenticated, admin-approved editor.
 // ─────────────────────────────────────────────
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const body: CreatePersonBody = await req.json();
 
-  // Validate required fields.
   if (!body.tree_id?.trim()) throw Errors.badRequest('`tree_id` is required');
   if (!body.first_name?.trim()) throw Errors.badRequest('`first_name` is required');
 
-  // Verify the caller has at least EDITOR rights on this tree.
-  await requireTreeRole(body.tree_id, 'EDITOR');
+  await requireApprovedEditor();
 
   // Expose strict_lineage status in the response metadata so the
   // client can show an informational banner after creation.

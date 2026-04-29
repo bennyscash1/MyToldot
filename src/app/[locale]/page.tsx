@@ -2,71 +2,71 @@ import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
+
 import { Link } from '@/i18n/routing';
-// MVP/TESTING — imports below are only needed when auth is active; restore alongside the auth block:
-// import { createSupabaseServerClient } from '@/lib/supabase/server';
-// import { prisma } from '@/lib/prisma';
-// import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
+import { prisma } from '@/lib/prisma';
+import { getCurrentUserWithProfile } from '@/lib/api/auth';
+import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
 
 // ──────────────────────────────────────────────
 // Home Page — Server Component.
 //
-// Resolves auth + tree data on the server, passes
-// minimal props to the Client Component section.
-// This keeps the interactive "Add Person" button
-// out of the server bundle while the hero content
-// stays statically rendered.
+// Anonymous visitors see the public hero + a "View Family Tree"
+// CTA. Authenticated users additionally see:
+//  • A "Pending approval" banner if their account hasn't been
+//    approved by an admin yet, OR
+//  • The Add-Person section (gated by the global RBAC).
 // ──────────────────────────────────────────────
 
 export const metadata: Metadata = { title: { absolute: 'Toldotay' } };
 
+interface HeroTreeInfo {
+  treeId:      string;
+  strictMode:  boolean;
+  personCount: number;
+}
+
+async function loadHeroTreeInfo(): Promise<HeroTreeInfo | null> {
+  try {
+    const tree = await prisma.tree.findFirst({
+      orderBy: { created_at: 'asc' },
+      select: {
+        id: true,
+        strict_lineage_enforcement: true,
+        _count: { select: { persons: true } },
+      },
+    });
+    if (!tree) return null;
+    return {
+      treeId:      tree.id,
+      strictMode:  tree.strict_lineage_enforcement,
+      personCount: tree._count.persons,
+    };
+  } catch (dbError) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[HomePage] Prisma unavailable, rendering anonymous hero:', dbError);
+    }
+    return null;
+  }
+}
+
 export default async function HomePage({ params }: LocalePageProps) {
   const { locale } = await params;
-  const t = await getTranslations('home');
+  const t       = await getTranslations('home');
+  const tAuth   = await getTranslations('auth');
   const isHebrew = locale === 'he';
   const logoSrc = isHebrew ? '/images/LOGO-he.png' : '/images/LOGO-en.png';
   const logoAlt = isHebrew ? 'תולדותיי' : 'Toldotay';
 
-  // MVP/TESTING — auth + tree-membership lookup bypassed.
-  // Restore the original block below when auth is re-enabled.
-  /* ORIGINAL AUTH BLOCK — restore when auth is re-enabled:
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await getCurrentUserWithProfile();
+  const profile = session?.profile ?? null;
+  const isPending =
+    !!session && (!profile?.is_approved || profile.access_role === 'GUEST');
+  const canEdit =
+    !!profile?.is_approved &&
+    (profile.access_role === 'EDITOR' || profile.access_role === 'ADMIN');
 
-  let treeId:      string | null = null;
-  let personCount: number        = 0;
-  let strictMode:  boolean       = false;
-
-  if (user) {
-    try {
-      const membership = await prisma.treeMember.findFirst({
-        where:   { user_id: user.id },
-        orderBy: { joined_at: 'asc' },
-        select:  {
-          tree: {
-            select: {
-              id:                          true,
-              strict_lineage_enforcement:  true,
-              _count: { select: { persons: true } },
-            },
-          },
-        },
-      });
-
-      if (membership?.tree) {
-        treeId      = membership.tree.id;
-        strictMode  = membership.tree.strict_lineage_enforcement;
-        personCount = membership.tree._count.persons;
-      }
-    } catch (dbError) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[HomePage] Prisma unavailable, rendering empty tree state:', dbError);
-      } else {
-        throw dbError;
-      }
-    }
-  }
-  */
+  const heroTree = canEdit ? await loadHeroTreeInfo() : null;
 
   return (
     <section className="flex h-[calc(100dvh-4rem)] flex-col items-center justify-center gap-6 px-4 text-center">
@@ -85,38 +85,43 @@ export default async function HomePage({ params }: LocalePageProps) {
 
       <p className="max-w-xl text-base text-gray-500 sm:text-lg">{t('subtitle')}</p>
 
-      {/* MVP/TESTING — CTA goes straight to the tree dashboard.
-          Restore the original auth-conditional block below when auth is re-enabled. */}
+      {/* Pending-approval banner (auth users only) */}
+      {isPending && (
+        <Link
+          href="/pending-approval"
+          className="flex max-w-xl items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 transition-colors hover:bg-amber-100"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className="h-4 w-4 shrink-0"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="font-medium">{tAuth('pendingBadge')}:</span>
+          <span className="truncate">{tAuth('pendingMessage')}</span>
+        </Link>
+      )}
+
       <Link
         href="/tree"
         className="mt-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
       >
         {t('cta')}
       </Link>
-      {/* ORIGINAL CTA BLOCK — restore when auth is re-enabled:
-      {user ? (
+
+      {/* Add Person — only for approved editors/admins */}
+      {canEdit && heroTree && (
         <AddPersonSection
-          treeId={treeId}
-          strictMode={strictMode}
-          personCount={personCount}
+          treeId={heroTree.treeId}
+          strictMode={heroTree.strictMode}
+          personCount={heroTree.personCount}
         />
-      ) : (
-        <div className="flex items-center gap-3 mt-2">
-          <Link
-            href="/signup"
-            className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
-          >
-            {t('addFirstPerson')}
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            {t('cta')}
-          </Link>
-        </div>
       )}
-      */}
     </section>
   );
 }

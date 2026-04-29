@@ -100,7 +100,16 @@
     "errorEmailExists": "An account with this email already exists.",
     "errorPasswordLength": "Password must be at least 8 characters.",
     "errorPasswordMismatch": "Passwords do not match.",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "pendingTitle": "Awaiting admin approval",
+    "pendingHeading": "Your account is awaiting admin approval",
+    "pendingMessage": "Thanks for signing up! An administrator needs to approve your account before you can add or edit family members. You can browse the tree in read-only mode in the meantime.",
+    "pendingBadge": "Pending approval",
+    "refreshStatus": "Refresh status",
+    "refreshingStatus": "Refreshing…",
+    "approvedTitle": "You're approved!",
+    "approvedMessage": "Your account has been approved. Redirecting…",
+    "browseTree": "Browse the tree"
   },
   "setup": {
     "pageTitle": "Start Your Family Tree",

@@ -1,21 +1,30 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { Errors } from './errors';
 import type { User } from '@supabase/supabase-js';
+import type { AccessRole, Role } from '@prisma/client';
+
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/prisma';
+import { Errors } from './errors';
 
 // ──────────────────────────────────────────────
 // Server-side Auth Helpers
 //
-// Use these inside Route Handlers and Server Actions
-// to resolve the current user or enforce role checks.
+// Used inside Route Handlers, Server Components,
+// and Server Actions to resolve the current user
+// and enforce permission checks.
 //
-// They always call getUser() (not getSession()) to
-// validate the JWT against the Supabase Auth server,
-// which prevents accepting tampered local cookies.
+// We always call getUser() (not getSession()) so
+// the JWT is validated against Supabase Auth, which
+// blocks tampered local cookies.
 // ──────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// Authentication
+// ─────────────────────────────────────────────
+
 /**
- * Returns the authenticated Supabase user, or null if not logged in.
- * Use when you want to handle the unauthenticated case yourself.
+ * Returns the authenticated Supabase user, or null when not logged in.
+ * Use when you want to handle the unauthenticated case yourself
+ * (e.g. a public page that conditionally renders editor UI).
  */
 export async function getAuthUser(): Promise<User | null> {
   const supabase = await createSupabaseServerClient();
@@ -26,7 +35,6 @@ export async function getAuthUser(): Promise<User | null> {
 /**
  * Returns the authenticated user.
  * Throws `Errors.unauthorized()` (→ 401) if there is no session.
- * Use this in any route that requires authentication.
  */
 export async function requireAuthUser(): Promise<User> {
   const user = await getAuthUser();
@@ -34,50 +42,131 @@ export async function requireAuthUser(): Promise<User> {
   return user;
 }
 
+// ─────────────────────────────────────────────
+// App-wide RBAC (admin-approval gate)
+// ─────────────────────────────────────────────
+
+export interface UserProfile {
+  id:           string;
+  email:        string;
+  full_name:    string | null;
+  is_approved:  boolean;
+  access_role:  AccessRole;
+}
+
+/**
+ * Loads the public.users mirror row for a given Supabase auth user.
+ * Returns null if the row hasn't been created yet (caller decides what to do).
+ */
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const profile = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id:          true,
+      email:       true,
+      full_name:   true,
+      is_approved: true,
+      access_role: true,
+    },
+  });
+  return profile;
+}
+
+/**
+ * Convenience wrapper: resolves auth user + their profile in one call.
+ * Returns null when there is no session (public reads pass through).
+ */
+export async function getCurrentUserWithProfile(): Promise<
+  { user: User; profile: UserProfile | null } | null
+> {
+  const user = await getAuthUser();
+  if (!user) return null;
+  const profile = await getUserProfile(user.id);
+  return { user, profile };
+}
+
+/**
+ * Gate for any "write" action on the app.
+ * Requires:
+ *  • a valid session (else 401),
+ *  • a mirrored profile flagged `is_approved = true`,
+ *  • `access_role` of EDITOR or ADMIN.
+ *
+ * Throws 403 with a precise message otherwise.
+ */
+export async function requireApprovedEditor(): Promise<{ user: User; profile: UserProfile }> {
+  const user = await requireAuthUser();
+  const profile = await getUserProfile(user.id);
+
+  if (!profile) {
+    // Auth user exists but the public.users mirror is missing — treat as
+    // unapproved so the route fails closed. The /api/v1/auth/me endpoint
+    // self-heals this on the next read.
+    throw Errors.forbidden('Account awaiting admin approval');
+  }
+  if (!profile.is_approved) {
+    throw Errors.forbidden('Account awaiting admin approval');
+  }
+  if (profile.access_role === 'GUEST') {
+    throw Errors.forbidden('Edit permission required — please contact an administrator');
+  }
+
+  return { user, profile };
+}
+
+/**
+ * Gate for destructive / admin-only actions (deletes, settings).
+ * Layers on top of `requireApprovedEditor` and additionally requires
+ * `access_role = ADMIN`.
+ */
+export async function requireApprovedAdmin(): Promise<{ user: User; profile: UserProfile }> {
+  const result = await requireApprovedEditor();
+  if (result.profile.access_role !== 'ADMIN') {
+    throw Errors.forbidden('Admin permission required');
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────
+// Per-tree role check (kept for future multi-tenant flows)
+// ─────────────────────────────────────────────
+
+const TREE_ROLE_RANK: Record<Role, number> = {
+  VIEWER:      0,
+  EDITOR:      1,
+  ADMIN:       2,
+  SUPER_ADMIN: 3,
+};
+
 /**
  * Checks whether the authenticated user has at least the required role
- * on a specific tree, using our Prisma `TreeMember` table.
+ * on a specific tree, using the `TreeMember` table.
  *
  * Throws 401 if not authenticated, 403 if the role is insufficient.
  *
- * Role hierarchy: SUPER_ADMIN > ADMIN > EDITOR > VIEWER
+ * Currently unused by the global RBAC flow, but available if/when the
+ * app moves to per-tree memberships.
  */
-import type { Role } from '@prisma/client';
-
 export async function requireTreeRole(
   treeId: string,
   minimumRole: Role,
-): Promise<User | null> {
-  // MVP/TESTING — role check bypassed so unauthenticated visitors can mutate the tree.
-  // Restore the original body below when auth is re-enabled.
-  void treeId; void minimumRole; // suppress unused-var warnings
-  return null as unknown as User;
+): Promise<User> {
+  const user = await requireAuthUser();
 
-  /* ORIGINAL — restore when auth is re-enabled.
-   * Steps to restore:
-   *   1. Add at the top of this file:
-   *        import { prisma } from '@/lib/prisma';
-   *   2. Add next to the existing imports:
-   *        const ROLE_RANK: Record<Role, number> = {
-   *          VIEWER: 0, EDITOR: 1, ADMIN: 2, SUPER_ADMIN: 3,
-   *        };
-   *   3. Replace the body above with:
-   *
-   *  const user = await requireAuthUser();
-   *
-   *  const membership = await prisma.treeMember.findUnique({
-   *    where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
-   *    select: { role: true },
-   *  });
-   *
-   *  if (!membership) throw Errors.forbidden();
-   *
-   *  if (ROLE_RANK[membership.role] < ROLE_RANK[minimumRole]) {
-   *    throw Errors.forbidden(
-   *      `This action requires at least the '${minimumRole}' role on this tree.`,
-   *    );
-   *  }
-   *
-   *  return user;
-   */
+  const membership = await prisma.treeMember.findUnique({
+    where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+    select: { role: true },
+  });
+
+  if (!membership) {
+    throw Errors.forbidden('You are not a member of this tree');
+  }
+
+  if (TREE_ROLE_RANK[membership.role] < TREE_ROLE_RANK[minimumRole]) {
+    throw Errors.forbidden(
+      `This action requires at least the '${minimumRole}' role on this tree.`,
+    );
+  }
+
+  return user;
 }

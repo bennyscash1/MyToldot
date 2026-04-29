@@ -100,7 +100,16 @@
     "errorEmailExists": "כבר קיים חשבון עם כתובת דוא\"ל זו.",
     "errorPasswordLength": "הסיסמה חייבת להכיל לפחות 8 תווים.",
     "errorPasswordMismatch": "הסיסמאות אינן תואמות.",
-    "errorGeneric": "משהו השתבש. אנא נסו שוב."
+    "errorGeneric": "משהו השתבש. אנא נסו שוב.",
+    "pendingTitle": "ממתין לאישור מנהל",
+    "pendingHeading": "החשבון שלך ממתין לאישור מנהל",
+    "pendingMessage": "תודה על ההרשמה! מנהל המערכת צריך לאשר את החשבון לפני שניתן יהיה להוסיף או לערוך בני משפחה. בינתיים תוכלו לדפדף בעץ במצב צפייה בלבד.",
+    "pendingBadge": "ממתין לאישור",
+    "refreshStatus": "רענון סטטוס",
+    "refreshingStatus": "מרענן…",
+    "approvedTitle": "אושרת!",
+    "approvedMessage": "החשבון אושר. מעביר…",
+    "browseTree": "צפה בעץ"
   },
   "setup": {
     "pageTitle": "התחילו את עץ המשפחה שלכם",
