@@ -1,9 +1,44 @@
 import type { User } from '@supabase/supabase-js';
-import type { AccessRole, Role } from '@prisma/client';
+import type { AccessRole, TreeMemberRole } from '@prisma/client';
+import {
+  PrismaClientInitializationError,
+  PrismaClientKnownRequestError,
+} from '@prisma/client/runtime/library';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { Errors } from './errors';
+
+function isDbConnectivityError(error: unknown): boolean {
+  if (error instanceof PrismaClientInitializationError) return true;
+  if (error instanceof PrismaClientKnownRequestError) {
+    return ['P1000', 'P1001', 'P1017'].includes(error.code);
+  }
+  // Turbopack / bundling can duplicate Prisma's error classes, breaking `instanceof`.
+  if (error && typeof error === 'object') {
+    const e = error as {
+      name?: string;
+      code?: string;
+      errorCode?: string;
+      message?: string;
+    };
+    if (e.name === 'PrismaClientInitializationError') return true;
+    if (['P1000', 'P1001', 'P1017'].includes(String(e.code ?? ''))) return true;
+    const msg = typeof e.message === 'string' ? e.message : '';
+    if (
+      msg.includes("Can't reach database server") ||
+      msg.includes("Can't reach database") ||
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ETIMEDOUT') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('Connection terminated') ||
+      msg.includes('Server has closed the connection')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // ──────────────────────────────────────────────
 // Server-side Auth Helpers
@@ -59,17 +94,31 @@ export interface UserProfile {
  * Returns null if the row hasn't been created yet (caller decides what to do).
  */
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  const profile = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id:          true,
-      email:       true,
-      full_name:   true,
-      is_approved: true,
-      access_role: true,
-    },
-  });
-  return profile;
+  try {
+    const profile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id:          true,
+        email:       true,
+        full_name:   true,
+        is_approved: true,
+        access_role: true,
+      },
+    });
+    return profile;
+  } catch (error) {
+    // Pooler / network / paused project — avoid crashing public RSC routes.
+    if (isDbConnectivityError(error)) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          '[getUserProfile] Database unreachable; returning null profile.',
+          error instanceof Error ? error.message : error,
+        );
+      }
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -131,11 +180,10 @@ export async function requireApprovedAdmin(): Promise<{ user: User; profile: Use
 // Per-tree role check (kept for future multi-tenant flows)
 // ─────────────────────────────────────────────
 
-const TREE_ROLE_RANK: Record<Role, number> = {
-  VIEWER:      0,
-  EDITOR:      1,
-  ADMIN:       2,
-  SUPER_ADMIN: 3,
+const TREE_ROLE_RANK: Record<TreeMemberRole, number> = {
+  VIEWER: 0,
+  EDITOR: 1,
+  OWNER:  2,
 };
 
 /**
@@ -149,7 +197,7 @@ const TREE_ROLE_RANK: Record<Role, number> = {
  */
 export async function requireTreeRole(
   treeId: string,
-  minimumRole: Role,
+  minimumRole: TreeMemberRole,
 ): Promise<User> {
   const user = await requireAuthUser();
 

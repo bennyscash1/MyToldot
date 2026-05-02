@@ -51,7 +51,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
 
   // ── 2. Resolve tree + person count ──
   let treeId: string | null = null;
-  let treeSlug: string | null = null;
+  let treeRouteCode: string | null = null;
   let strictMode = false;
   let personCount = 0;
 
@@ -63,6 +63,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
         tree: {
           select: {
             id:                         true,
+            shortCode:                  true,
             slug:                       true,
             strict_lineage_enforcement: true,
             _count: { select: { persons: true } },
@@ -73,7 +74,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
 
     const tree = membership?.tree ?? null;
     treeId = tree?.id ?? null;
-    treeSlug = tree?.slug ?? null;
+    treeRouteCode = tree?.shortCode ?? tree?.slug ?? null;
     strictMode = tree?.strict_lineage_enforcement ?? false;
     personCount = tree?._count.persons ?? 0;
   } catch {
@@ -100,7 +101,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
           </div>
           <p className="font-medium text-gray-800">{t('alreadySetup')}</p>
           <Link
-            href={treeSlug ? `/tree/${treeSlug}` : '/tree/setup'}
+            href={treeRouteCode ? `/tree/${treeRouteCode}` : '/tree/setup'}
             className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
           >
             {t('viewTree')}
@@ -115,7 +116,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
     <SetupShell title={t('pageTitle')} subtitle={t('pageSubtitle')}>
       <SetupRootFlow
         initialTreeId={treeId}
-        initialTreeSlug={treeSlug}
+        initialTreeRouteCode={treeRouteCode}
         strictMode={strictMode}
       />
     </SetupShell>

@@ -1,12 +1,16 @@
 import { z } from 'zod';
-import type { Prisma, RelationshipType, Role } from '@prisma/client';
+import type { Prisma, RelationshipType, TreeMemberRole } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { deleteProfileImage } from '@/lib/supabase/storage';
-import { requireApprovedEditor, requireApprovedAdmin } from '@/lib/api/auth';
+import {
+  requireApprovedEditor,
+  requireApprovedAdmin,
+  requireTreeRole,
+} from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
-import { generateUniqueTreeSlug } from '@/lib/tree/slug';
+import { generateUniqueTreeSlug, generateUniqueTreeShortCode } from '@/lib/tree/slug';
 import {
   PersonInputSchema,
   PersonPatchSchema,
@@ -34,7 +38,7 @@ export interface TreePageData {
   treeId: string | null;
   treeName: string | null;
   personCount: number;
-  membershipRole: Role | null;
+  membershipRole: TreeMemberRole | null;
   rootPersonId: string | null;
   linkedPersonId: string | null;
   initialPersons: PersonRow[];
@@ -146,21 +150,55 @@ export async function resolveCurrentTreeId(): Promise<string | null> {
   }
 }
 
-export async function resolveTreeIdFromSlug(slug: string): Promise<string> {
-  const tree = await prisma.tree.findUnique({
-    where: { slug },
-    select: { id: true },
+const TREE_ROUTE_LOOKUP_SELECT = {
+  id: true,
+  name: true,
+  is_public: true,
+  root_person_id: true,
+  _count: { select: { persons: true } },
+} as const;
+
+/**
+ * Resolves a tree from the URL segment: 4-digit `shortCode` first, else legacy `slug`.
+ */
+export async function findTreeByRouteParam(routeParam: string) {
+  const p = routeParam.trim();
+  if (/^\d{4}$/.test(p)) {
+    const byCode = await prisma.tree.findUnique({
+      where: { shortCode: p },
+      select: TREE_ROUTE_LOOKUP_SELECT,
+    });
+    if (byCode) return byCode;
+  }
+  return prisma.tree.findUnique({
+    where: { slug: p },
+    select: TREE_ROUTE_LOOKUP_SELECT,
   });
+}
+
+export async function resolveTreeIdFromRouteParam(routeParam: string): Promise<string> {
+  const tree = await findTreeByRouteParam(routeParam);
   if (!tree) throw Errors.notFound('Tree');
   return tree.id;
 }
 
-export async function resolveTreeSlugFromId(treeId: string): Promise<string | null> {
+/** @deprecated Use resolveTreeIdFromRouteParam */
+export const resolveTreeIdFromSlug = resolveTreeIdFromRouteParam;
+
+/** Segment used in `/[locale]/tree/[shortCode]` for `revalidatePath`. */
+export async function resolveTreeRouteRevalidateSegment(
+  treeId: string,
+): Promise<string | null> {
   const tree = await prisma.tree.findUnique({
     where: { id: treeId },
-    select: { slug: true },
+    select: { shortCode: true, slug: true },
   });
-  return tree?.slug ?? null;
+  return tree?.shortCode ?? tree?.slug ?? null;
+}
+
+/** @deprecated Use resolveTreeRouteRevalidateSegment */
+export async function resolveTreeSlugFromId(treeId: string): Promise<string | null> {
+  return resolveTreeRouteRevalidateSegment(treeId);
 }
 
 export async function resolveTreePageData(): Promise<TreePageData> {
@@ -172,7 +210,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
   let treeId: string | null = null;
   let treeName: string | null = null;
   let personCount = 0;
-  let membershipRole: Role | null = null;
+  let membershipRole: TreeMemberRole | null = null;
   let rootPersonId: string | null = null;
   let linkedPersonId: string | null = null;
 
@@ -216,8 +254,9 @@ export async function resolveTreePageData(): Promise<TreePageData> {
 
       if (!firstTree) {
         const slug = await generateUniqueTreeSlug(prisma);
+        const shortCode = await generateUniqueTreeShortCode(prisma);
         firstTree = await prisma.tree.create({
-          data: { slug, name: 'עץ המשפחה', is_public: true },
+          data: { slug, shortCode, name: 'עץ המשפחה', is_public: true },
           select: {
             id: true,
             slug: true,
@@ -311,25 +350,16 @@ export async function resolveTreePageData(): Promise<TreePageData> {
   };
 }
 
-export async function resolveTreePageDataBySlug(slug: string): Promise<TreePageData> {
+export async function resolveTreePageDataBySlug(routeParam: string): Promise<TreePageData> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const tree = await prisma.tree.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      name: true,
-      is_public: true,
-      root_person_id: true,
-      _count: { select: { persons: true } },
-    },
-  });
+  const tree = await findTreeByRouteParam(routeParam);
   if (!tree) throw Errors.notFound('Tree');
 
-  let membershipRole: Role | null = null;
+  let membershipRole: TreeMemberRole | null = null;
   let linkedPersonId: string | null = null;
   if (user) {
     const membership = await prisma.treeMember.findUnique({
@@ -410,6 +440,7 @@ export async function createPersonInTree(
   input: PersonInput,
 ): Promise<PersonDto> {
   await requireApprovedEditor();
+  await requireTreeRole(treeId, 'EDITOR');
   const data = PersonInputSchema.parse(input);
   return prisma.person.create({
     data: { ...data, tree_id: treeId },
@@ -423,6 +454,7 @@ export async function updatePersonInTree(
   patch: PersonPatch,
 ): Promise<PersonDto> {
   await requireApprovedEditor();
+  await requireTreeRole(treeId, 'EDITOR');
   const id = CuidSchema.parse(personId);
   const data = PersonPatchSchema.parse(patch);
 
@@ -443,8 +475,8 @@ export async function removePersonFromTree(
   treeId: string,
   personId: string,
 ): Promise<{ id: string }> {
-  // Destructive action: ADMIN-only.
   await requireApprovedAdmin();
+  await requireTreeRole(treeId, 'OWNER');
   const id = CuidSchema.parse(personId);
 
   const existing = await prisma.person.findFirst({
@@ -466,6 +498,7 @@ export async function addParentInTree(
 ): Promise<AddedRelativeDto> {
   const { treeId, childId, parent, adoptive } = AddParentSchema.parse(input);
   await requireApprovedEditor();
+  await requireTreeRole(treeId, 'EDITOR');
 
   return prisma.$transaction(async (tx) => {
     await assertPersonsInTree(tx, treeId, [childId]);
@@ -503,6 +536,7 @@ export async function addChildInTree(
 ): Promise<AddedRelativeDto> {
   const { treeId, parent1Id, parent2Id, child } = AddChildSchema.parse(input);
   await requireApprovedEditor();
+  await requireTreeRole(treeId, 'EDITOR');
   if (parent2Id && parent1Id === parent2Id) {
     throw Errors.badRequest('parent1 and parent2 must differ');
   }
@@ -540,6 +574,7 @@ export async function addSpouseInTree(
 ): Promise<AddedRelativeDto> {
   const { treeId, personId, spouse, marriage_date } = AddSpouseSchema.parse(input);
   await requireApprovedEditor();
+  await requireTreeRole(treeId, 'EDITOR');
 
   return prisma.$transaction(async (tx) => {
     const focusedPerson = await tx.person.findFirst({

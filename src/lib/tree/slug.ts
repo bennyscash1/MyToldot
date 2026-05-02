@@ -33,3 +33,23 @@ export async function generateUniqueTreeSlug(
 
   throw new Error('Failed to generate a unique tree slug');
 }
+
+/** Uniform 4-digit string in range 0000–9999 (not guaranteed unique). */
+export function generateTreeShortCode(): string {
+  return String(randomInt(0, 10000)).padStart(4, '0');
+}
+
+const SHORT_CODE_ATTEMPTS = 64;
+
+export async function generateUniqueTreeShortCode(db: TreeStore): Promise<string> {
+  for (let attempt = 0; attempt < SHORT_CODE_ATTEMPTS; attempt += 1) {
+    const shortCode = generateTreeShortCode();
+    const exists = await db.tree.findUnique({
+      where: { shortCode },
+      select: { id: true },
+    });
+    if (!exists) return shortCode;
+  }
+
+  throw new Error('Failed to generate a unique tree short code');
+}

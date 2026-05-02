@@ -7,6 +7,7 @@ import { Link } from '@/i18n/routing';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserWithProfile } from '@/lib/api/auth';
 import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
+import { JoinFamilySection } from '@/components/features/tree/JoinFamilySection';
 
 // ──────────────────────────────────────────────
 // Home Page — Server Component.
@@ -113,6 +114,12 @@ export default async function HomePage({ params }: LocalePageProps) {
       >
         {t('cta')}
       </Link>
+
+      {session && (
+        <div className="mt-6 w-full max-w-lg px-2">
+          <JoinFamilySection />
+        </div>
+      )}
 
       {/* Add Person — only for approved editors/admins */}
       {canEdit && heroTree && (

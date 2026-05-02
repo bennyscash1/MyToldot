@@ -10,7 +10,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireApprovedEditor, requireApprovedAdmin } from '@/lib/api/auth';
+import { requireApprovedEditor, requireApprovedAdmin, requireTreeRole } from '@/lib/api/auth';
 import { deleteProfileImage } from '@/lib/supabase/storage';
 import type { UpdatePersonBody, PersonDto } from '@/types/api';
 
@@ -60,8 +60,9 @@ export const GET = withErrorHandler(async (_req: NextRequest, ctx: RouteContext)
 // ─────────────────────────────────────────────
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
   const { personId } = await ctx.params;
-  await findPersonOrThrow(personId); // 404 if missing
+  const existing = await findPersonOrThrow(personId); // 404 if missing
   await requireApprovedEditor();
+  await requireTreeRole(existing.tree_id, 'EDITOR');
 
   const body: UpdatePersonBody = await req.json();
 
@@ -94,6 +95,7 @@ export const DELETE = withErrorHandler(async (_req: NextRequest, ctx: RouteConte
   const { personId } = await ctx.params;
   const person = await findPersonOrThrow(personId);
   await requireApprovedAdmin();
+  await requireTreeRole(person.tree_id, 'OWNER');
 
   // Clean up storage before deleting the DB record.
   if (person.profile_image) {

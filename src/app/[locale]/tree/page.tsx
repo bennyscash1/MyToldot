@@ -6,7 +6,7 @@ import { getAuthUser } from '@/lib/api/auth';
 
 // Legacy entry point:
 // `/[locale]/tree` now redirects to the canonical slug route:
-// `/[locale]/tree/[slug]`.
+// `/[locale]/tree/[shortCode]` (4-digit code; legacy slug still resolves).
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: 'Tree' };
@@ -20,20 +20,22 @@ export default async function TreePage({ params }: LocalePageProps) {
     const membership = await prisma.treeMember.findFirst({
       where: { user_id: user.id },
       orderBy: { joined_at: 'asc' },
-      select: { tree: { select: { slug: true } } },
+      select: { tree: { select: { shortCode: true, slug: true } } },
     });
-    if (membership?.tree?.slug) {
-      redirect(`/${locale}/tree/${membership.tree.slug}`);
+    const memberCode = membership?.tree?.shortCode ?? membership?.tree?.slug;
+    if (memberCode) {
+      redirect(`/${locale}/tree/${memberCode}`);
     }
   }
 
   const firstPublic = await prisma.tree.findFirst({
     where: { is_public: true },
     orderBy: { created_at: 'asc' },
-    select: { slug: true },
+    select: { shortCode: true, slug: true },
   });
-  if (firstPublic?.slug) {
-    redirect(`/${locale}/tree/${firstPublic.slug}`);
+  const publicCode = firstPublic?.shortCode ?? firstPublic?.slug;
+  if (publicCode) {
+    redirect(`/${locale}/tree/${publicCode}`);
   }
 
   redirect(`/${locale}/tree/setup`);

@@ -2,7 +2,7 @@
  * /api/v1/trees
  *
  * GET  /api/v1/trees   - list trees the authenticated user belongs to
- * POST /api/v1/trees   - create a new tree + assign creator as ADMIN
+ * POST /api/v1/trees   - create a new tree + assign creator as OWNER
  */
 
 import { NextRequest } from 'next/server';
@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireAuthUser } from '@/lib/api/auth';
-import { generateUniqueTreeSlug } from '@/lib/tree/slug';
+import { generateUniqueTreeSlug, generateUniqueTreeShortCode } from '@/lib/tree/slug';
 import type { CreateTreeBody, TreeDto } from '@/types/api';
 
 // GET /api/v1/trees
@@ -28,6 +28,7 @@ export const GET = withErrorHandler(async () => {
         select: {
           id: true,
           slug: true,
+          shortCode: true,
           name: true,
           description: true,
           is_public: true,
@@ -55,7 +56,7 @@ export const GET = withErrorHandler(async () => {
 });
 
 // POST /api/v1/trees
-// Creates a tree and immediately adds the caller as ADMIN.
+// Creates a tree and immediately adds the caller as OWNER.
 //
 // IMPORTANT: We upsert the caller into public.users before inserting
 // the TreeMember row. This self-heals the case where the Supabase Auth
@@ -75,6 +76,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   let tree: {
     id: string;
     slug: string;
+    shortCode: string;
     name: string;
     description: string | null;
     is_public: boolean;
@@ -99,9 +101,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         });
 
         const slug = await generateUniqueTreeSlug(tx);
+        const shortCode = await generateUniqueTreeShortCode(tx);
         const created = await tx.tree.create({
           data: {
             slug,
+            shortCode,
             name:        body.name.trim(),
             description: body.description?.trim() ?? null,
             is_public:   body.is_public ?? false,
@@ -109,6 +113,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           select: {
             id: true,
             slug: true,
+            shortCode: true,
             name: true,
             description: true,
             is_public: true,
@@ -124,7 +129,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           data: {
             tree_id: created.id,
             user_id: user.id,
-            role:    'ADMIN',
+            role:    'OWNER',
           },
         });
 
@@ -132,10 +137,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       });
       break;
     } catch (error) {
+      const metaTarget =
+        error instanceof Prisma.PrismaClientKnownRequestError
+          ? String(error.meta?.target ?? '')
+          : '';
       const isSlugCollision =
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002' &&
-        String(error.meta?.target).includes('slug');
+        (metaTarget.includes('slug') || metaTarget.includes('short_code'));
       if (!isSlugCollision || attempt === 4) {
         console.error('[TREES_API_ERROR] POST /api/v1/trees failed:', error);
         throw error;

@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { ok, withErrorHandler } from '@/lib/api/response';
-import { createPersonInTree, resolveTreeIdFromSlug } from '@/server/services/tree.service';
+import { createPersonInTree, resolveTreeIdFromRouteParam } from '@/server/services/tree.service';
 import { PersonInputSchema } from '@/features/family-tree/schemas/person.schema';
 
 const AddPersonBodySchema = z.object({
@@ -11,14 +11,14 @@ const AddPersonBodySchema = z.object({
   person: PersonInputSchema,
 });
 
-type RouteContext = { params: Promise<{ locale: string; slug: string }> };
+type RouteContext = { params: Promise<{ locale: string; shortCode: string }> };
 
 export const POST = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
-  const { locale, slug } = await ctx.params;
-  const treeId = await resolveTreeIdFromSlug(slug);
+  const { locale, shortCode } = await ctx.params;
+  const treeId = await resolveTreeIdFromRouteParam(shortCode);
   const json = await req.json();
   const body = AddPersonBodySchema.parse(json);
   const person = await createPersonInTree(treeId, body.person);
-  revalidatePath(`/${locale}/tree/${slug}`, 'page');
+  revalidatePath(`/${locale}/tree/${shortCode}`, 'page');
   return ok({ id: person.id });
 });

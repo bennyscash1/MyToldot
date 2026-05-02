@@ -27,7 +27,7 @@ import { z } from 'zod';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { prisma } from '@/lib/prisma';
-import { requireApprovedEditor } from '@/lib/api/auth';
+import { requireApprovedEditor, requireTreeRole } from '@/lib/api/auth';
 import {
   ALLOWED_PROFILE_IMAGE_TYPES,
   PROFILE_IMAGE_MAX_BYTES,
@@ -80,6 +80,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw Errors.unprocessable(message);
   }
   const { treeId, personId } = ids.data;
+  await requireTreeRole(treeId, 'EDITOR');
 
   const fileEntry = form.get('file');
   if (!(fileEntry instanceof Blob)) {

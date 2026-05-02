@@ -28,6 +28,7 @@ export type { ApiEnvelope };
 export interface TreeDto {
   id: string;
   slug: string;
+  shortCode: string;
   name: string;
   description: string | null;
   is_public: boolean;

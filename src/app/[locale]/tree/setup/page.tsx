@@ -31,7 +31,7 @@ export default async function TreeSetupPage({ params }: LocalePageProps) {
 
   // ── 2. Resolve tree ──
   let treeId:      string | null = null;
-  let treeSlug:    string | null = null;
+  let treeRouteCode: string | null = null;
   let strictMode:  boolean       = false;
   let personCount: number        = 0;
 
@@ -43,6 +43,7 @@ export default async function TreeSetupPage({ params }: LocalePageProps) {
         tree: {
           select: {
             id:                         true,
+            shortCode:                  true,
             slug:                       true,
             strict_lineage_enforcement: true,
             _count: { select: { persons: true } },
@@ -53,7 +54,7 @@ export default async function TreeSetupPage({ params }: LocalePageProps) {
 
     if (membership?.tree) {
       treeId      = membership.tree.id;
-      treeSlug    = membership.tree.slug;
+      treeRouteCode = membership.tree.shortCode ?? membership.tree.slug;
       strictMode  = membership.tree.strict_lineage_enforcement;
       personCount = membership.tree._count.persons;
     }
@@ -63,7 +64,7 @@ export default async function TreeSetupPage({ params }: LocalePageProps) {
 
   // ── 3. Already has people → go to the tree view ──
   if (treeId && personCount > 0) {
-    redirect(treeSlug ? `/tree/${treeSlug}` : '/tree/setup');
+    redirect(treeRouteCode ? `/tree/${treeRouteCode}` : '/tree/setup');
   }
 
   // ── 4. Render the onboarding flow ──
@@ -94,7 +95,7 @@ export default async function TreeSetupPage({ params }: LocalePageProps) {
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
         <SetupRootFlow
           initialTreeId={treeId}
-          initialTreeSlug={treeSlug}
+          initialTreeRouteCode={treeRouteCode}
           strictMode={strictMode}
         />
       </div>

@@ -7,8 +7,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
   requireAuthUser,
-  requireApprovedEditor,
   requireApprovedAdmin,
+  requireTreeRole,
 } from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
@@ -16,8 +16,8 @@ import {
   PersonInputSchema,
   CuidSchema,
 } from '@/features/family-tree/schemas/person.schema';
-import { generateUniqueTreeSlug } from '@/lib/tree/slug';
-import { resolveTreeSlugFromId } from '@/server/services/tree.service';
+import { generateUniqueTreeSlug, generateUniqueTreeShortCode } from '@/lib/tree/slug';
+import { resolveTreeRouteRevalidateSegment } from '@/server/services/tree.service';
 
 // ────────────────────────────────────────────────────────────────
 // Schemas
@@ -39,6 +39,11 @@ const UpdateTreeSchema = z.object({
   strict_lineage_enforcement: z.boolean().optional(),
 });
 
+const JoinFamilyCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}$/, 'Code must be exactly 4 digits');
+
 // ────────────────────────────────────────────────────────────────
 // Actions
 // ────────────────────────────────────────────────────────────────
@@ -46,12 +51,13 @@ const UpdateTreeSchema = z.object({
 export interface CreatedTreeDto {
   id: string;
   slug: string;
+  shortCode: string;
   name: string;
   root_person_id: string | null;
 }
 
 /**
- * Creates a tree, makes the caller an ADMIN member, and (optionally) seeds the
+ * Creates a tree, makes the caller an OWNER member, and (optionally) seeds the
  * first Person + sets them as the tree's root. All in one transaction.
  */
 export async function createTreeAction(
@@ -78,19 +84,21 @@ export async function createTreeAction(
       try {
         tree = await prisma.$transaction(async (tx) => {
           const slug = await generateUniqueTreeSlug(tx);
+          const shortCode = await generateUniqueTreeShortCode(tx);
           const created = await tx.tree.create({
             data: {
               slug,
+              shortCode,
               name: data.name,
               description: data.description ?? null,
               is_public: data.is_public ?? false,
               strict_lineage_enforcement: data.strict_lineage_enforcement ?? false,
             },
-            select: { id: true, slug: true, name: true },
+            select: { id: true, slug: true, shortCode: true, name: true },
           });
 
       await tx.treeMember.create({
-        data: { tree_id: created.id, user_id: user.id, role: 'ADMIN' },
+        data: { tree_id: created.id, user_id: user.id, role: 'OWNER' },
       });
 
       let rootPersonId: string | null = null;
@@ -115,11 +123,15 @@ export async function createTreeAction(
         });
         break;
       } catch (error) {
-        const isSlugCollision =
+        const metaTarget =
+          error instanceof Prisma.PrismaClientKnownRequestError
+            ? String(error.meta?.target ?? '')
+            : '';
+        const isUniqueCollision =
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === 'P2002' &&
-          String(error.meta?.target).includes('slug');
-        if (!isSlugCollision || attempt === 4) throw error;
+          (metaTarget.includes('slug') || metaTarget.includes('short_code'));
+        if (!isUniqueCollision || attempt === 4) throw error;
       }
     }
 
@@ -136,6 +148,7 @@ export async function updateTreeSettingsAction(
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
     await requireApprovedAdmin();
+    await requireTreeRole(treeId, 'OWNER');
     const data = UpdateTreeSchema.parse(patch);
 
     const tree = await prisma.tree.update({
@@ -144,8 +157,8 @@ export async function updateTreeSettingsAction(
       select: { id: true },
     });
 
-    const slug = await resolveTreeSlugFromId(treeId);
-    if (slug) revalidatePath(`/[locale]/tree/${slug}`, 'page');
+    const segment = await resolveTreeRouteRevalidateSegment(treeId);
+    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
     return tree;
   });
 }
@@ -157,6 +170,7 @@ export async function setRootPersonAction(
 ): Promise<ActionResult<{ root_person_id: string }>> {
   return withAction(async () => {
     await requireApprovedAdmin();
+    await requireTreeRole(treeId, 'OWNER');
     const id = CuidSchema.parse(personId);
 
     const person = await prisma.person.findFirst({
@@ -170,8 +184,8 @@ export async function setRootPersonAction(
       data: { root_person_id: id },
     });
 
-    const slug = await resolveTreeSlugFromId(treeId);
-    if (slug) revalidatePath(`/[locale]/tree/${slug}`, 'page');
+    const segment = await resolveTreeRouteRevalidateSegment(treeId);
+    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
     return { root_person_id: id };
   });
 }
@@ -188,10 +202,15 @@ export async function setUserLinkedPersonAction(
   personId: string | null,
 ): Promise<ActionResult<{ linked_person_id: string | null }>> {
   return withAction(async () => {
-    // Personal "home person" preference — requires an approved editor/admin.
-    // Guests don't have a TreeMember row to update.
-    const { user } = await requireApprovedEditor();
-    if (!user?.id) throw Errors.unauthorized();
+    const user = await requireAuthUser();
+
+    const membership = await prisma.treeMember.findUnique({
+      where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+      select: { id: true },
+    });
+    if (!membership) {
+      throw Errors.forbidden('Join this family to set your home person');
+    }
 
     if (personId !== null) {
       const id = CuidSchema.parse(personId);
@@ -207,8 +226,45 @@ export async function setUserLinkedPersonAction(
       data: { linked_person_id: personId },
     });
 
-    const slug = await resolveTreeSlugFromId(treeId);
-    if (slug) revalidatePath(`/[locale]/tree/${slug}`, 'page');
+    const segment = await resolveTreeRouteRevalidateSegment(treeId);
+    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
     return { linked_person_id: personId };
+  });
+}
+
+/** Adds the current user as a VIEWER on the tree identified by `shortCode`. */
+export async function joinFamilyByCode(
+  rawCode: string,
+): Promise<ActionResult<{ shortCode: string }>> {
+  return withAction(async () => {
+    const code = JoinFamilyCodeSchema.parse(rawCode);
+    const user = await requireAuthUser();
+
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {},
+      create: {
+        id: user.id,
+        email: user.email!,
+        full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
+      },
+    });
+
+    const tree = await prisma.tree.findUnique({
+      where: { shortCode: code },
+      select: { id: true, shortCode: true },
+    });
+    if (!tree) throw Errors.notFound('No family found for this code');
+
+    await prisma.treeMember.upsert({
+      where: { tree_id_user_id: { tree_id: tree.id, user_id: user.id } },
+      create: { tree_id: tree.id, user_id: user.id, role: 'VIEWER' },
+      update: {},
+    });
+
+    revalidatePath('/[locale]', 'layout');
+    const segment = await resolveTreeRouteRevalidateSegment(tree.id);
+    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
+    return { shortCode: tree.shortCode };
   });
 }

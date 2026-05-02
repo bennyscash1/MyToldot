@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireApprovedEditor } from '@/lib/api/auth';
+import { requireApprovedEditor, requireTreeRole } from '@/lib/api/auth';
 import type { TreeAboutDto } from '@/types/api';
 
 const ABOUT_SELECT = {
@@ -81,6 +81,7 @@ export const GET = withErrorHandler(async (_req: NextRequest, ctx: RouteContext)
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
   const { treeId } = await ctx.params;
   await requireApprovedEditor();
+  await requireTreeRole(treeId, 'EDITOR');
 
   // Ensure the tree exists before validating the body so 404 wins over 422.
   await findAboutOrThrow(treeId);

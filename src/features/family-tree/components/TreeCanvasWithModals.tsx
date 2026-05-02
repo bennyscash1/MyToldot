@@ -25,7 +25,7 @@ const FIRST_PERSON: PersonInput = {
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
-  treeSlug: string;
+  treeRouteCode: string;
   initialPersons: PersonRow[];
   initialRelationships: RelationshipRow[];
   initialFocalId: string | null;
@@ -35,7 +35,7 @@ export interface TreeCanvasWithModalsProps {
 
 export function TreeCanvasWithModals({
   treeId,
-  treeSlug,
+  treeRouteCode,
   initialPersons,
   initialRelationships,
   initialFocalId,
@@ -56,7 +56,7 @@ export function TreeCanvasWithModals({
     clearError,
   } = useTreeMutations({
     treeId,
-    treeSlug,
+    treeRouteCode,
     initialPersons,
     initialRelationships,
   });

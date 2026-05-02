@@ -8,8 +8,8 @@ import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/type
 import type { TreePageData } from '@/server/services/tree.service';
 import { getCurrentUserWithProfile } from '@/lib/api/auth';
 
-type TreeSlugPageProps = {
-  params: Promise<{ locale: string; slug: string }>;
+type TreeShortCodePageProps = {
+  params: Promise<{ locale: string; shortCode: string }>;
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,11 +17,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('title') };
 }
 
-export default async function TreeSlugPage({ params }: TreeSlugPageProps) {
-  const { locale, slug } = await params;
+export default async function TreeShortCodePage({ params }: TreeShortCodePageProps) {
+  const { locale, shortCode } = await params;
   let treeData: TreePageData;
   try {
-    treeData = await fetchTreeData(locale, slug);
+    treeData = await fetchTreeData(locale, shortCode);
   } catch {
     return (
       <TreeShell>
@@ -34,11 +34,16 @@ export default async function TreeSlugPage({ params }: TreeSlugPageProps) {
 
   const session = await getCurrentUserWithProfile();
   const profile = session?.profile ?? null;
-  const canEdit =
-    !!profile?.is_approved &&
-    (profile.access_role === 'EDITOR' || profile.access_role === 'ADMIN');
+  const approvedNonGuest =
+    !!profile?.is_approved && profile.access_role !== 'GUEST';
+  const treeRole = treeData.membershipRole;
+  const canEditTree =
+    approvedNonGuest &&
+    (treeRole === 'EDITOR' || treeRole === 'OWNER');
   const canDeletePerson =
-    !!profile?.is_approved && profile.access_role === 'ADMIN';
+    approvedNonGuest &&
+    profile?.access_role === 'ADMIN' &&
+    treeRole === 'OWNER';
 
   if (!treeData.treeId) {
     return (
@@ -51,20 +56,14 @@ export default async function TreeSlugPage({ params }: TreeSlugPageProps) {
   return (
     <TreeShell>
       <div className="flex min-h-0 flex-1 flex-col">
-        <header
-          className="flex shrink-0 items-center justify-between border-b border-slate-200/60 bg-[#f4f3e9] px-4 py-2.5"
-          dir="rtl"
-        >
-          <h1 className="text-sm font-medium text-slate-800">{treeData.treeName}</h1>
-        </header>
         <div className="min-h-0 flex-1">
           <TreeCanvasWithModals
             treeId={treeData.treeId}
-            treeSlug={slug}
+            treeRouteCode={shortCode}
             initialPersons={treeData.initialPersons}
             initialRelationships={treeData.initialRelationships}
             initialFocalId={treeData.initialFocalId}
-            canEdit={canEdit}
+            canEdit={canEditTree}
             canDeletePerson={canDeletePerson}
           />
         </div>
@@ -81,13 +80,13 @@ function TreeShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-async function fetchTreeData(locale: string, slug: string): Promise<TreePageData> {
+async function fetchTreeData(locale: string, shortCode: string): Promise<TreePageData> {
   const hdrs = await headers();
   const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host');
   const proto = hdrs.get('x-forwarded-proto') ?? 'http';
   if (!host) throw new Error('Missing host header');
 
-  const res = await fetch(`${proto}://${host}/${locale}/tree/${slug}/data`, {
+  const res = await fetch(`${proto}://${host}/${locale}/tree/${shortCode}/data`, {
     cache: 'no-store',
     headers: {
       cookie: hdrs.get('cookie') ?? '',

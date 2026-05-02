@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireApprovedEditor } from '@/lib/api/auth';
+import { requireApprovedEditor, requireTreeRole } from '@/lib/api/auth';
 import { isStrictLineageActive } from '@/lib/api/lineage';
 import type { CreatePersonBody, PersonDto } from '@/types/api';
 
@@ -63,6 +63,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!body.first_name?.trim()) throw Errors.badRequest('`first_name` is required');
 
   await requireApprovedEditor();
+  await requireTreeRole(body.tree_id, 'EDITOR');
 
   // Expose strict_lineage status in the response metadata so the
   // client can show an informational banner after creation.
