@@ -4,9 +4,7 @@ import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
 
 import { Link } from '@/i18n/routing';
-import { prisma } from '@/lib/prisma';
 import { getCurrentUserWithProfile } from '@/lib/api/auth';
-import { AddPersonSection } from '@/components/features/persons/AddPersonSection';
 import { JoinFamilySection } from '@/components/features/tree/JoinFamilySection';
 
 // ──────────────────────────────────────────────
@@ -15,41 +13,15 @@ import { JoinFamilySection } from '@/components/features/tree/JoinFamilySection'
 // Anonymous visitors see the public hero + a "View Family Tree"
 // CTA. Authenticated users additionally see:
 //  • A "Pending approval" banner if their account hasn't been
-//    approved by an admin yet, OR
-//  • The Add-Person section (gated by the global RBAC).
+//    approved by an admin yet.
+//  • The JoinFamilySection to enter an existing tree by code.
+//
+// Adding persons is intentionally not available here — it belongs
+// inside the specific tree view (/tree/[shortCode]) where the
+// correct tree context is always known.
 // ──────────────────────────────────────────────
 
 export const metadata: Metadata = { title: { absolute: 'Toldotay' } };
-
-interface HeroTreeInfo {
-  treeId:      string;
-  strictMode:  boolean;
-  personCount: number;
-}
-
-async function loadHeroTreeInfo(): Promise<HeroTreeInfo | null> {
-  try {
-    const tree = await prisma.tree.findFirst({
-      orderBy: { created_at: 'asc' },
-      select: {
-        id: true,
-        strict_lineage_enforcement: true,
-        _count: { select: { persons: true } },
-      },
-    });
-    if (!tree) return null;
-    return {
-      treeId:      tree.id,
-      strictMode:  tree.strict_lineage_enforcement,
-      personCount: tree._count.persons,
-    };
-  } catch (dbError) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[HomePage] Prisma unavailable, rendering anonymous hero:', dbError);
-    }
-    return null;
-  }
-}
 
 export default async function HomePage({ params }: LocalePageProps) {
   const { locale } = await params;
@@ -63,11 +35,6 @@ export default async function HomePage({ params }: LocalePageProps) {
   const profile = session?.profile ?? null;
   const isPending =
     !!session && (!profile?.is_approved || profile.access_role === 'GUEST');
-  const canEdit =
-    !!profile?.is_approved &&
-    (profile.access_role === 'EDITOR' || profile.access_role === 'ADMIN');
-
-  const heroTree = canEdit ? await loadHeroTreeInfo() : null;
 
   return (
     <section className="flex h-[calc(100dvh-4rem)] flex-col items-center justify-center gap-6 px-4 text-center">
@@ -108,26 +75,44 @@ export default async function HomePage({ params }: LocalePageProps) {
         </Link>
       )}
 
-      <Link
-        href="/tree"
-        className="mt-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
-      >
-        {t('cta')}
-      </Link>
+      {session ? (
+        /* Logged-in: primary = create tree, secondary = view tree */
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/tree/setup"
+            className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            {t('createTree')}
+          </Link>
+          <Link
+            href="/tree"
+            className="rounded-xl border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+          >
+            {t('cta')}
+          </Link>
+        </div>
+      ) : (
+        /* Guest: primary = sign up, secondary = log in */
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/signup"
+            className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            {t('getStarted')}
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-xl border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+          >
+            {tAuth('loginLink')}
+          </Link>
+        </div>
+      )}
 
       {session && (
         <div className="mt-6 w-full max-w-lg px-2">
           <JoinFamilySection />
         </div>
-      )}
-
-      {/* Add Person — only for approved editors/admins */}
-      {canEdit && heroTree && (
-        <AddPersonSection
-          treeId={heroTree.treeId}
-          strictMode={heroTree.strictMode}
-          personCount={heroTree.personCount}
-        />
       )}
     </section>
   );

@@ -19,6 +19,8 @@
     "noTreeTitle": "No family tree yet",
     "noTreeMessage": "Create your family tree to start adding people.",
     "membersCount": "{count, plural, =0 {No people yet} one {# person} other {# people}}",
+    "createTree": "Start Your Family Tree",
+    "getStarted": "Get Started",
     "joinFamilyTitle": "Join a family with a 4-digit code",
     "joinFamilyPlaceholder": "0000",
     "joinFamilySubmit": "Join",

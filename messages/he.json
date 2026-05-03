@@ -19,6 +19,8 @@
     "noTreeTitle": "עדיין אין עץ משפחה",
     "noTreeMessage": "צרו את עץ המשפחה שלכם כדי להתחיל להוסיף אנשים.",
     "membersCount": "{count, plural, =0 {אין אנשים עדיין} one {אדם אחד} other {# אנשים}}",
+    "createTree": "התחל את עץ המשפחה שלך",
+    "getStarted": "התחילו",
     "joinFamilyTitle": "הצטרפות למשפחה עם קוד בן 4 ספרות",
     "joinFamilyPlaceholder": "0000",
     "joinFamilySubmit": "הצטרף",
