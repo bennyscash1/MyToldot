@@ -157,6 +157,18 @@
     "noTreeAction": "Create My Tree",
     "comingSoon": "Interactive tree visualization coming in the next phase."
   },
+  "familyHub": {
+    "title": "Your Family Trees",
+    "subtitle": "Select a family to enter",
+    "enterTree": "Enter",
+    "roleOwner": "Owner",
+    "roleEditor": "Editor",
+    "roleViewer": "Viewer",
+    "noFamiliesTitle": "Welcome to Toldotay",
+    "noFamiliesSubtitle": "You're not part of any family tree yet. Create a new tree or join one with a 4-digit code.",
+    "createTree": "Create Your Tree",
+    "joinWithCode": "Or join an existing family with a code:"
+  },
   "aboutPage": {
     "title": "About this family",
     "description": "A short heritage description and the main surnames featured in this tree.",

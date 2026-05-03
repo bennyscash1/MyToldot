@@ -81,15 +81,35 @@ export async function middleware(request: NextRequest) {
   void user; // hint to the linter that the resolved user is intentionally unused here
 
   // ── Step 4: i18n locale rewrite ──────────
-  // Run the next-intl middleware and merge its response cookies with
-  // the Supabase cookies already written onto supabaseResponse.
+  // Run the next-intl middleware, then decide how to respond:
+  //
+  //  a) If intl issued a redirect (locale prefix missing), forward it as-is
+  //     with Supabase cookies merged.
+  //  b) Otherwise, rebuild as NextResponse.next() with the current pathname
+  //     injected into the forwarded request headers. This makes the path
+  //     available in server components (e.g. Navbar) via
+  //     `(await headers()).get('x-pathname')` without any client-side JS.
   const intlResponse = intlMiddleware(request);
 
   supabaseResponse.cookies.getAll().forEach((cookie) => {
     intlResponse.cookies.set(cookie);
   });
 
-  return intlResponse;
+  // Redirect case — intl is adding a locale prefix.
+  if (intlResponse.headers.get('location')) {
+    return intlResponse;
+  }
+
+  // Pass-through case — inject x-pathname so server components can read it.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', pathname);
+
+  const finalResponse = NextResponse.next({ request: { headers: requestHeaders } });
+
+  supabaseResponse.cookies.getAll().forEach((c) => finalResponse.cookies.set(c));
+  intlResponse.cookies.getAll().forEach((c) => finalResponse.cookies.set(c));
+
+  return finalResponse;
 }
 
 export const config = {
