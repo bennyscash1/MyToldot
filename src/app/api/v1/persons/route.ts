@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireApprovedEditor, requireTreeRole } from '@/lib/api/auth';
+import { requireTreeRole } from '@/lib/api/auth';
 import { isStrictLineageActive } from '@/lib/api/lineage';
 import type { CreatePersonBody, PersonDto } from '@/types/api';
 
@@ -54,7 +54,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
 // ─────────────────────────────────────────────
 // POST /api/v1/persons
-// Requires an authenticated, admin-approved editor.
+// Requires the caller to have at least EDITOR on the target tree.
 // ─────────────────────────────────────────────
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const body: CreatePersonBody = await req.json();
@@ -62,7 +62,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!body.tree_id?.trim()) throw Errors.badRequest('`tree_id` is required');
   if (!body.first_name?.trim()) throw Errors.badRequest('`first_name` is required');
 
-  await requireApprovedEditor();
   await requireTreeRole(body.tree_id, 'EDITOR');
 
   // Expose strict_lineage status in the response metadata so the

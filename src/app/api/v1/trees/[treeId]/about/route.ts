@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { requireApprovedEditor, requireTreeRole } from '@/lib/api/auth';
+import { requireTreeRole } from '@/lib/api/auth';
 import type { TreeAboutDto } from '@/types/api';
 
 const ABOUT_SELECT = {
@@ -76,11 +76,10 @@ export const GET = withErrorHandler(async (_req: NextRequest, ctx: RouteContext)
 
 // ─────────────────────────────────────────────
 // PATCH /api/v1/trees/:treeId/about
-// Requires an admin-approved editor.
+// Requires the caller to have at least EDITOR on this tree.
 // ─────────────────────────────────────────────
 export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
   const { treeId } = await ctx.params;
-  await requireApprovedEditor();
   await requireTreeRole(treeId, 'EDITOR');
 
   // Ensure the tree exists before validating the body so 404 wins over 422.

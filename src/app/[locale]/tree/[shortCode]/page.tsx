@@ -6,7 +6,8 @@ import { EmptyTreeState } from '@/components/features/tree/EmptyTreeState';
 import { TreeCanvasWithModals } from '@/features/family-tree/components/TreeCanvasWithModals';
 import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
 import type { TreePageData } from '@/server/services/tree.service';
-import { getCurrentUserWithProfile } from '@/lib/api/auth';
+import { RequestEditorAccessButton } from '@/components/features/tree/RequestEditorAccessButton';
+import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPanel';
 
 type TreeShortCodePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
@@ -32,18 +33,10 @@ export default async function TreeShortCodePage({ params }: TreeShortCodePagePro
     );
   }
 
-  const session = await getCurrentUserWithProfile();
-  const profile = session?.profile ?? null;
-  const approvedNonGuest =
-    !!profile?.is_approved && profile.access_role !== 'GUEST';
+  // Per-tree role drives every UI affordance — no global gate.
   const treeRole = treeData.membershipRole;
-  const canEditTree =
-    approvedNonGuest &&
-    (treeRole === 'EDITOR' || treeRole === 'OWNER');
-  const canDeletePerson =
-    approvedNonGuest &&
-    profile?.access_role === 'ADMIN' &&
-    treeRole === 'OWNER';
+  const canEditTree = treeRole === 'EDITOR' || treeRole === 'OWNER';
+  const canDeletePerson = treeRole === 'OWNER';
 
   if (!treeData.treeId) {
     return (
@@ -56,6 +49,15 @@ export default async function TreeShortCodePage({ params }: TreeShortCodePagePro
   return (
     <TreeShell>
       <div className="flex min-h-0 flex-1 flex-col">
+        {treeRole === 'OWNER' && (
+          <PendingMembersPanel treeId={treeData.treeId} />
+        )}
+        {(treeRole === 'VIEWER' || treeRole === 'EDITOR_PENDING') && (
+          <RequestEditorAccessButton
+            treeId={treeData.treeId}
+            initialRole={treeRole}
+          />
+        )}
         <div className="min-h-0 flex-1">
           <TreeCanvasWithModals
             treeId={treeData.treeId}

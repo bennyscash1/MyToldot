@@ -6,18 +6,7 @@ import { Link, useRouter } from '@/i18n/routing';
 import { Input }  from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { authService } from '@/services/auth.service';
-import { apiClient, ServiceError } from '@/services/api.client';
-
-// Shape returned by /api/v1/auth/me — kept in sync with usePermissions.
-interface MeResponse {
-  user: {
-    id:          string;
-    email:       string;
-    full_name:   string | null;
-    is_approved: boolean;
-    access_role: 'GUEST' | 'EDITOR' | 'ADMIN';
-  } | null;
-}
+import { ServiceError } from '@/services/api.client';
 
 // ──────────────────────────────────────────────
 // LoginForm — Client Component
@@ -25,12 +14,11 @@ interface MeResponse {
 // Handles the email + password login flow:
 //  1. Client-side validation (empty fields)
 //  2. POST /api/v1/auth/login via authService
-//  3. On success → redirect to "/" (home)
+//  3. On success → push to "/" so the user lands on the dashboard
 //  4. On failure → inline error message
 //
-// The parent page Server Component redirects
-// authenticated users away so this form never
-// mounts for an already-logged-in user.
+// There is no global approval gate; per-tree access is enforced
+// inside the tree pages and server actions.
 // ──────────────────────────────────────────────
 
 export function LoginForm() {
@@ -45,7 +33,6 @@ export function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Basic client-side guard.
     if (!email.trim() || !password) {
       setError(t('errorRequired'));
       return;
@@ -56,22 +43,8 @@ export function LoginForm() {
 
     try {
       await authService.login(email.trim(), password);
-
-      // Branch on RBAC profile — unapproved users see the waiting screen.
-      let target = '/';
-      try {
-        const me = await apiClient.get<MeResponse>('/api/v1/auth/me');
-        const profile = me.user;
-        const approved =
-          !!profile?.is_approved && profile.access_role !== 'GUEST';
-        target = approved ? '/' : '/pending-approval';
-      } catch {
-        // /me failed — fall back to home; the page-level guard will redirect.
-        target = '/';
-      }
-
-      router.push(target);
-      router.refresh(); // Ensure server components re-render with new session.
+      router.push('/');
+      router.refresh();
     } catch (err) {
       if (err instanceof ServiceError) {
         // 401 → invalid credentials; surface a friendly message.

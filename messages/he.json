@@ -21,11 +21,11 @@
     "membersCount": "{count, plural, =0 {אין אנשים עדיין} one {אדם אחד} other {# אנשים}}",
     "createTree": "התחל את עץ המשפחה שלך",
     "getStarted": "התחילו",
-    "joinFamilyTitle": "הצטרפות למשפחה עם קוד בן 4 ספרות",
-    "joinFamilyPlaceholder": "0000",
+    "joinFamilyTitle": "הצטרפות למשפחה עם קוד בן 5 ספרות",
+    "joinFamilyPlaceholder": "00000",
     "joinFamilySubmit": "הצטרף",
     "joinFamilySubmitting": "מצטרף…",
-    "joinFamilyCodeInvalid": "יש להזין 4 ספרות."
+    "joinFamilyCodeInvalid": "יש להזין 5 ספרות."
   },
   "treeNav": {
     "breadcrumbLabel": "פירורי ניווט לעץ המשפחה",
@@ -111,16 +111,7 @@
     "errorEmailExists": "כבר קיים חשבון עם כתובת דוא\"ל זו.",
     "errorPasswordLength": "הסיסמה חייבת להכיל לפחות 8 תווים.",
     "errorPasswordMismatch": "הסיסמאות אינן תואמות.",
-    "errorGeneric": "משהו השתבש. אנא נסו שוב.",
-    "pendingTitle": "ממתין לאישור מנהל",
-    "pendingHeading": "החשבון שלך ממתין לאישור מנהל",
-    "pendingMessage": "תודה על ההרשמה! מנהל המערכת צריך לאשר את החשבון לפני שניתן יהיה להוסיף או לערוך בני משפחה. בינתיים תוכלו לדפדף בעץ במצב צפייה בלבד.",
-    "pendingBadge": "ממתין לאישור",
-    "refreshStatus": "רענון סטטוס",
-    "refreshingStatus": "מרענן…",
-    "approvedTitle": "אושרת!",
-    "approvedMessage": "החשבון אושר. מעביר…",
-    "browseTree": "צפה בעץ"
+    "errorGeneric": "משהו השתבש. אנא נסו שוב."
   },
   "setup": {
     "pageTitle": "התחילו את עץ המשפחה שלכם",
@@ -165,11 +156,23 @@
     "enterTree": "כניסה",
     "roleOwner": "בעלים",
     "roleEditor": "עורך",
+    "roleEditorPending": "ממתין לאישור עריכה",
     "roleViewer": "צופה",
     "noFamiliesTitle": "ברוכים הבאים לתולדותיי",
-    "noFamiliesSubtitle": "אינך חלק מאף עץ משפחה עדיין. צור עץ חדש או הצטרף לעץ קיים עם קוד בן 4 ספרות.",
+    "noFamiliesSubtitle": "אינך חלק מאף עץ משפחה עדיין. צור עץ חדש או הצטרף לעץ קיים עם קוד בן 5 ספרות.",
     "createTree": "צור את העץ שלך",
     "joinWithCode": "או הצטרף למשפחה קיימת עם קוד:"
+  },
+  "treePerms": {
+    "viewerHint": "יש לך גישה לצפייה בלבד למשפחה זו.",
+    "requestAccess": "בקש הרשאת עריכה",
+    "requesting": "שולח בקשה…",
+    "accessRequested": "בקשת ההרשאה נשלחה — ממתין לאישור",
+    "pendingMembersTitle": "בקשות להרשאת עריכה",
+    "noPendingRequests": "אין בקשות ממתינות.",
+    "approve": "אשר",
+    "reject": "דחה",
+    "requestedBy": "חבר מאז"
   },
   "aboutPage": {
     "title": "אודות המשפחה",

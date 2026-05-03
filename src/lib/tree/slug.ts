@@ -34,9 +34,9 @@ export async function generateUniqueTreeSlug(
   throw new Error('Failed to generate a unique tree slug');
 }
 
-/** Uniform 4-digit string in range 0000–9999 (not guaranteed unique). */
+/** Uniform 5-digit string in range 00000–99999 (not guaranteed unique). */
 export function generateTreeShortCode(): string {
-  return String(randomInt(0, 10000)).padStart(4, '0');
+  return String(randomInt(0, 100000)).padStart(5, '0');
 }
 
 const SHORT_CODE_ATTEMPTS = 64;

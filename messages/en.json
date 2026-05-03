@@ -21,11 +21,11 @@
     "membersCount": "{count, plural, =0 {No people yet} one {# person} other {# people}}",
     "createTree": "Start Your Family Tree",
     "getStarted": "Get Started",
-    "joinFamilyTitle": "Join a family with a 4-digit code",
-    "joinFamilyPlaceholder": "0000",
+    "joinFamilyTitle": "Join a family with a 5-digit code",
+    "joinFamilyPlaceholder": "00000",
     "joinFamilySubmit": "Join",
     "joinFamilySubmitting": "Joining…",
-    "joinFamilyCodeInvalid": "Enter all 4 digits."
+    "joinFamilyCodeInvalid": "Enter all 5 digits."
   },
   "treeNav": {
     "breadcrumbLabel": "Family tree breadcrumb",
@@ -111,16 +111,7 @@
     "errorEmailExists": "An account with this email already exists.",
     "errorPasswordLength": "Password must be at least 8 characters.",
     "errorPasswordMismatch": "Passwords do not match.",
-    "errorGeneric": "Something went wrong. Please try again.",
-    "pendingTitle": "Awaiting admin approval",
-    "pendingHeading": "Your account is awaiting admin approval",
-    "pendingMessage": "Thanks for signing up! An administrator needs to approve your account before you can add or edit family members. You can browse the tree in read-only mode in the meantime.",
-    "pendingBadge": "Pending approval",
-    "refreshStatus": "Refresh status",
-    "refreshingStatus": "Refreshing…",
-    "approvedTitle": "You're approved!",
-    "approvedMessage": "Your account has been approved. Redirecting…",
-    "browseTree": "Browse the tree"
+    "errorGeneric": "Something went wrong. Please try again."
   },
   "setup": {
     "pageTitle": "Start Your Family Tree",
@@ -165,11 +156,23 @@
     "enterTree": "Enter",
     "roleOwner": "Owner",
     "roleEditor": "Editor",
+    "roleEditorPending": "Edit access pending",
     "roleViewer": "Viewer",
     "noFamiliesTitle": "Welcome to Toldotay",
-    "noFamiliesSubtitle": "You're not part of any family tree yet. Create a new tree or join one with a 4-digit code.",
+    "noFamiliesSubtitle": "You're not part of any family tree yet. Create a new tree or join one with a 5-digit code.",
     "createTree": "Create Your Tree",
     "joinWithCode": "Or join an existing family with a code:"
+  },
+  "treePerms": {
+    "viewerHint": "You have read-only access to this family.",
+    "requestAccess": "Request Edit Access",
+    "requesting": "Requesting…",
+    "accessRequested": "Edit access requested — awaiting approval",
+    "pendingMembersTitle": "Edit access requests",
+    "noPendingRequests": "No pending requests.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "requestedBy": "Member since"
   },
   "aboutPage": {
     "title": "About this family",

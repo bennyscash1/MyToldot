@@ -18,8 +18,8 @@ export function JoinFamilySection() {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const digits = code.replace(/\D/g, '').slice(0, 4);
-    if (digits.length !== 4) {
+    const digits = code.replace(/\D/g, '').slice(0, 5);
+    if (digits.length !== 5) {
       setError(t('joinFamilyCodeInvalid'));
       return;
     }
@@ -47,10 +47,10 @@ export function JoinFamilySection() {
           id="join-family-code"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={4}
+          maxLength={5}
           placeholder={t('joinFamilyPlaceholder')}
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
           className="text-center font-mono text-lg tracking-[0.2em]"
           aria-invalid={error ? true : undefined}
         />

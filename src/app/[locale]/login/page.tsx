@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { redirect }         from 'next/navigation';
 import type { Metadata }    from 'next';
 import type { LocalePageProps } from '@/types';
-import { getCurrentUserWithProfile } from '@/lib/api/auth';
+import { getAuthUser }      from '@/lib/api/auth';
 import { Link }             from '@/i18n/routing';
 import { LoginForm }        from '@/components/features/auth/LoginForm';
 
@@ -11,15 +11,9 @@ import { LoginForm }        from '@/components/features/auth/LoginForm';
 //
 // URL: /[locale]/login
 //
-// Responsibilities:
-//  1. If already authenticated AND approved → redirect to "/".
-//  2. If already authenticated but NOT approved → redirect to
-//     "/pending-approval" so the user lands on the right screen.
-//  3. Otherwise render the AuthShell + LoginForm.
-//
-// The middleware also protects this route so that
-// authed users never land here — this is an extra
-// server-side guard for defence in depth.
+// If a session already exists, redirect to the home page; otherwise
+// render the form. There is no global approval state — editing
+// rights are enforced per-tree by TreeMember.role.
 // ──────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,12 +24,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LoginPage({ params }: LocalePageProps) {
   const { locale } = await params;
 
-  const session = await getCurrentUserWithProfile();
-  if (session) {
-    const approved =
-      !!session.profile?.is_approved &&
-      session.profile.access_role !== 'GUEST';
-    redirect(approved ? `/${locale}` : `/${locale}/pending-approval`);
+  const user = await getAuthUser();
+  if (user) {
+    redirect(`/${locale}`);
   }
 
   const t = await getTranslations('auth');

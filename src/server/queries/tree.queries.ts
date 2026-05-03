@@ -40,7 +40,7 @@ export interface TreeViewerPayload {
   }>;
   viewer: {
     user_id: string;
-    role: 'VIEWER' | 'EDITOR' | 'OWNER';
+    role: 'VIEWER' | 'EDITOR_PENDING' | 'EDITOR' | 'OWNER';
     linked_person_id: string | null;
   };
   /** Resolved focal person for the initial render: linked_person → root_person → first person → null. */

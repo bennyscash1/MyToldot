@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { Prisma, RelationshipType } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
-import { requireApprovedEditor, requireApprovedAdmin, requireTreeRole } from '@/lib/api/auth';
+import { requireTreeRole } from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
 import {
@@ -89,7 +89,6 @@ export async function linkSpouseAction(
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
     const { treeId, person1Id, person2Id, start_date } = LinkSpouseSchema.parse(input);
-    await requireApprovedEditor();
     await requireTreeRole(treeId, 'EDITOR');
     if (person1Id === person2Id) throw Errors.badRequest('A person cannot be married to themselves');
 
@@ -118,7 +117,6 @@ export async function linkParentChildAction(
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
     const { treeId, parentId, childId, adoptive } = LinkParentChildSchema.parse(input);
-    await requireApprovedEditor();
     await requireTreeRole(treeId, 'EDITOR');
     if (parentId === childId) throw Errors.badRequest('A person cannot be their own parent');
 
@@ -145,7 +143,6 @@ export async function deleteRelationshipAction(
   relationshipId: string,
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
-    await requireApprovedAdmin();
     await requireTreeRole(treeId, 'OWNER');
     const id = CuidSchema.parse(relationshipId);
 
@@ -177,7 +174,6 @@ export async function updateRelationshipAction(
   patch: z.infer<typeof UpdateRelationshipPatchSchema>,
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
-    await requireApprovedEditor();
     await requireTreeRole(treeId, 'EDITOR');
     const id = CuidSchema.parse(relationshipId);
     const data = UpdateRelationshipPatchSchema.parse(patch);
@@ -249,7 +245,6 @@ export async function addSiblingAction(
 ): Promise<ActionResult<AddedRelativeDto>> {
   return withAction(async () => {
     const { treeId, existingSiblingId, sibling } = AddSiblingSchema.parse(input);
-    await requireApprovedEditor();
     await requireTreeRole(treeId, 'EDITOR');
 
     const result = await prisma.$transaction(async (tx) => {

@@ -18,20 +18,14 @@ datasource db {
 // ─────────────────────────────────────────────
 
 /// Per-tree membership role (stored on `TreeMember`).
+/// All gating happens at this level — there is no global RBAC.
+/// EDITOR_PENDING is a viewer who has requested edit access but
+/// hasn't been approved by an OWNER yet (treated as VIEWER for writes).
 enum TreeMemberRole {
   VIEWER
+  EDITOR_PENDING
   EDITOR
   OWNER
-}
-
-// Global app-wide access role used for the admin-approval RBAC.
-// Independent from Tree-level Role (which gates per-tree membership in
-// future multi-tenant flows). Defaults to GUEST until an admin manually
-// upgrades the user via the Supabase dashboard.
-enum AccessRole {
-  GUEST // signed up, awaiting approval — read-only
-  EDITOR // approved: may add/edit persons & relationships
-  ADMIN // approved: editor rights + delete + admin actions
 }
 
 enum Gender {
@@ -57,7 +51,7 @@ enum RelationshipType {
 model Tree {
   id                         String   @id @default(cuid())
   slug                       String   @unique
-  /// Public 4-digit join / URL code (unique).
+  /// Public 5-digit join / URL code (unique).
   shortCode                  String   @unique @map("short_code")
   name                       String // e.g. "Asad Family"
   description                String?
@@ -93,17 +87,11 @@ model User {
   full_name  String?
   avatar_url String?
 
-  // ── App-wide RBAC ──
-  // Admin manually flips `is_approved` to true (and bumps `access_role`
-  // to EDITOR/ADMIN) via the Supabase dashboard. Until then the user
-  // can browse but cannot mutate any data.
-  is_approved Boolean    @default(false)
-  access_role AccessRole @default(GUEST)
-
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  // A user can be a member of many trees with different roles
+  // A user can be a member of many trees with different roles.
+  // All editing rights are enforced per-tree via TreeMember.role.
   tree_memberships TreeMember[]
 
   @@map("users")

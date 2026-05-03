@@ -2,14 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, type TreeMemberRole } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
-import {
-  requireAuthUser,
-  requireApprovedAdmin,
-  requireTreeRole,
-} from '@/lib/api/auth';
+import { requireAuthUser, requireTreeRole } from '@/lib/api/auth';
 import { Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
 import {
@@ -42,7 +38,7 @@ const UpdateTreeSchema = z.object({
 const JoinFamilyCodeSchema = z
   .string()
   .trim()
-  .regex(/^\d{4}$/, 'Code must be exactly 4 digits');
+  .regex(/^\d{5}$/, 'Code must be exactly 5 digits');
 
 // ────────────────────────────────────────────────────────────────
 // Actions
@@ -147,7 +143,6 @@ export async function updateTreeSettingsAction(
   patch: z.infer<typeof UpdateTreeSchema>,
 ): Promise<ActionResult<{ id: string }>> {
   return withAction(async () => {
-    await requireApprovedAdmin();
     await requireTreeRole(treeId, 'OWNER');
     const data = UpdateTreeSchema.parse(patch);
 
@@ -169,7 +164,6 @@ export async function setRootPersonAction(
   personId: string,
 ): Promise<ActionResult<{ root_person_id: string }>> {
   return withAction(async () => {
-    await requireApprovedAdmin();
     await requireTreeRole(treeId, 'OWNER');
     const id = CuidSchema.parse(personId);
 
@@ -266,5 +260,81 @@ export async function joinFamilyByCode(
     const segment = await resolveTreeRouteRevalidateSegment(tree.id);
     if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
     return { shortCode: tree.shortCode };
+  });
+}
+
+// ────────────────────────────────────────────────────────────────
+// Editor-access workflow
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Marks the current user's membership on `treeId` as EDITOR_PENDING so an
+ * OWNER can review and approve. Idempotent: callers who are already EDITOR
+ * or OWNER receive an OK with their existing status (no downgrade).
+ */
+export async function requestEditorAccess(
+  treeId: string,
+): Promise<ActionResult<{ status: 'PENDING' | 'ALREADY_EDITOR' }>> {
+  return withAction(async () => {
+    const user = await requireAuthUser();
+
+    const membership = await prisma.treeMember.findUnique({
+      where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+      select: { role: true },
+    });
+    if (!membership) {
+      throw Errors.forbidden('Join this family first');
+    }
+
+    if (membership.role === 'EDITOR' || membership.role === 'OWNER') {
+      return { status: 'ALREADY_EDITOR' as const };
+    }
+
+    if (membership.role !== 'EDITOR_PENDING') {
+      await prisma.treeMember.update({
+        where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+        data: { role: 'EDITOR_PENDING' },
+      });
+    }
+
+    const segment = await resolveTreeRouteRevalidateSegment(treeId);
+    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
+    return { status: 'PENDING' as const };
+  });
+}
+
+/**
+ * OWNER-only: promote an EDITOR_PENDING member to EDITOR (`approve = true`)
+ * or revert them back to VIEWER (`approve = false`).
+ *
+ * The OWNER guard is scoped to the member's own tree so an OWNER of tree A
+ * cannot manage members of tree B.
+ */
+export async function manageAccessRequest(
+  memberId: string,
+  approve: boolean,
+): Promise<ActionResult<{ memberId: string; role: TreeMemberRole }>> {
+  return withAction(async () => {
+    const member = await prisma.treeMember.findUnique({
+      where: { id: memberId },
+      select: { id: true, tree_id: true, role: true },
+    });
+    if (!member) throw Errors.notFound('Member');
+
+    await requireTreeRole(member.tree_id, 'OWNER');
+
+    if (member.role !== 'EDITOR_PENDING') {
+      throw Errors.badRequest('No pending request for this member');
+    }
+
+    const newRole: TreeMemberRole = approve ? 'EDITOR' : 'VIEWER';
+    await prisma.treeMember.update({
+      where: { id: memberId },
+      data: { role: newRole },
+    });
+
+    const segment = await resolveTreeRouteRevalidateSegment(member.tree_id);
+    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
+    return { memberId, role: newRole };
   });
 }

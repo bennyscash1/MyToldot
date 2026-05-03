@@ -9,28 +9,23 @@ import {
 import { apiClient, ServiceError } from '@/services/api.client';
 
 // ──────────────────────────────────────────────
-// usePermissions — Client-side RBAC resolver
+// usePermissions — Client-side session resolver
 //
-// Single source of truth for "can the current user do X?" inside
-// Client Components. Wraps:
-//   • GET /api/v1/auth/me  (returns the user's RBAC profile or null)
+// Tells client components whether the current visitor is signed in
+// and exposes their basic profile (id/email/full_name). All editing
+// rights are enforced PER-TREE on the server inside each /tree page
+// via TreeMember.role and the requireTreeRole guard, so this hook
+// no longer reports "canEdit" / "canDelete".
+//
+// Wraps:
+//   • GET /api/v1/auth/me  (returns the user's profile or null)
 //   • Supabase onAuthStateChange (re-fetches on login/logout/refresh)
-//
-// Anonymous visitors get { isAuthenticated: false, canEdit: false, ... }
-// without seeing a 401 in the console because /api/v1/auth/me is public.
-//
-// Approval changes made by the admin in the Supabase dashboard become
-// visible the next time the JWT is refreshed (≤ 1h) or after a logout/login.
 // ──────────────────────────────────────────────
 
-export type AccessRole = 'GUEST' | 'EDITOR' | 'ADMIN';
-
 export interface UserProfile {
-  id:           string;
-  email:        string;
-  full_name:    string | null;
-  is_approved:  boolean;
-  access_role:  AccessRole;
+  id:        string;
+  email:     string;
+  full_name: string | null;
 }
 
 export interface Permissions {
@@ -38,19 +33,9 @@ export interface Permissions {
   isLoading:       boolean;
   /** A Supabase session exists. */
   isAuthenticated: boolean;
-  /** Authenticated AND admin has flipped `is_approved`. */
-  isApproved:      boolean;
-  /** The user's global app role (or null when anonymous). */
-  role:            AccessRole | null;
-  /** Always true — read access is public. */
-  canView:         boolean;
-  /** EDITOR or ADMIN, and approved. */
-  canEdit:         boolean;
-  /** ADMIN only, and approved. */
-  canDelete:       boolean;
   /** Raw profile when authenticated, else null. */
   profile:         UserProfile | null;
-  /** Force a re-fetch of /api/v1/auth/me (e.g. from "Refresh status" button). */
+  /** Force a re-fetch of /api/v1/auth/me. */
   refresh:         () => Promise<void>;
 }
 
@@ -61,28 +46,13 @@ interface MeResponse {
 const DEFAULT_PERMISSIONS: Omit<Permissions, 'refresh'> = {
   isLoading:       true,
   isAuthenticated: false,
-  isApproved:      false,
-  role:            null,
-  canView:         true,
-  canEdit:         false,
-  canDelete:       false,
   profile:         null,
 };
 
-function derivePermissions(profile: UserProfile | null, isLoading: boolean): Omit<Permissions, 'refresh'> {
-  if (!profile) {
-    return { ...DEFAULT_PERMISSIONS, isLoading };
-  }
-  const approved = profile.is_approved;
-  const role     = profile.access_role;
+function deriveState(profile: UserProfile | null, isLoading: boolean): Omit<Permissions, 'refresh'> {
   return {
     isLoading,
-    isAuthenticated: true,
-    isApproved:      approved,
-    role,
-    canView:         true,
-    canEdit:         approved && (role === 'EDITOR' || role === 'ADMIN'),
-    canDelete:       approved && role === 'ADMIN',
+    isAuthenticated: !!profile,
     profile,
   };
 }
@@ -96,14 +66,13 @@ export function usePermissions(): Permissions {
     try {
       const res = await apiClient.get<MeResponse>('/api/v1/auth/me');
       if (!mountedRef.current) return;
-      setState(derivePermissions(res.user, false));
+      setState(deriveState(res.user, false));
     } catch (error) {
-      // Network or 5xx: treat as anonymous so the read-only UI still renders.
       if (!(error instanceof ServiceError) && process.env.NODE_ENV !== 'production') {
         console.warn('[usePermissions] /auth/me failed', error);
       }
       if (!mountedRef.current) return;
-      setState(derivePermissions(null, false));
+      setState(deriveState(null, false));
     }
   }, []);
 
@@ -120,8 +89,6 @@ export function usePermissions(): Permissions {
       return () => { mountedRef.current = false; };
     }
 
-    // React to login, logout, or token refresh — the latter is what makes
-    // admin-side approval changes propagate without a hard reload.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (
         event === 'SIGNED_IN' ||

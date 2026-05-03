@@ -35,7 +35,7 @@ async function getCurrentTreeName(): Promise<string | null> {
   try {
     const hdrs = await headers();
     const pathname = hdrs.get('x-pathname') ?? '';
-    const match = pathname.match(/\/tree\/(\d{4})(?:\/|$)/);
+    const match = pathname.match(/\/tree\/(\d{5})(?:\/|$)/);
     if (!match) return null;
 
     const tree = await prisma.tree.findUnique({

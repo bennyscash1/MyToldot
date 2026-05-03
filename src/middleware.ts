@@ -17,15 +17,14 @@ import { updateSessionAndGetUser } from './lib/supabase/middleware';
 // ── Protected route rules ────────────────────
 //  • Anonymous visitors can READ the tree (all GET endpoints below).
 //  • All POST/PATCH/DELETE endpoints require an authenticated session;
-//    the route handler then checks `is_approved` + `access_role` for
-//    editor/admin gating.
+//    the route handler then enforces the per-tree TreeMember.role gate.
 //  • Auth endpoints (login/signup/logout/me) are intentionally public.
 // ──────────────────────────────────────────────
 
 // Routes that are always public, even for non-authed users.
 // All are READ endpoints (or the auth endpoints themselves). Every write
 // route is omitted on purpose — the middleware will 401 unauthenticated
-// callers, then the handler enforces approval/role.
+// callers, then the handler enforces per-tree role.
 const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   // Auth endpoints
   { method: 'POST', pattern: /^\/api\/v1\/auth\/login$/ },

@@ -14,12 +14,10 @@ import { authService } from '@/services/auth.service';
 //
 //  • Loading      → skeleton pill
 //  • Logged out   → "Log in" + "Sign up" buttons
-//  • Pending      → amber "Pending approval" badge linking to
-//                   /pending-approval, plus avatar dropdown
-//  • Logged in OK → avatar initials + dropdown menu
+//  • Logged in    → avatar initials + dropdown menu
 //
-// Only this small slice of the Navbar needs client state;
-// everything else stays in the Server Component parent.
+// Editing rights are per-tree (TreeMember.role) and are evaluated
+// inside each tree page, not globally here.
 // ──────────────────────────────────────────────
 
 /** Derive initials from an email address as a fallback avatar label. */
@@ -41,12 +39,11 @@ function getInitials(email: string | null | undefined, fullName?: string | null)
 interface UserMenuProps {
   email:        string | null | undefined;
   initials:     string;
-  isApproved:   boolean;
   onLogout:     () => void;
   isLoggingOut: boolean;
 }
 
-function UserMenu({ email, initials, isApproved, onLogout, isLoggingOut }: UserMenuProps) {
+function UserMenu({ email, initials, onLogout, isLoggingOut }: UserMenuProps) {
   const t                           = useTranslations('auth');
   const [isOpen, setIsOpen]         = useState(false);
   const menuRef                     = useRef<HTMLDivElement>(null);
@@ -79,12 +76,6 @@ function UserMenu({ email, initials, isApproved, onLogout, isLoggingOut }: UserM
         className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#3e5045] text-sm font-semibold text-white transition-colors hover:bg-[#323d36] focus:outline-none focus:ring-2 focus:ring-[#3e5045]/40 focus:ring-offset-2"
       >
         {initials}
-        {!isApproved && (
-          <span
-            className="absolute -bottom-0.5 -end-0.5 h-3 w-3 rounded-full border-2 border-[#f4f3e9] bg-amber-500"
-            aria-hidden="true"
-          />
-        )}
       </button>
 
       {isOpen && (
@@ -96,28 +87,6 @@ function UserMenu({ email, initials, isApproved, onLogout, isLoggingOut }: UserM
             <p className="text-xs font-medium text-gray-500">{t('signedInAs')}</p>
             <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{email}</p>
           </div>
-
-          {!isApproved && (
-            <Link
-              href="/pending-approval"
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                className="h-4 w-4"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {t('pendingBadge')}
-            </Link>
-          )}
 
           <button
             type="button"
@@ -149,7 +118,7 @@ function UserMenu({ email, initials, isApproved, onLogout, isLoggingOut }: UserM
 
 export function NavbarActions() {
   const t                                 = useTranslations('auth');
-  const { isLoading, isAuthenticated, isApproved, profile } = usePermissions();
+  const { isLoading, isAuthenticated, profile } = usePermissions();
   const router                            = useRouter();
   const [isLoggingOut, setLoggingOut]     = useState(false);
 
@@ -194,35 +163,14 @@ export function NavbarActions() {
     );
   }
 
-  // ── Logged in (with optional pending badge inside the avatar) ──
+  // ── Logged in ──
   const initials = getInitials(profile?.email, profile?.full_name);
 
   return (
     <div className="flex items-center gap-2">
-      {!isApproved && (
-        <Link
-          href="/pending-approval"
-          className="hidden items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-200 sm:inline-flex"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {t('pendingBadge')}
-        </Link>
-      )}
-
       <UserMenu
         email={profile?.email}
         initials={initials}
-        isApproved={isApproved}
         onLogout={handleLogout}
         isLoggingOut={isLoggingOut}
       />

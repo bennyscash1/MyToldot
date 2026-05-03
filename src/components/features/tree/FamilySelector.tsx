@@ -9,15 +9,20 @@ export interface FamilyEntry {
 }
 
 const ROLE_BADGE: Record<TreeMemberRole, string> = {
-  OWNER: 'bg-emerald-100 text-emerald-700',
-  EDITOR: 'bg-blue-100 text-blue-700',
-  VIEWER: 'bg-slate-100 text-slate-500',
+  OWNER:          'bg-emerald-100 text-emerald-700',
+  EDITOR:         'bg-blue-100 text-blue-700',
+  EDITOR_PENDING: 'bg-amber-100 text-amber-800',
+  VIEWER:         'bg-slate-100 text-slate-500',
 };
 
-const ROLE_KEY: Record<TreeMemberRole, 'roleOwner' | 'roleEditor' | 'roleViewer'> = {
-  OWNER: 'roleOwner',
-  EDITOR: 'roleEditor',
-  VIEWER: 'roleViewer',
+const ROLE_KEY: Record<
+  TreeMemberRole,
+  'roleOwner' | 'roleEditor' | 'roleEditorPending' | 'roleViewer'
+> = {
+  OWNER:          'roleOwner',
+  EDITOR:         'roleEditor',
+  EDITOR_PENDING: 'roleEditorPending',
+  VIEWER:         'roleViewer',
 };
 
 /**

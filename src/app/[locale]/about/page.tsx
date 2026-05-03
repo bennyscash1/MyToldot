@@ -6,7 +6,7 @@ import type { LocalePageProps } from '@/types';
 import type { ApiEnvelope, TreeAboutDto } from '@/types/api';
 import { resolveCurrentTreeId } from '@/server/services/tree.service';
 import { AboutSection } from '@/features/about/components/AboutSection';
-import { getCurrentUserWithProfile } from '@/lib/api/auth';
+import { getCurrentUserTreeRole } from '@/lib/api/auth';
 
 // ──────────────────────────────────────────────
 // /[locale]/about — Family heritage description.
@@ -14,9 +14,9 @@ import { getCurrentUserWithProfile } from '@/lib/api/auth';
 // Server Component. Resolves the current tree, fetches its
 // about_text + main_surnames, and hydrates the client section.
 //
-// `canEdit` is derived from the global RBAC profile so anonymous
-// visitors see read-only content while approved editors/admins
-// see the in-place editor.
+// `canEdit` is derived from the caller's PER-TREE role on the
+// resolved tree (EDITOR or OWNER). Guests and VIEWERs see
+// read-only content.
 // ──────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -54,10 +54,9 @@ export default async function AboutPage({ params }: LocalePageProps) {
     // its own empty state and the editor still works.
   }
 
-  // RBAC: only approved editors/admins may modify the About page.
-  const session = await getCurrentUserWithProfile();
-  const canEdit =
-    !!session?.profile?.is_approved && session.profile.access_role !== 'GUEST';
+  // Per-tree RBAC: only EDITOR or OWNER on this tree can edit.
+  const role = await getCurrentUserTreeRole(treeId);
+  const canEdit = role === 'EDITOR' || role === 'OWNER';
 
   return (
     <AboutSection treeId={treeId} initial={initial} canEdit={canEdit} />
