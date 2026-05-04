@@ -139,6 +139,8 @@
     "successTitle": "Your tree is growing!",
     "successSubtitle": "has been added as the root person.",
     "viewTree": "View Family Tree",
+    "viewMyTree": "To my family tree",
+    "createAnotherTree": "Create another family tree",
     "addAnother": "Add Another Person"
   },
   "treePage": {

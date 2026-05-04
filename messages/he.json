@@ -139,6 +139,8 @@
     "successTitle": "עץ המשפחה שלכם צומח!",
     "successSubtitle": "נוסף כאדם השורש.",
     "viewTree": "לעץ המשפחה",
+    "viewMyTree": "לעץ המשפחה שלי",
+    "createAnotherTree": "צור עץ משפחה נוסף",
     "addAnother": "הוסף אדם נוסף"
   },
   "treePage": {

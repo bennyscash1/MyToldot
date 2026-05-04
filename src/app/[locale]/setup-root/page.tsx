@@ -25,9 +25,20 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('pageTitle') };
 }
 
-export default async function SetupRootPage({ params }: LocalePageProps) {
+type SetupRootSearchParams = Promise<{ forceNew?: string | string[] }>;
+
+export default async function SetupRootPage({
+  params,
+  searchParams,
+}: LocalePageProps & { searchParams: SetupRootSearchParams }) {
   const { locale } = await params;
   const t = await getTranslations('setup');
+
+  const sp = await searchParams;
+  const forceNewRaw = sp?.forceNew;
+  const forceNew =
+    forceNewRaw === 'true' ||
+    (Array.isArray(forceNewRaw) && forceNewRaw[0] === 'true');
 
   // ── 1. Resolve auth ──
   const supabase = await createSupabaseServerClient();
@@ -46,6 +57,15 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
             {t('goHome')}
           </Link>
         </div>
+      </SetupShell>
+    );
+  }
+
+  // Create an additional tree (same flow as first tree; POST /api/v1/trees adds a new OWNER membership).
+  if (forceNew) {
+    return (
+      <SetupShell title={t('pageTitle')} subtitle={t('pageSubtitle')}>
+        <SetupRootFlow />
       </SetupShell>
     );
   }
@@ -104,12 +124,20 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
             </svg>
           </div>
           <p className="font-medium text-gray-800">{t('alreadySetup')}</p>
-          <Link
-            href={treeRouteCode ? `/tree/${treeRouteCode}` : '/tree'}
-            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
-          >
-            {t('viewTree')}
-          </Link>
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            <Link
+              href={treeRouteCode ? `/tree/${treeRouteCode}` : '/tree'}
+              className="rounded-lg bg-emerald-600 px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              {t('viewMyTree')}
+            </Link>
+            <Link
+              href="/setup-root?forceNew=true"
+              className="rounded-lg border border-emerald-600 bg-white px-5 py-2.5 text-center text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+            >
+              {t('createAnotherTree')}
+            </Link>
+          </div>
         </div>
       </SetupShell>
     );
