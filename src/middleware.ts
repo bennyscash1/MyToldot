@@ -2,6 +2,11 @@ import { type NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
 import { updateSessionAndGetUser } from './lib/supabase/middleware';
+import {
+  PREFERRED_LOCALE_COOKIE,
+  parsePreferredLocaleCookie,
+  type PreferredLocale,
+} from './lib/locale-preference';
 
 // ──────────────────────────────────────────────
 // Combined Middleware: Supabase Auth + next-intl
@@ -11,8 +16,10 @@ import { updateSessionAndGetUser } from './lib/supabase/middleware';
 //     resolves the active user (or null).
 //  2. Route guard — API routes under /api/v1/
 //     that require authentication are blocked here.
-//  3. next-intl — rewrites the URL to include the
-//     correct locale prefix (/en or /he).
+//  3. Signed-in locale — redirect `/` and `/{locale}/…` to match
+//     `User.preferred_language` (cookie mirror + occasional /auth/me fetch).
+//  4. next-intl — rewrites the URL to include the
+//     correct locale prefix (/he or /en; default /he).
 //
 // ── Protected route rules ────────────────────
 //  • Anonymous visitors can READ the tree (all GET endpoints below).
@@ -43,12 +50,71 @@ const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   { method: 'GET', pattern: /^\/api\/v1\/persons\/[^/]+$/ },
 ];
 
-// All UI routes (including /tree) are publicly accessible so anonymous
-// visitors can browse the family tree in read-only mode. Per-page server
-// components (e.g. /[locale]/login) handle their own redirect logic when
-// an authenticated visitor lands there.
-
 const intlMiddleware = createIntlMiddleware(routing);
+
+function localeCookieOptions(request: NextRequest) {
+  return {
+    path:     '/',
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    maxAge:   60 * 60 * 24 * 365,
+    secure:   request.nextUrl.protocol === 'https:',
+  };
+}
+
+function mergeSupabaseCookies(target: NextResponse, source: NextResponse) {
+  source.cookies.getAll().forEach((c) => target.cookies.set(c));
+}
+
+function maybeSetPreferredLocaleCookie(
+  response: NextResponse,
+  request: NextRequest,
+  shouldSet: boolean,
+  locale: PreferredLocale,
+) {
+  if (shouldSet) {
+    response.cookies.set(
+      PREFERRED_LOCALE_COOKIE,
+      locale,
+      localeCookieOptions(request),
+    );
+  }
+}
+
+/**
+ * Resolves persisted locale for a signed-in visitor without Prisma (Edge).
+ * When the sync cookie is absent, calls GET /api/v1/auth/me with forwarded cookies.
+ */
+async function resolvePreferredLocaleForSignedInUser(
+  request: NextRequest,
+): Promise<{ locale: PreferredLocale; setCookie: boolean }> {
+  const fromCookie = parsePreferredLocaleCookie(
+    request.cookies.get(PREFERRED_LOCALE_COOKIE)?.value,
+  );
+  if (fromCookie) {
+    return { locale: fromCookie, setCookie: false };
+  }
+
+  const meUrl = new URL('/api/v1/auth/me', request.nextUrl.origin);
+  try {
+    const res = await fetch(meUrl.toString(), {
+      headers: {
+        cookie: request.headers.get('cookie') ?? '',
+        accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+    const json = (await res.json()) as {
+      data?: { user?: { preferred_language?: string } | null } | null;
+    };
+    const raw = json?.data?.user?.preferred_language;
+    const locale: PreferredLocale =
+      raw === 'en' || raw === 'he' ? raw : 'he';
+    return { locale, setCookie: true };
+  } catch {
+    return { locale: 'he', setCookie: true };
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -74,10 +140,50 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ── Step 3: UI routes are public ──────────
-  // Anonymous visitors can browse every page (read-only). Login/signup pages
-  // and other protected screens enforce their own server-side redirects.
-  void user; // hint to the linter that the resolved user is intentionally unused here
+  // ── Step 3: Signed-in locale redirect (Edge-safe; no Prisma) ──
+  let preferredResolution: {
+    locale: PreferredLocale;
+    setCookie: boolean;
+  } | null = null;
+
+  if (user) {
+    preferredResolution = await resolvePreferredLocaleForSignedInUser(request);
+    const { locale: preferred, setCookie: needsPrefCookie } = preferredResolution;
+
+    if (pathname === '/' || pathname === '') {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${preferred}/`;
+      const redirectResponse = NextResponse.redirect(url);
+      mergeSupabaseCookies(redirectResponse, supabaseResponse);
+      maybeSetPreferredLocaleCookie(
+        redirectResponse,
+        request,
+        needsPrefCookie,
+        preferred,
+      );
+      return redirectResponse;
+    }
+
+    const localeMatch = pathname.match(/^\/(en|he)(?=\/|$)/);
+    if (localeMatch) {
+      const urlLocale = localeMatch[1] as PreferredLocale;
+      if (urlLocale !== preferred) {
+        const newPath =
+          pathname.replace(/^\/(en|he)/, `/${preferred}`) || `/${preferred}`;
+        const url = request.nextUrl.clone();
+        url.pathname = newPath;
+        const redirectResponse = NextResponse.redirect(url);
+        mergeSupabaseCookies(redirectResponse, supabaseResponse);
+        maybeSetPreferredLocaleCookie(
+          redirectResponse,
+          request,
+          needsPrefCookie,
+          preferred,
+        );
+        return redirectResponse;
+      }
+    }
+  }
 
   // ── Step 4: i18n locale rewrite ──────────
   // Run the next-intl middleware, then decide how to respond:
@@ -94,8 +200,19 @@ export async function middleware(request: NextRequest) {
     intlResponse.cookies.set(cookie);
   });
 
+  const needsPrefCookieAfterIntl =
+    user && preferredResolution?.setCookie === true;
+
   // Redirect case — intl is adding a locale prefix.
   if (intlResponse.headers.get('location')) {
+    if (needsPrefCookieAfterIntl && preferredResolution) {
+      maybeSetPreferredLocaleCookie(
+        intlResponse,
+        request,
+        true,
+        preferredResolution.locale,
+      );
+    }
     return intlResponse;
   }
 
@@ -107,6 +224,15 @@ export async function middleware(request: NextRequest) {
 
   supabaseResponse.cookies.getAll().forEach((c) => finalResponse.cookies.set(c));
   intlResponse.cookies.getAll().forEach((c) => finalResponse.cookies.set(c));
+
+  if (needsPrefCookieAfterIntl && preferredResolution) {
+    maybeSetPreferredLocaleCookie(
+      finalResponse,
+      request,
+      true,
+      preferredResolution.locale,
+    );
+  }
 
   return finalResponse;
 }

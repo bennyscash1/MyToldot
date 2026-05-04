@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { joinFamilyByCode } from '@/server/actions/tree.actions';
 import { useRouter } from '@/i18n/routing';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 
 export function JoinFamilySection() {
   const t = useTranslations('home');
+  const locale = useLocale();
   const router = useRouter();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function JoinFamilySection() {
     <form
       onSubmit={onSubmit}
       className="flex w-full max-w-lg flex-col gap-3 rounded-xl border border-slate-200/80 bg-white/60 p-4 text-start shadow-sm backdrop-blur-sm sm:flex-row sm:items-end"
-      dir="rtl"
+      dir={locale === 'he' ? 'rtl' : 'ltr'}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <label htmlFor="join-family-code" className="text-sm font-medium text-slate-700">

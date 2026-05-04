@@ -18,6 +18,7 @@ import {
   isSupabaseServerConfigured,
 } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
+import { isMissingUserPreferredLanguageColumn } from '@/lib/prisma-user-preferred-language';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 
@@ -78,19 +79,33 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       where: { id: data.user.id },
       update: { email: data.user.email!, full_name: body.full_name.trim() },
       create: {
-        id:        data.user.id,
-        email:     data.user.email!,
-        full_name: body.full_name.trim(),
+        id:                 data.user.id,
+        email:              data.user.email!,
+        full_name:          body.full_name.trim(),
+        preferred_language: 'he',
       },
       select: { id: true, email: true, full_name: true },
     });
   } catch (dbError) {
-    // Local-only fallback: allow signup to succeed when Prisma cannot
-    // reach Postgres (common on IPv6-restricted networks).
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[Auth] Signup mirrored user skipped (DB unavailable):', dbError);
+    if (isMissingUserPreferredLanguageColumn(dbError)) {
+      user = await prisma.user.upsert({
+        where: { id: data.user.id },
+        update: { email: data.user.email!, full_name: body.full_name.trim() },
+        create: {
+          id:        data.user.id,
+          email:     data.user.email!,
+          full_name: body.full_name.trim(),
+        },
+        select: { id: true, email: true, full_name: true },
+      });
     } else {
-      throw dbError;
+      // Local-only fallback: allow signup to succeed when Prisma cannot
+      // reach Postgres (common on IPv6-restricted networks).
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[Auth] Signup mirrored user skipped (DB unavailable):', dbError);
+      } else {
+        throw dbError;
+      }
     }
   }
 

@@ -17,11 +17,17 @@
 import { getAuthUser } from '@/lib/api/auth';
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
+import {
+  parsePreferredLocale,
+  type PreferredLocale,
+} from '@/lib/locale-preference';
+import { isMissingUserPreferredLanguageColumn } from '@/lib/prisma-user-preferred-language';
 
 export interface MeProfile {
-  id:        string;
-  email:     string;
-  full_name: string | null;
+  id:                  string;
+  email:               string;
+  full_name:           string | null;
+  preferred_language:  PreferredLocale;
 }
 
 interface MeResponse {
@@ -29,6 +35,13 @@ interface MeResponse {
 }
 
 const PROFILE_SELECT = {
+  id:                  true,
+  email:               true,
+  full_name:           true,
+  preferred_language:  true,
+} as const;
+
+const PROFILE_SELECT_FALLBACK = {
   id:        true,
   email:     true,
   full_name: true,
@@ -38,27 +51,63 @@ export const GET = withErrorHandler(async () => {
   const authUser = await getAuthUser();
   if (!authUser) return ok<MeResponse>({ user: null });
 
-  let profile = await prisma.user.findUnique({
-    where: { id: authUser.id },
-    select: PROFILE_SELECT,
-  });
-
-  if (!profile) {
-    // Self-heal: create the missing mirror row so per-tree FKs work.
-    profile = await prisma.user.upsert({
-      where:  { id: authUser.id },
-      update: {
-        email:     authUser.email ?? '',
-        full_name: (authUser.user_metadata?.full_name as string | undefined) ?? null,
-      },
-      create: {
-        id:        authUser.id,
-        email:     authUser.email ?? '',
-        full_name: (authUser.user_metadata?.full_name as string | undefined) ?? null,
-      },
+  try {
+    let profile = await prisma.user.findUnique({
+      where: { id: authUser.id },
       select: PROFILE_SELECT,
     });
-  }
 
-  return ok<MeResponse>({ user: profile });
+    if (!profile) {
+      profile = await prisma.user.upsert({
+        where:  { id: authUser.id },
+        update: {
+          email:     authUser.email ?? '',
+          full_name: (authUser.user_metadata?.full_name as string | undefined) ?? null,
+        },
+        create: {
+          id:                 authUser.id,
+          email:              authUser.email ?? '',
+          full_name:          (authUser.user_metadata?.full_name as string | undefined) ?? null,
+          preferred_language: 'he',
+        },
+        select: PROFILE_SELECT,
+      });
+    }
+
+    const preferred_language: PreferredLocale =
+      parsePreferredLocale(profile.preferred_language) ?? 'he';
+
+    return ok<MeResponse>({
+      user: { ...profile, preferred_language },
+    });
+  } catch (e) {
+    if (!isMissingUserPreferredLanguageColumn(e)) throw e;
+
+    let profile = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: PROFILE_SELECT_FALLBACK,
+    });
+
+    if (!profile) {
+      profile = await prisma.user.upsert({
+        where:  { id: authUser.id },
+        update: {
+          email:     authUser.email ?? '',
+          full_name: (authUser.user_metadata?.full_name as string | undefined) ?? null,
+        },
+        create: {
+          id:        authUser.id,
+          email:     authUser.email ?? '',
+          full_name: (authUser.user_metadata?.full_name as string | undefined) ?? null,
+        },
+        select: PROFILE_SELECT_FALLBACK,
+      });
+    }
+
+    const preferred_language: PreferredLocale = 'he';
+
+    return ok<MeResponse>({
+      user: { ...profile, preferred_language },
+    });
+  }
 });

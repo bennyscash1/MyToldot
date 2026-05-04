@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { Inter, Heebo } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 import { routing, isValidLocale, type Locale } from '@/i18n/routing';
@@ -56,6 +56,7 @@ export default async function LocaleLayout({
 
   const safeLocale = locale as Locale;
   const messages   = await getMessages();
+  const tCommon    = await getTranslations('common');
   const dir        = LOCALE_DIR[safeLocale];
   const fontClass  = safeLocale === 'he' ? heebo.className : inter.className;
 
@@ -77,7 +78,7 @@ export default async function LocaleLayout({
           <Navbar />
           <main className="flex-1">{children}</main>
           <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-            © {new Date().getFullYear()} Family Tree
+            {tCommon('footerCopyright', { year: new Date().getFullYear() })}
           </footer>
         </NextIntlClientProvider>
       </body>

@@ -86,6 +86,8 @@ model User {
   email      String  @unique
   full_name  String?
   avatar_url String?
+  /// UI locale persisted for signed-in users (`he` | `en`).
+  preferred_language String @default("he")
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

@@ -62,7 +62,7 @@ export async function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-[#f4f3e9]/95 backdrop-blur-sm">
       <nav
         className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
-        aria-label="Main navigation"
+        aria-label={t('mainNavigationAria')}
       >
         {/* ── Brand / Logo ── */}
         <Link
@@ -107,7 +107,7 @@ export async function Navbar() {
             <li>
               <span
                 className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                aria-label={`Current family: ${treeName}`}
+                aria-label={t('currentFamilyAria', { treeName })}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

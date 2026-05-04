@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { redirect }         from 'next/navigation';
 import type { Metadata }    from 'next';
 import type { LocalePageProps } from '@/types';
-import { getAuthUser }      from '@/lib/api/auth';
+import { getAuthUser, getPreferredLocaleForUser } from '@/lib/api/auth';
 import { Link }             from '@/i18n/routing';
 import { LoginForm }        from '@/components/features/auth/LoginForm';
 
@@ -22,11 +22,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginPage({ params }: LocalePageProps) {
-  const { locale } = await params;
+  await params;
 
   const user = await getAuthUser();
   if (user) {
-    redirect(`/${locale}`);
+    const pref = await getPreferredLocaleForUser(user.id);
+    redirect(`/${pref}`);
   }
 
   const t = await getTranslations('auth');

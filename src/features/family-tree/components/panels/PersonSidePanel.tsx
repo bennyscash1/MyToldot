@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useLocale } from 'next-intl';
 
 import type { PersonPatch } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow } from '../../lib/types';
@@ -59,6 +60,8 @@ export function PersonSidePanel({
   isSaving,
   errorMessage,
 }: PersonSidePanelProps) {
+  const locale = useLocale();
+  const panelDir = locale === 'he' ? 'rtl' : 'ltr';
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullName, setFullName] = useState(() => fullNameFromPerson(person));
   const [birthDate, setBirthDate] = useState(() => toDateInput(person.birth_date));
@@ -122,7 +125,7 @@ export function PersonSidePanel({
 
       <aside
         className="fixed inset-y-0 end-0 z-50 flex w-full max-w-md animate-[toldot-drawer_0.28s_ease-out] flex-col border-s border-slate-200/80 bg-[#f4f3e9] shadow-2xl"
-        dir="rtl"
+        dir={panelDir}
       >
         <div className="relative flex shrink-0 items-center justify-center border-b border-slate-200/60 px-4 py-3">
           <button

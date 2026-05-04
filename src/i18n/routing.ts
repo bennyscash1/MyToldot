@@ -9,7 +9,7 @@ import { createNavigation } from 'next-intl/navigation';
 
 export const routing = defineRouting({
   locales: ['en', 'he'],
-  defaultLocale: 'en',
+  defaultLocale: 'he',
 });
 
 /** Union type derived from the locales array. */

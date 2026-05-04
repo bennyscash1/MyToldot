@@ -3,7 +3,9 @@
     "home": "בית",
     "tree": "עץ המשפחה",
     "about": "אודות",
-    "logoAlt": "לוגו עץ משפחה"
+    "logoAlt": "לוגו עץ משפחה",
+    "mainNavigationAria": "ניווט ראשי",
+    "currentFamilyAria": "משפחה נוכחית: {treeName}"
   },
   "languageSwitcher": {
     "label": "החלף שפה",
@@ -38,7 +40,8 @@
     "save": "שמור",
     "cancel": "ביטול",
     "delete": "מחק",
-    "edit": "ערוך"
+    "edit": "ערוך",
+    "footerCopyright": "© {year} עץ משפחה"
   },
   "personForm": {
     "addTitle": "הוספת אדם",
@@ -140,6 +143,7 @@
   },
   "treePage": {
     "title": "עץ המשפחה",
+    "loadError": "לא ניתן לטעון את נתוני העץ. נסו שוב מאוחר יותר.",
     "noTreeTitle": "עדיין אין לך עץ משפחה.",
     "noTreeDescription": "צרו את עץ המשפחה שלכם כדי להתחיל להוסיף אנשים.",
     "emptyTitle": "עץ המשפחה שלך ריק",
@@ -216,6 +220,12 @@
     "noAboutYet": "עדיין אין תיאור. לחצו על ערוך כדי להוסיף.",
     "noSurnamesYet": "עדיין לא נוספו שמות משפחה.",
     "noTree": "אין עדיין עץ משפחה לתאר.",
-    "saveFailed": "לא ניתן היה לשמור את עמוד האודות. אנא נסו שוב."
+    "saveFailed": "לא ניתן היה לשמור את עמוד האודות. אנא נסו שוב.",
+    "languageHeading": "שפת התצוגה",
+    "languageHintSignedIn": "הבחירה נשמרת בחשבון שלכם וחלה בכל המכשירים כשאתם מחוברים.",
+    "languageHintGuest": "החלפת שפה משפיעה על הביקור הנוכחי בלבד. התחברו כדי לשמור העדפה.",
+    "languageHebrew": "עברית",
+    "languageEnglish": "English",
+    "languageActive": "נבחר"
   }
 }

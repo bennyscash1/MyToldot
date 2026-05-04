@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale } from 'next-intl';
+
 import {
   ReactFlow,
   Panel,
@@ -88,6 +90,9 @@ export function TreeCanvas({
   isLayoutLoading,
   layoutError,
 }: TreeCanvasProps) {
+  const locale = useLocale();
+  const overlayDir = locale === 'he' ? 'rtl' : 'ltr';
+
   return (
     <div className="relative h-full min-h-[480px] w-full bg-white">
       <ReactFlow
@@ -132,7 +137,7 @@ export function TreeCanvas({
 
       {isLayoutLoading && !showEmptyAdd && (
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
-          <span className="rounded-full bg-slate-900/75 px-3 py-1 text-xs text-white" dir="rtl">
+          <span className="rounded-full bg-slate-900/75 px-3 py-1 text-xs text-white" dir={overlayDir}>
             מסדר את העץ…
           </span>
         </div>
@@ -140,7 +145,7 @@ export function TreeCanvas({
 
       {layoutError && (
         <div className="absolute inset-x-0 top-3 flex justify-center">
-          <span className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white" dir="rtl">
+          <span className="rounded-full bg-rose-600 px-3 py-1 text-xs text-white" dir={overlayDir}>
             שגיאת פריסה: {layoutError.message}
           </span>
         </div>

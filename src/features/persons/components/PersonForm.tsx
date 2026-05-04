@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import clsx from 'clsx';
+import { useLocale } from 'next-intl';
 
 import { gregorianToHebrewText } from '../lib/hebrewDate';
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
@@ -56,6 +57,8 @@ export function PersonForm({
   isSubmitting = false,
   errorMessage,
 }: PersonFormProps) {
+  const locale = useLocale();
+  const formDir = locale === 'he' ? 'rtl' : 'ltr';
   const [firstName, setFirstName] = useState(initialValue?.first_name ?? '');
   const [lastName, setLastName] = useState(initialValue?.last_name ?? '');
   const [firstNameHe, setFirstNameHe] = useState(initialValue?.first_name_he ?? '');
@@ -103,7 +106,7 @@ export function PersonForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3" dir="rtl">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3" dir={formDir}>
       {/* Name fields */}
       <div className="grid grid-cols-2 gap-2">
         <FieldLabel label={L.firstName} required>

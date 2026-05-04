@@ -6,6 +6,7 @@ import {
   createSupabaseBrowserClient,
   isSupabaseBrowserConfigured,
 } from '@/lib/supabase/client';
+import type { PreferredLocale } from '@/lib/locale-preference';
 import { apiClient, ServiceError } from '@/services/api.client';
 
 // ──────────────────────────────────────────────
@@ -23,9 +24,10 @@ import { apiClient, ServiceError } from '@/services/api.client';
 // ──────────────────────────────────────────────
 
 export interface UserProfile {
-  id:        string;
-  email:     string;
-  full_name: string | null;
+  id:                  string;
+  email:               string;
+  full_name:           string | null;
+  preferred_language:  PreferredLocale;
 }
 
 export interface Permissions {

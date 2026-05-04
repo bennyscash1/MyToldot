@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useLocale } from 'next-intl';
 
 import { PersonForm } from '@/features/persons/components/PersonForm';
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
@@ -61,6 +62,8 @@ export function AddRelativePopover({
   isSubmitting,
   errorMessage,
 }: AddRelativePopoverProps) {
+  const locale = useLocale();
+  const headerDir = locale === 'he' ? 'rtl' : 'ltr';
   const ref = useRef<HTMLDivElement>(null);
 
   // Close on Escape + click-outside.
@@ -99,7 +102,7 @@ export function AddRelativePopover({
       role="dialog"
       aria-modal="true"
     >
-      <div className="mb-3 flex items-center justify-between" dir="rtl">
+      <div className="mb-3 flex items-center justify-between" dir={headerDir}>
         <h3 className="text-sm font-semibold text-slate-900">{TITLE[meta.kind]}</h3>
         <button
           type="button"

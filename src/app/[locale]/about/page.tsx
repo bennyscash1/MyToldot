@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
 import type { ApiEnvelope, TreeAboutDto } from '@/types/api';
 import { resolveCurrentTreeId } from '@/server/services/tree.service';
+import { AboutLanguagePreference } from '@/features/about/components/AboutLanguagePreference';
 import { AboutSection } from '@/features/about/components/AboutSection';
 import { getCurrentUserTreeRole } from '@/lib/api/auth';
 
@@ -32,12 +33,15 @@ export default async function AboutPage({ params }: LocalePageProps) {
 
   if (!treeId) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-16 sm:py-24">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          {t('title')}
-        </h1>
-        <p className="mt-4 text-gray-500">{t('noTree')}</p>
-      </section>
+      <>
+        <AboutLanguagePreference />
+        <section className="mx-auto max-w-3xl px-4 py-16 sm:py-24">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            {t('title')}
+          </h1>
+          <p className="mt-4 text-gray-500">{t('noTree')}</p>
+        </section>
+      </>
     );
   }
 
@@ -59,7 +63,10 @@ export default async function AboutPage({ params }: LocalePageProps) {
   const canEdit = role === 'EDITOR' || role === 'OWNER';
 
   return (
-    <AboutSection treeId={treeId} initial={initial} canEdit={canEdit} />
+    <>
+      <AboutLanguagePreference />
+      <AboutSection treeId={treeId} initial={initial} canEdit={canEdit} />
+    </>
   );
 }
 

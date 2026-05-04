@@ -20,14 +20,19 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function TreeShortCodePage({ params }: TreeShortCodePageProps) {
   const { locale, shortCode } = await params;
+  const dir = locale === 'he' ? 'rtl' : 'ltr';
   let treeData: TreePageData;
   try {
     treeData = await fetchTreeData(locale, shortCode);
   } catch {
+    const t = await getTranslations('treePage');
     return (
       <TreeShell>
-        <div className="flex flex-1 items-center justify-center px-4 py-20 text-center text-slate-500" dir="rtl">
-          לא ניתן לטעון את נתוני העץ. נסו שוב מאוחר יותר.
+        <div
+          className="flex flex-1 items-center justify-center px-4 py-20 text-center text-slate-500"
+          dir={dir}
+        >
+          {t('loadError')}
         </div>
       </TreeShell>
     );

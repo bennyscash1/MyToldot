@@ -3,6 +3,12 @@ import type { TreeMemberRole } from '@prisma/client';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
+import { routing } from '@/i18n/routing';
+import {
+  parsePreferredLocale,
+  type PreferredLocale,
+} from '@/lib/locale-preference';
+import { isMissingUserPreferredLanguageColumn } from '@/lib/prisma-user-preferred-language';
 import { Errors } from './errors';
 
 // ──────────────────────────────────────────────
@@ -101,4 +107,28 @@ export async function getCurrentUserTreeRole(
     select: { role: true },
   });
   return membership?.role ?? null;
+}
+
+/**
+ * Returns the persisted UI locale for a user row, or the app default (`he`)
+ * when missing or invalid.
+ */
+export async function getPreferredLocaleForUser(
+  userId: string,
+): Promise<PreferredLocale> {
+  try {
+    const row = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferred_language: true },
+    });
+    return (
+      parsePreferredLocale(row?.preferred_language) ??
+      (routing.defaultLocale as PreferredLocale)
+    );
+  } catch (e) {
+    if (isMissingUserPreferredLanguageColumn(e)) {
+      return routing.defaultLocale as PreferredLocale;
+    }
+    throw e;
+  }
 }

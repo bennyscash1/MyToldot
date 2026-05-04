@@ -2,8 +2,11 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/routing';
+
+import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import type { Locale } from '@/i18n/routing';
+import { updateUserLanguage } from '@/server/actions/user.actions';
 
 // ──────────────────────────────────────────────
 // LanguageSwitcher
@@ -24,27 +27,34 @@ export function LanguageSwitcher() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const pathname = usePathname();
+  const { isAuthenticated } = usePermissions();
 
-  function handleSwitch(nextLocale: Locale) {
+  async function handleSwitch(nextLocale: Locale) {
     if (nextLocale === locale) return;
+    if (isAuthenticated) {
+      const res = await updateUserLanguage(nextLocale);
+      if (!res.ok) return;
+    }
     router.replace(pathname, { locale: nextLocale });
+    router.refresh();
   }
 
   return (
     <div
       role="group"
       aria-label={t('label')}
-      className="flex items-center rounded-full border border-gray-200 bg-gray-50 p-0.5"
+      className="flex max-w-full shrink-0 items-center rounded-full border border-gray-200 bg-gray-50 p-0.5"
     >
       {LOCALES.map(({ value, labelKey }) => {
         const isActive = value === locale;
         return (
           <button
             key={value}
-            onClick={() => handleSwitch(value)}
+            type="button"
+            onClick={() => void handleSwitch(value)}
             aria-pressed={isActive}
             className={cn(
-              'rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200',
+              'min-h-10 min-w-[2.75rem] rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 sm:min-h-8 sm:py-1',
               isActive
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-400 hover:text-gray-600',

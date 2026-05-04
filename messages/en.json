@@ -3,7 +3,9 @@
     "home": "Home",
     "tree": "Family Tree",
     "about": "About",
-    "logoAlt": "Family tree logo"
+    "logoAlt": "Family tree logo",
+    "mainNavigationAria": "Main navigation",
+    "currentFamilyAria": "Current family: {treeName}"
   },
   "languageSwitcher": {
     "label": "Switch language",
@@ -38,7 +40,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "edit": "Edit"
+    "edit": "Edit",
+    "footerCopyright": "© {year} Family Tree"
   },
   "personForm": {
     "addTitle": "Add Person",
@@ -140,6 +143,7 @@
   },
   "treePage": {
     "title": "Family Tree",
+    "loadError": "Could not load tree data. Please try again later.",
     "noTreeTitle": "You do not have a family tree yet.",
     "noTreeDescription": "Create your family tree to start adding people.",
     "emptyTitle": "Your tree is empty",
@@ -216,6 +220,12 @@
     "noAboutYet": "No description yet. Use the Edit button to add one.",
     "noSurnamesYet": "No surnames added yet.",
     "noTree": "There is no family tree to describe yet.",
-    "saveFailed": "Could not save the about page. Please try again."
+    "saveFailed": "Could not save the about page. Please try again.",
+    "languageHeading": "Display language",
+    "languageHintSignedIn": "Your choice is saved to your account and applies on every device when you are signed in.",
+    "languageHintGuest": "Switching language updates this visit only. Sign in to save your preference.",
+    "languageHebrew": "עברית",
+    "languageEnglish": "English",
+    "languageActive": "Current"
   }
 }

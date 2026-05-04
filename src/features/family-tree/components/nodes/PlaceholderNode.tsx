@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { useLocale } from 'next-intl';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 
 import type { PlaceholderNodeData } from '../../lib/types';
@@ -27,6 +28,7 @@ const LABEL: Record<PlaceholderNodeData['meta']['kind'], string> = {
 };
 
 function PlaceholderNodeInner({ data }: NodeProps) {
+  const locale = useLocale();
   const { meta } = data as unknown as PlaceholderNodeData;
 
   return (
@@ -34,7 +36,7 @@ function PlaceholderNodeInner({ data }: NodeProps) {
       type="button"
       style={{ width: PLACEHOLDER_NODE_WIDTH, height: PLACEHOLDER_NODE_HEIGHT }}
       className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300/90 bg-white/80 text-slate-500 transition hover:border-[#3e5045]/50 hover:bg-[#f4f3e9] hover:text-[#3e5045]"
-      dir="rtl"
+      dir={locale === 'he' ? 'rtl' : 'ltr'}
     >
       <Handle
         id="top"
