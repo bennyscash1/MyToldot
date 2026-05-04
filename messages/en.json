@@ -152,7 +152,8 @@
     "notLoggedIn": "Please log in to view your family tree.",
     "noTree": "You do not have a family tree yet.",
     "noTreeAction": "Create My Tree",
-    "comingSoon": "Interactive tree visualization coming in the next phase."
+    "comingSoon": "Interactive tree visualization coming in the next phase.",
+    "firstRootModalTitle": "Add the start of your lineage"
   },
   "familyHub": {
     "title": "Your Family Trees",

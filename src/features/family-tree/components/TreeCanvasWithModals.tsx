@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
 
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
@@ -9,7 +10,7 @@ import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { AddRelativePopover } from './panels/AddRelativePopover';
 import { PersonSidePanel } from './panels/PersonSidePanel';
-import { PersonForm } from '@/components/features/persons/PersonForm';
+import { PersonForm } from '@/features/persons/components/PersonForm';
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
@@ -33,9 +34,15 @@ export function TreeCanvasWithModals({
   strictMode = false,
 }: TreeCanvasWithModalsProps) {
   const router = useRouter();
+  const locale = useLocale();
+  const tTree = useTranslations('treePage');
+  const tPersonForm = useTranslations('personForm');
+  const headerDir = locale === 'he' ? 'rtl' : 'ltr';
+
   const {
     persons,
     relationships,
+    createPerson,
     addParent,
     addSpouse,
     addChild,
@@ -159,6 +166,17 @@ export function TreeCanvasWithModals({
     [popover, addParent, addSpouse, addChild],
   );
 
+  const handleFirstRootSubmit = useCallback(
+    async (input: PersonInput) => {
+      const id = await createPerson(input);
+      if (id) {
+        closeFirstPersonForm();
+        router.refresh();
+      }
+    },
+    [createPerson, closeFirstPersonForm, router],
+  );
+
   const sidePerson = sidePersonId ? persons.find((p) => p.id === sidePersonId) : null;
 
   return (
@@ -181,16 +199,58 @@ export function TreeCanvasWithModals({
         >
           <div
             ref={firstPersonModalRef}
-            className="max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl"
+            className="max-h-[min(90vh,720px)] w-full max-w-[340px] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="first-root-modal-title"
           >
+            <div className="mb-3 flex items-center justify-between" dir={headerDir}>
+              <h2
+                id="first-root-modal-title"
+                className="text-sm font-semibold text-slate-900"
+              >
+                {tTree('firstRootModalTitle')}
+              </h2>
+              <button
+                type="button"
+                onClick={closeFirstPersonForm}
+                className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                aria-label={locale === 'he' ? 'סגור' : 'Close'}
+              >
+                ✕
+              </button>
+            </div>
+
+            {strictMode && (
+              <div
+                className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                dir={headerDir}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {tPersonForm('strictModeWarning')}
+              </div>
+            )}
+
             <PersonForm
-              treeId={treeId}
-              strictMode={strictMode}
-              onSuccess={() => {
-                closeFirstPersonForm();
-                router.refresh();
-              }}
+              variant="firstRoot"
+              submitLabel="שמור"
+              cancelLabel="ביטול"
+              onSubmit={handleFirstRootSubmit}
               onCancel={closeFirstPersonForm}
+              isSubmitting={isSaving}
+              errorMessage={lastError}
             />
           </div>
         </div>

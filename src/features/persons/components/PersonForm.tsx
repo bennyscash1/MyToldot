@@ -22,6 +22,8 @@ const L = {
   deathDate: 'תאריך פטירה',
   birthPlace: 'מקום לידה',
   bio: 'ביוגרפיה',
+  /** Optional description on empty-tree first person flow */
+  descriptionOptional: 'תיאור (אופציונלי)',
   hebrewDatePrefix: 'תאריך עברי:',
   requiredFirstName: 'שם פרטי הוא שדה חובה',
   requiredGender: 'יש לבחור מין',
@@ -29,8 +31,9 @@ const L = {
 
 export interface PersonFormProps {
   /** 'quick' = name + gender + birth_date only (AddRelativePopover).
+   *  'firstRoot' = same as quick + optional description (empty canvas +).
    *  'full'  = every field (PersonSidePanel edit mode). */
-  variant: 'quick' | 'full';
+  variant: 'quick' | 'firstRoot' | 'full';
   initialValue?: Partial<PersonInput>;
   /** Override default first-name gender — useful for "add father" vs "add mother". */
   defaultGender?: 'MALE' | 'FEMALE';
@@ -211,6 +214,17 @@ export function PersonForm({
             />
           </FieldLabel>
         </>
+      )}
+
+      {variant === 'firstRoot' && (
+        <FieldLabel label={L.descriptionOptional}>
+          <textarea
+            rows={3}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            className={clsx(inputClass, 'resize-none')}
+          />
+        </FieldLabel>
       )}
 
       {(localError || errorMessage) && (
