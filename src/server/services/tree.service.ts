@@ -37,6 +37,8 @@ export interface TreePageData {
   membershipRole: TreeMemberRole | null;
   rootPersonId: string | null;
   linkedPersonId: string | null;
+  /** Mirrors `Tree.strict_lineage_enforcement` when a tree is loaded. */
+  strictLineageEnforcement: boolean;
   initialPersons: PersonRow[];
   initialRelationships: RelationshipRow[];
   initialFocalId: string | null;
@@ -151,6 +153,7 @@ const TREE_ROUTE_LOOKUP_SELECT = {
   name: true,
   is_public: true,
   root_person_id: true,
+  strict_lineage_enforcement: true,
   _count: { select: { persons: true } },
 } as const;
 
@@ -209,6 +212,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
   let membershipRole: TreeMemberRole | null = null;
   let rootPersonId: string | null = null;
   let linkedPersonId: string | null = null;
+  let strictLineageEnforcement = false;
 
   try {
     if (user) {
@@ -223,6 +227,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
               id: true,
               name: true,
               root_person_id: true,
+              strict_lineage_enforcement: true,
               _count: { select: { persons: true } },
             },
           },
@@ -236,6 +241,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
         membershipRole = membership.role;
         rootPersonId = membership.tree.root_person_id;
         linkedPersonId = membership.linked_person_id;
+        strictLineageEnforcement = membership.tree.strict_lineage_enforcement;
       }
     } else {
       let firstTree = await prisma.tree.findFirst({
@@ -244,6 +250,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
           id: true,
           name: true,
           root_person_id: true,
+          strict_lineage_enforcement: true,
           _count: { select: { persons: true } },
         },
       });
@@ -258,6 +265,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
             slug: true,
             name: true,
             root_person_id: true,
+            strict_lineage_enforcement: true,
             _count: { select: { persons: true } },
           },
         });
@@ -267,6 +275,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
       treeName = firstTree.name;
       personCount = firstTree._count.persons;
       rootPersonId = firstTree.root_person_id;
+      strictLineageEnforcement = firstTree.strict_lineage_enforcement;
     }
   } catch {
     // DB unavailable: preserve page behavior by returning no-tree state.
@@ -280,6 +289,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
       membershipRole: null,
       rootPersonId: null,
       linkedPersonId: null,
+      strictLineageEnforcement: false,
       initialPersons: [],
       initialRelationships: [],
       initialFocalId: null,
@@ -340,6 +350,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
     membershipRole,
     rootPersonId,
     linkedPersonId,
+    strictLineageEnforcement,
     initialPersons,
     initialRelationships,
     initialFocalId: linkedPersonId ?? rootPersonId ?? initialPersons[0]?.id ?? null,
@@ -425,6 +436,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
     membershipRole,
     rootPersonId: tree.root_person_id,
     linkedPersonId,
+    strictLineageEnforcement: tree.strict_lineage_enforcement,
     initialPersons,
     initialRelationships,
     initialFocalId: linkedPersonId ?? tree.root_person_id ?? initialPersons[0]?.id ?? null,

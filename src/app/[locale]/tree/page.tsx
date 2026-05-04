@@ -66,7 +66,7 @@ export default async function TreePage({ params }: LocalePageProps) {
         </div>
 
         <Link
-          href="/tree/setup"
+          href="/setup-root"
           className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
         >
           {t('createTree')}
@@ -89,5 +89,5 @@ export default async function TreePage({ params }: LocalePageProps) {
   const publicCode = firstPublic?.shortCode ?? firstPublic?.slug;
   if (publicCode) redirect(`/${locale}/tree/${publicCode}`);
 
-  redirect(`/${locale}/tree/setup`);
+  redirect(`/${locale}/setup-root`);
 }

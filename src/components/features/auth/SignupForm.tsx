@@ -15,7 +15,7 @@ import { ServiceError } from '@/services/api.client';
 //  1. Client-side validation (required, password length,
 //     password confirmation match)
 //  2. POST /api/v1/auth/signup via authService
-//  3. On success → redirect to /setup-root (onboarding)
+//  3. On success → redirect to home (same as login)
 //  4. On failure → inline error message
 // ──────────────────────────────────────────────
 
@@ -57,8 +57,7 @@ export function SignupForm() {
 
     try {
       await authService.signup(email.trim(), password, fullName.trim());
-      // After signup the user has an active session — take them to onboarding.
-      router.push('/setup-root');
+      router.push('/');
       router.refresh();
     } catch (err) {
       if (err instanceof ServiceError) {

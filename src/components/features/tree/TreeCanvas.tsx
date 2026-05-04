@@ -126,7 +126,7 @@ export function TreeCanvas({
           <button
             type="button"
             onClick={onAddFirstPerson}
-            className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#3e5045] text-3xl font-light text-white shadow-lg transition hover:bg-[#323d36] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#3e5045]/35"
+            className="pointer-events-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#3e5045] text-5xl font-light leading-none text-white shadow-lg transition hover:bg-[#323d36] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#3e5045]/35"
             title="הוספת אדם ראשון"
             aria-label="הוספת אדם ראשון"
           >

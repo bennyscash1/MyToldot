@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from '@/i18n/routing';
 
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow, PlaceholderMeta, RelationshipRow } from '../lib/types';
@@ -8,20 +9,7 @@ import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { AddRelativePopover } from './panels/AddRelativePopover';
 import { PersonSidePanel } from './panels/PersonSidePanel';
-
-const FIRST_PERSON: PersonInput = {
-  first_name: 'Person',
-  last_name: null,
-  maiden_name: null,
-  first_name_he: 'אדם ראשון',
-  last_name_he: null,
-  gender: 'UNKNOWN',
-  birth_date: null,
-  death_date: null,
-  birth_place: null,
-  bio: null,
-  profile_image: null,
-};
+import { PersonForm } from '@/components/features/persons/PersonForm';
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
@@ -31,6 +19,7 @@ export interface TreeCanvasWithModalsProps {
   initialFocalId: string | null;
   canEdit: boolean;
   canDeletePerson: boolean;
+  strictMode?: boolean;
 }
 
 export function TreeCanvasWithModals({
@@ -41,11 +30,12 @@ export function TreeCanvasWithModals({
   initialFocalId,
   canEdit,
   canDeletePerson,
+  strictMode = false,
 }: TreeCanvasWithModalsProps) {
+  const router = useRouter();
   const {
     persons,
     relationships,
-    createPerson,
     addParent,
     addSpouse,
     addChild,
@@ -68,6 +58,8 @@ export function TreeCanvasWithModals({
   } | null>(null);
 
   const [sidePersonId, setSidePersonId] = useState<string | null>(null);
+  const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
+  const firstPersonModalRef = useRef<HTMLDivElement>(null);
 
   const onAddRelative = useCallback(
     (meta: PlaceholderMeta, screenX: number, screenY: number) => {
@@ -85,11 +77,32 @@ export function TreeCanvasWithModals({
     [clearError],
   );
 
-  const onAddFirstPerson = useCallback(async () => {
+  const closeFirstPersonForm = useCallback(() => {
+    setShowFirstPersonForm(false);
     clearError();
-    const id = await createPerson(FIRST_PERSON);
-    if (id) setSidePersonId(id);
-  }, [clearError, createPerson]);
+  }, [clearError]);
+
+  const onAddFirstPerson = useCallback(() => {
+    clearError();
+    setShowFirstPersonForm(true);
+  }, [clearError]);
+
+  useEffect(() => {
+    if (!showFirstPersonForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeFirstPersonForm();
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (!firstPersonModalRef.current) return;
+      if (!firstPersonModalRef.current.contains(e.target as Node)) closeFirstPersonForm();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onMouseDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onMouseDown);
+    };
+  }, [showFirstPersonForm, closeFirstPersonForm]);
 
   const handleOpenAddFromPanel = useCallback(
     (kind: 'add-parent' | 'add-spouse' | 'add-child') => {
@@ -160,6 +173,28 @@ export function TreeCanvasWithModals({
         onAddRelative={canEdit ? onAddRelative : undefined}
         onAddFirstPerson={canEdit ? onAddFirstPerson : undefined}
       />
+
+      {showFirstPersonForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+        >
+          <div
+            ref={firstPersonModalRef}
+            className="max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl"
+          >
+            <PersonForm
+              treeId={treeId}
+              strictMode={strictMode}
+              onSuccess={() => {
+                closeFirstPersonForm();
+                router.refresh();
+              }}
+              onCancel={closeFirstPersonForm}
+            />
+          </div>
+        </div>
+      )}
 
       {popover && (
         <AddRelativePopover

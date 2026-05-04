@@ -15,8 +15,7 @@ import { SignupForm }       from '@/components/features/auth/SignupForm';
 //  1. If already authenticated → redirect to "/".
 //  2. Otherwise render the AuthShell + SignupForm.
 //
-// On successful signup the SignupForm redirects
-// the user to /setup-root to complete onboarding.
+// On successful signup the SignupForm redirects the user to home ("/").
 // ──────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {

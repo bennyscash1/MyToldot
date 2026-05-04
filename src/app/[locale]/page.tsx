@@ -49,7 +49,7 @@ export default async function HomePage({ params }: LocalePageProps) {
         /* Logged-in: primary = create tree, secondary = view tree */
         <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/tree/setup"
+            href="/setup-root"
             className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
             {t('createTree')}

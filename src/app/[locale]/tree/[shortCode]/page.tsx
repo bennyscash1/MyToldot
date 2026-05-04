@@ -72,6 +72,7 @@ export default async function TreeShortCodePage({ params }: TreeShortCodePagePro
             initialFocalId={treeData.initialFocalId}
             canEdit={canEditTree}
             canDeletePerson={canDeletePerson}
+            strictMode={treeData.strictLineageEnforcement}
           />
         </div>
       </div>

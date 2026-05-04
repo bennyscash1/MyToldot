@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import type { LocalePageProps } from '@/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
@@ -13,7 +14,7 @@ import { SetupRootFlow } from '@/components/features/persons/SetupRootFlow';
 //
 // Server-side responsibilities:
 //  1. Validate the user session.
-//  2. Check whether the user already has a tree.
+//  2. Check whether the user already owns a tree (OWNER only — not viewer on others’ trees).
 //  3. Pass resolved data as props to SetupRootFlow
 //     (Client Component) — no client-side loading states
 //     needed for the initial render.
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SetupRootPage({ params }: LocalePageProps) {
-  await params;
+  const { locale } = await params;
   const t = await getTranslations('setup');
 
   // ── 1. Resolve auth ──
@@ -49,39 +50,42 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
     );
   }
 
-  // ── 2. Resolve tree + person count ──
+  // ── 2. Owned tree only (users may also be VIEWER on someone else’s tree) ──
   let treeId: string | null = null;
   let treeRouteCode: string | null = null;
-  let strictMode = false;
   let personCount = 0;
 
   try {
-    const membership = await prisma.treeMember.findFirst({
-      where:   { user_id: user.id },
+    const ownerMembership = await prisma.treeMember.findFirst({
+      where:   { user_id: user.id, role: 'OWNER' },
       orderBy: { joined_at: 'asc' },
       select: {
         tree: {
           select: {
-            id:                         true,
-            shortCode:                  true,
-            slug:                       true,
-            strict_lineage_enforcement: true,
+            id: true,
+            shortCode: true,
+            slug: true,
             _count: { select: { persons: true } },
           },
         },
       },
     });
 
-    const tree = membership?.tree ?? null;
+    const tree = ownerMembership?.tree ?? null;
     treeId = tree?.id ?? null;
     treeRouteCode = tree?.shortCode ?? tree?.slug ?? null;
-    strictMode = tree?.strict_lineage_enforcement ?? false;
     personCount = tree?._count.persons ?? 0;
   } catch {
     // DB unavailable in local dev — continue with onboarding UI.
   }
 
-  // Tree exists AND already has people — no need to re-run setup.
+  // Owned tree exists but nobody added yet — first person is added on the tree canvas.
+  if (treeId && personCount === 0) {
+    if (treeRouteCode) redirect(`/${locale}/tree/${treeRouteCode}`);
+    redirect(`/${locale}/tree`);
+  }
+
+  // User owns a tree that already has people — no need to re-run setup.
   if (treeId && personCount > 0) {
     return (
       <SetupShell title={t('pageTitle')} subtitle={t('pageSubtitle')}>
@@ -101,7 +105,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
           </div>
           <p className="font-medium text-gray-800">{t('alreadySetup')}</p>
           <Link
-            href={treeRouteCode ? `/tree/${treeRouteCode}` : '/tree/setup'}
+            href={treeRouteCode ? `/tree/${treeRouteCode}` : '/tree'}
             className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
           >
             {t('viewTree')}
@@ -114,11 +118,7 @@ export default async function SetupRootPage({ params }: LocalePageProps) {
   // ── 3. Render the interactive setup flow ──
   return (
     <SetupShell title={t('pageTitle')} subtitle={t('pageSubtitle')}>
-      <SetupRootFlow
-        initialTreeId={treeId}
-        initialTreeRouteCode={treeRouteCode}
-        strictMode={strictMode}
-      />
+      <SetupRootFlow />
     </SetupShell>
   );
 }
