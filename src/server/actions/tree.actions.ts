@@ -6,8 +6,9 @@ import { Prisma, type TreeMemberRole } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { requireAuthUser, requireTreeRole } from '@/lib/api/auth';
-import { Errors } from '@/lib/api/errors';
+import { ApiError, Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
+import { ensureMirroredAuthUser } from '@/lib/ensure-mirrored-auth-user';
 import {
   PersonInputSchema,
   CuidSchema,
@@ -65,15 +66,7 @@ export async function createTreeAction(
 
     // Mirror the Supabase user into our users table if missing (defensive —
     // signup normally handles this, but trees can be created later).
-    await prisma.user.upsert({
-      where: { id: user.id },
-      update: {},
-      create: {
-        id: user.id,
-        email: user.email!,
-        full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
-      },
-    });
+    await ensureMirroredAuthUser(user);
 
     let tree: CreatedTreeDto | null = null;
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -234,21 +227,15 @@ export async function joinFamilyByCode(
     const code = JoinFamilyCodeSchema.parse(rawCode);
     const user = await requireAuthUser();
 
-    await prisma.user.upsert({
-      where: { id: user.id },
-      update: {},
-      create: {
-        id: user.id,
-        email: user.email!,
-        full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
-      },
-    });
+    await ensureMirroredAuthUser(user);
 
     const tree = await prisma.tree.findUnique({
       where: { shortCode: code },
       select: { id: true, shortCode: true },
     });
-    if (!tree) throw Errors.notFound('No family found for this code');
+    if (!tree) {
+      throw new ApiError('NOT_FOUND', 'No family found for this code', 404);
+    }
 
     await prisma.treeMember.upsert({
       where: { tree_id_user_id: { tree_id: tree.id, user_id: user.id } },
