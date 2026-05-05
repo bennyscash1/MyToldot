@@ -1,5 +1,6 @@
 'use client';
 
+import imageCompression from 'browser-image-compression';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import type { ApiEnvelope } from '@/types/api';
 import { ServiceError } from './api.client';
@@ -27,6 +28,11 @@ const UPLOAD_ENDPOINT = '/api/v1/uploads/profile-image';
 
 const MAX_FILE_SIZE_MB = 5;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.2,
+  maxWidthOrHeight: 500,
+  useWebWorker: true,
+} as const;
 
 export interface UploadResult {
   /** Storage path relative to bucket root e.g. "tree-xyz/person-abc-1234.jpg" */
@@ -70,9 +76,18 @@ export const storageService = {
     personId: string,
   ): Promise<UploadResult> {
     validateFile(file);
+    let fileToUpload = file;
+    if (file.type.startsWith('image/')) {
+      try {
+        const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+        fileToUpload = new File([compressed], file.name, { type: compressed.type || file.type });
+      } catch (compressionError) {
+        console.warn('[storageService] image compression failed; uploading original file:', compressionError);
+      }
+    }
 
     const form = new FormData();
-    form.append('file', file, file.name);
+    form.append('file', fileToUpload, fileToUpload.name);
     form.append('treeId', treeId);
     form.append('personId', personId);
 
