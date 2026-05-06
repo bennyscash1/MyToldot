@@ -32,7 +32,28 @@
   "treeNav": {
     "breadcrumbLabel": "Family tree breadcrumb",
     "home": "Home",
-    "about": "About"
+    "about": "About",
+    "aboutWithFamily": "About {name}"
+  },
+  "treeFamilyAboutPage": {
+    "metaTitle": "{name} — About",
+    "metaTitleFallback": "About",
+    "title": "About {name}",
+    "subtitle": "Tree name, description, and family tags. Editors can update them here.",
+    "treeNameHeading": "Tree name",
+    "treeNameLabel": "Tree name",
+    "descriptionHeading": "Description",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "A short description of this family tree (optional)",
+    "noDescriptionYet": "No description yet.",
+    "save": "Save",
+    "saveFailed": "Could not save changes. Please try again.",
+    "nameRequired": "Please enter a name for the tree.",
+    "familyTagsHeading": "Family tags",
+    "familyTagsPlaceholder": "Type a tag and press Enter",
+    "familyTagsHint": "Press Enter or comma to add. Backspace on an empty field removes the last tag.",
+    "removeTag": "Remove tag",
+    "noTagsYet": "No tags yet."
   },
   "common": {
     "loading": "Loading…",

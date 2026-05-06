@@ -32,7 +32,28 @@
   "treeNav": {
     "breadcrumbLabel": "פירורי ניווט לעץ המשפחה",
     "home": "בית",
-    "about": "אודות"
+    "about": "אודות",
+    "aboutWithFamily": "אודות {name}"
+  },
+  "treeFamilyAboutPage": {
+    "metaTitle": "{name} — אודות",
+    "metaTitleFallback": "אודות",
+    "title": "אודות {name}",
+    "subtitle": "שם העץ, התיאור ותגיות המשפחה. עורכים יכולים לעדכן כאן.",
+    "treeNameHeading": "שם העץ",
+    "treeNameLabel": "שם העץ",
+    "descriptionHeading": "תיאור",
+    "descriptionLabel": "תיאור",
+    "descriptionPlaceholder": "תיאור קצר של עץ המשפחה (אופציונלי)",
+    "noDescriptionYet": "אין תיאור עדיין.",
+    "save": "שמור",
+    "saveFailed": "לא ניתן לשמור. נסו שוב.",
+    "nameRequired": "נא להזין שם לעץ.",
+    "familyTagsHeading": "תגיות משפחה",
+    "familyTagsPlaceholder": "הקלידו תגית ולחצו Enter",
+    "familyTagsHint": "Enter או פסיק להוספה. Backspace על שדה ריק מסירה את התגית האחרונה.",
+    "removeTag": "הסר תגית",
+    "noTagsYet": "עדיין אין תגיות."
   },
   "common": {
     "loading": "טוען…",

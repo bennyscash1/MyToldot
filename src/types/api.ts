@@ -48,7 +48,8 @@ export interface CreateTreeBody {
 /** Body for PATCH /api/v1/trees/:id */
 export interface UpdateTreeBody {
   name?: string;
-  description?: string;
+  /** Omit to leave unchanged; `null` clears the stored description. */
+  description?: string | null;
   is_public?: boolean;
 }
 
