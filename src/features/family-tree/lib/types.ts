@@ -56,7 +56,7 @@ export interface UnionMeta {
 
 export interface BipartiteNode {
   id: string;
-  kind: 'person' | 'union' | 'placeholder';
+  kind: 'person' | 'union';
   /** Generation index relative to focal person. 0 = focal row, negative = ancestors, positive = descendants. */
   gen: number;
   /** Rendered size — must match the React component's CSS box for ELK to route edges correctly. */
@@ -65,7 +65,6 @@ export interface BipartiteNode {
   /** Type-specific payload. */
   person?: PersonRow;
   union?: UnionMeta;
-  placeholder?: PlaceholderMeta;
 }
 
 export type PlaceholderKind = 'add-parent' | 'add-spouse' | 'add-child' | 'add-sibling';
@@ -109,13 +108,8 @@ export type UnionNodeData = {
   meta: UnionMeta;
 };
 
-export type PlaceholderNodeData = {
-  meta: PlaceholderMeta;
-};
-
 export type FlowNode =
   | Node<PersonNodeData, 'person'>
-  | Node<UnionNodeData, 'union'>
-  | Node<PlaceholderNodeData, 'placeholder'>;
+  | Node<UnionNodeData, 'union'>;
 
 export type FlowEdge = Edge;

@@ -7,11 +7,9 @@ import { TreeCanvas } from '@/components/features/tree/TreeCanvas';
 import { useElkLayout } from '../hooks/useElkLayout';
 import { PersonCardNode } from './nodes/PersonCardNode';
 import { UnionNode } from './nodes/UnionNode';
-import { PlaceholderNode } from './nodes/PlaceholderNode';
 import type {
   FlowNode,
   PersonRow,
-  PlaceholderNodeData,
   RelationshipRow,
 } from '../lib/types';
 
@@ -24,7 +22,6 @@ export interface FamilyTreeViewerProps {
   /** Suppresses "+" cards for read-only viewers of public trees. */
   canEdit: boolean;
   onSelectPerson?: (personId: string) => void;
-  onAddRelative?: (meta: PlaceholderNodeData['meta'], screenX: number, screenY: number) => void;
   /** When the tree has no people yet — centered "+" creates the first person and opens the editor. */
   onAddFirstPerson?: () => void;
 }
@@ -32,7 +29,6 @@ export interface FamilyTreeViewerProps {
 const NODE_TYPES: NodeTypes = {
   person: PersonCardNode,
   union: UnionNode,
-  placeholder: PlaceholderNode,
 };
 
 function FamilyTreeViewerInner({
@@ -41,7 +37,6 @@ function FamilyTreeViewerInner({
   initialFocalId,
   canEdit,
   onSelectPerson,
-  onAddRelative,
   onAddFirstPerson,
 }: Omit<FamilyTreeViewerProps, 'treeId'>) {
   // ─── Frozen focal ──────────────────────────────────────────────────────────
@@ -82,7 +77,6 @@ function FamilyTreeViewerInner({
     persons,
     relationships,
     focalId: layoutFocalId,
-    showPlaceholders: canEdit,
   });
 
   const onNodeClick = useCallback<NodeMouseHandler>(
@@ -93,13 +87,9 @@ function FamilyTreeViewerInner({
         // Changing the focal triggers a full ELK re-layout and causes spouse
         // nodes to drift to the wrong generation row.
         onSelectPerson?.(typed.id);
-        return;
-      }
-      if (typed.type === 'placeholder') {
-        onAddRelative?.(typed.data.meta, event.clientX, event.clientY);
       }
     },
-    [onSelectPerson, onAddRelative],
+    [onSelectPerson],
   );
 
   const showEmptyAdd = persons.length === 0 && Boolean(canEdit && onAddFirstPerson);

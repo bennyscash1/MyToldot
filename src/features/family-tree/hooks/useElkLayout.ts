@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { buildBipartiteGraph } from '../lib/buildBipartiteGraph';
-import { synthesizePlaceholders } from '../lib/placeholders';
 import { layoutBipartiteGraph, type LayoutResult } from '../lib/elkLayout';
 import type { FlowEdge, FlowNode, PersonRow, RelationshipRow } from '../lib/types';
 
@@ -11,8 +10,6 @@ interface UseElkLayoutArgs {
   persons: PersonRow[];
   relationships: RelationshipRow[];
   focalId: string | null;
-  /** When false, skip placeholder synthesis (useful for read-only / public view). */
-  showPlaceholders?: boolean;
 }
 
 interface UseElkLayoutResult {
@@ -38,13 +35,12 @@ export function useElkLayout({
   persons,
   relationships,
   focalId,
-  showPlaceholders = true,
 }: UseElkLayoutArgs): UseElkLayoutResult {
   // focalId is excluded from the hash — see jsdoc above.
   const topoHash = useMemo(() => {
     if (persons.length === 0) return '__empty__';
-    return hashTopology(persons, relationships, showPlaceholders);
-  }, [persons, relationships, showPlaceholders]);
+    return hashTopology(persons, relationships);
+  }, [persons, relationships]);
 
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,11 +70,6 @@ export function useElkLayout({
     setIsLoading(true);
 
     const graph = buildBipartiteGraph(persons, relationships, focalId);
-    if (showPlaceholders) {
-      const ph = synthesizePlaceholders(graph, focalId);
-      graph.nodes.push(...ph.nodes);
-      graph.edges.push(...ph.edges);
-    }
 
     layoutBipartiteGraph(graph)
       .then((result) => {
@@ -117,7 +108,6 @@ export function useElkLayout({
 function hashTopology(
   persons: PersonRow[],
   relationships: RelationshipRow[],
-  showPlaceholders: boolean,
 ): string {
   // focalId intentionally excluded — see hook jsdoc.
   // Only topology-relevant fields; cosmetic edits (name, birth date) are ignored.
@@ -129,7 +119,7 @@ function hashTopology(
     .map((x) => `${x.id}:${x.relationship_type}:${x.person1_id}>${x.person2_id}`)
     .sort()
     .join('|');
-  return `${showPlaceholders ? 1 : 0}|${p}|${r}`;
+  return `${p}|${r}`;
 }
 
 function toFlowElements(
@@ -158,13 +148,7 @@ function toFlowElements(
         selectable: false,
       } as FlowNode;
     }
-    return {
-      id: n.id,
-      type: 'placeholder',
-      position: { x: n.x, y: n.y },
-      data: { meta: n.placeholder! },
-      draggable: false,
-    } as FlowNode;
+    throw new Error(`Unsupported node kind: ${String((n as { kind?: unknown }).kind)}`);
   });
 
   const posById = new Map(layout.nodes.map((n) => [n.id, n]));

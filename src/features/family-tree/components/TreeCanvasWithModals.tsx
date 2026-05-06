@@ -68,14 +68,6 @@ export function TreeCanvasWithModals({
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const firstPersonModalRef = useRef<HTMLDivElement>(null);
 
-  const onAddRelative = useCallback(
-    (meta: PlaceholderMeta, screenX: number, screenY: number) => {
-      clearError();
-      setPopover({ meta, screenX, screenY });
-    },
-    [clearError],
-  );
-
   const onSelectPerson = useCallback(
     (personId: string) => {
       clearError();
@@ -188,7 +180,6 @@ export function TreeCanvasWithModals({
         initialFocalId={initialFocalId}
         canEdit={canEdit}
         onSelectPerson={onSelectPerson}
-        onAddRelative={canEdit ? onAddRelative : undefined}
         onAddFirstPerson={canEdit ? onAddFirstPerson : undefined}
       />
 

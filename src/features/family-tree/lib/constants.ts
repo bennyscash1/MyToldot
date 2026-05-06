@@ -10,9 +10,6 @@ export const PERSON_NODE_HEIGHT = 212;
 export const UNION_NODE_WIDTH = 24;
 export const UNION_NODE_HEIGHT = 12;
 
-export const PLACEHOLDER_NODE_WIDTH = 168;
-export const PLACEHOLDER_NODE_HEIGHT = 80;
-
 // Vertical space between generations (top-of-row to top-of-next-row).
 // Must be > PERSON_NODE_HEIGHT (212) to prevent generation rows from overlapping.
 // 332 = 212 (card height) + 120 (extra vertical breathing room).
