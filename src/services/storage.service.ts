@@ -1,6 +1,7 @@
 'use client';
 
 import imageCompression from 'browser-image-compression';
+import { PROFILE_UPLOAD_MAX_DIMENSION } from '@/lib/images/profile-upload-constraints';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import type { ApiEnvelope } from '@/types/api';
 import { ServiceError } from './api.client';
@@ -25,12 +26,13 @@ import { ServiceError } from './api.client';
 // ──────────────────────────────────────────────
 
 const UPLOAD_ENDPOINT = '/api/v1/uploads/profile-image';
+const TREE_ABOUT_UPLOAD_ENDPOINT = '/api/v1/uploads/tree-about-image';
 
 const MAX_FILE_SIZE_MB = 5;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 const COMPRESSION_OPTIONS = {
   maxSizeMB: 0.2,
-  maxWidthOrHeight: 500,
+  maxWidthOrHeight: PROFILE_UPLOAD_MAX_DIMENSION,
   useWebWorker: true,
 } as const;
 
@@ -127,6 +129,76 @@ export const storageService = {
 
     if (envelope.error !== null) {
       console.error('[storageService] upload failed:', {
+        status: response.status,
+        code: envelope.error.code,
+        message: envelope.error.message,
+      });
+      throw new ServiceError(
+        envelope.error.code,
+        envelope.error.message,
+        response.status,
+      );
+    }
+
+    return envelope.data;
+  },
+
+  /**
+   * Uploads a tree About-page gallery image (same compression as profile images).
+   * Path pattern: `{treeId}/about/{unique}.{ext}` — persist `path` on the Tree row.
+   */
+  async uploadTreeAboutImage(file: File, treeId: string): Promise<UploadResult> {
+    validateFile(file);
+    let fileToUpload = file;
+    if (file.type.startsWith('image/')) {
+      try {
+        const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+        fileToUpload = new File([compressed], file.name, { type: compressed.type || file.type });
+      } catch (compressionError) {
+        console.warn(
+          '[storageService] tree-about image compression failed; uploading original file:',
+          compressionError,
+        );
+      }
+    }
+
+    const form = new FormData();
+    form.append('file', fileToUpload, fileToUpload.name);
+    form.append('treeId', treeId);
+
+    let response: Response;
+    try {
+      response = await fetch(TREE_ABOUT_UPLOAD_ENDPOINT, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+    } catch (networkError) {
+      console.error('[storageService] network error during tree-about upload:', networkError);
+      throw new ServiceError(
+        'UPLOAD_NETWORK_ERROR',
+        'Could not reach the upload service. Check your connection and try again.',
+        0,
+      );
+    }
+
+    let envelope: ApiEnvelope<UploadResult>;
+    try {
+      envelope = (await response.json()) as ApiEnvelope<UploadResult>;
+    } catch (parseError) {
+      console.error('[storageService] could not parse tree-about upload response:', {
+        status: response.status,
+        parseError,
+      });
+      throw new ServiceError(
+        'UPLOAD_INVALID_RESPONSE',
+        `Upload service returned a non-JSON response (status ${response.status}).`,
+        response.status,
+      );
+    }
+
+    if (envelope.error !== null) {
+      console.error('[storageService] tree-about upload failed:', {
         status: response.status,
         code: envelope.error.code,
         message: envelope.error.message,

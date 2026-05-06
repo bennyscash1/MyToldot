@@ -12,6 +12,7 @@ import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireAuthUser } from '@/lib/api/auth';
 import { generateUniqueTreeSlug, generateUniqueTreeShortCode } from '@/lib/tree/slug';
+import { parseAboutImagesFromJson } from '@/lib/tree/about-images';
 import type { CreateTreeBody, TreeDto } from '@/types/api';
 
 // GET /api/v1/trees
@@ -35,6 +36,7 @@ export const GET = withErrorHandler(async () => {
           strict_lineage_enforcement: true,
           about_text: true,
           main_surnames: true,
+          about_images: true,
           created_at: true,
           updated_at: true,
           _count: { select: { persons: true } },
@@ -44,13 +46,17 @@ export const GET = withErrorHandler(async () => {
     orderBy: { joined_at: 'asc' },
   });
 
-  const trees = memberships.map(({ role, tree }) => ({
-    ...tree,
-    person_count: tree._count.persons,
-    my_role: role,
-    created_at: tree.created_at.toISOString(),
-    updated_at: tree.updated_at.toISOString(),
-  }));
+  const trees = memberships.map(({ role, tree }) => {
+    const { _count, ...rest } = tree;
+    return {
+      ...rest,
+      about_images: parseAboutImagesFromJson(rest.about_images),
+      person_count: _count.persons,
+      my_role: role,
+      created_at: tree.created_at.toISOString(),
+      updated_at: tree.updated_at.toISOString(),
+    };
+  });
 
   return ok(trees);
 });
@@ -83,6 +89,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     strict_lineage_enforcement: boolean;
     about_text: string | null;
     main_surnames: string[];
+    about_images: Prisma.JsonValue | null;
     created_at: Date;
     updated_at: Date;
   } | null = null;
@@ -120,6 +127,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             strict_lineage_enforcement: true,
             about_text: true,
             main_surnames: true,
+            about_images: true,
             created_at: true,
             updated_at: true,
           },
@@ -157,6 +165,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   return ok<TreeDto>(
     {
       ...tree,
+      about_images: parseAboutImagesFromJson(tree.about_images),
       created_at: tree.created_at.toISOString(),
       updated_at: tree.updated_at.toISOString(),
     } as TreeDto,

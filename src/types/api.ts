@@ -24,6 +24,13 @@ export type { ApiEnvelope };
 // TREE
 // ─────────────────────────────────────────────
 
+/** One image in the tree About-page gallery (storage path in profile-pictures bucket). */
+export interface TreeAboutImageItem {
+  path: string;
+  caption: string;
+  order: number;
+}
+
 /** What the API returns for a Tree record. */
 export interface TreeDto {
   id: string;
@@ -34,6 +41,8 @@ export interface TreeDto {
   is_public: boolean;
   about_text: string | null;
   main_surnames: string[];
+  /** Normalized gallery entries; null or empty when none. */
+  about_images: TreeAboutImageItem[] | null;
   created_at: string; // ISO 8601
   updated_at: string;
 }
@@ -51,6 +60,8 @@ export interface UpdateTreeBody {
   /** Omit to leave unchanged; `null` clears the stored description. */
   description?: string | null;
   is_public?: boolean;
+  /** Replace entire gallery when provided (max length enforced server-side). */
+  about_images?: TreeAboutImageItem[];
 }
 
 /**

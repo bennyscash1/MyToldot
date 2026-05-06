@@ -60,6 +60,22 @@ export function buildProfileImagePath(
 }
 
 /**
+ * Storage path for a tree About-page gallery image (same bucket as profiles).
+ * Pattern: {treeId}/about/{timestamp}-{rand}.{ext}
+ */
+export function buildTreeAboutImagePath(
+  treeId: string,
+  originalFilename: string,
+  contentType?: string,
+): string {
+  const fromType = contentType ? EXT_FROM_TYPE[contentType] : undefined;
+  const fromName = originalFilename.split('.').pop()?.toLowerCase();
+  const ext = fromType ?? fromName ?? 'jpg';
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return `${treeId}/about/${unique}.${ext}`;
+}
+
+/**
  * Uploads a profile image using the service-role client (bypasses RLS).
  * Throws a descriptive Error when the upload fails so callers can surface a
  * clear message instead of the underlying provider error.

@@ -153,6 +153,7 @@ const TREE_ROUTE_LOOKUP_SELECT = {
   name: true,
   description: true,
   main_surnames: true,
+  about_images: true,
   is_public: true,
   root_person_id: true,
   strict_lineage_enforcement: true,

@@ -11,14 +11,18 @@ import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { TreeAboutImageGallery } from '@/features/about/components/TreeAboutImageGallery';
+import { normalizeAboutImages } from '@/lib/tree/about-images';
 import { ServiceError } from '@/services/api.client';
 import { treesService } from '@/services/trees.service';
+import type { TreeAboutImageItem } from '@/types/api';
 
 type TreeAboutBasicsEditorProps = {
   treeId: string;
   initialName: string;
   initialDescription: string | null;
   initialMainSurnames: string[];
+  initialAboutImages: TreeAboutImageItem[];
   canEdit: boolean;
 };
 
@@ -35,6 +39,7 @@ export function TreeAboutBasicsEditor({
   initialName,
   initialDescription,
   initialMainSurnames,
+  initialAboutImages,
   canEdit,
 }: TreeAboutBasicsEditorProps) {
   const t = useTranslations('treeFamilyAboutPage');
@@ -43,6 +48,8 @@ export function TreeAboutBasicsEditor({
   const [description, setDescription] = useState(initialDescription ?? '');
   const [draftTags, setDraftTags] = useState<string[]>(initialMainSurnames);
   const [tagInput, setTagInput] = useState('');
+  const [draftImages, setDraftImages] =
+    useState<TreeAboutImageItem[]>(initialAboutImages);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, startSaving] = useTransition();
 
@@ -50,7 +57,8 @@ export function TreeAboutBasicsEditor({
     setName(initialName);
     setDescription(initialDescription ?? '');
     setDraftTags(initialMainSurnames);
-  }, [initialName, initialDescription, initialMainSurnames]);
+    setDraftImages(initialAboutImages);
+  }, [initialName, initialDescription, initialMainSurnames, initialAboutImages]);
 
   const commitTagInput = () => {
     const trimmed = tagInput.trim();
@@ -101,6 +109,7 @@ export function TreeAboutBasicsEditor({
         await treesService.update(treeId, {
           name: trimmedName,
           description: description.trim() || null,
+          about_images: normalizeAboutImages(draftImages),
         });
         await treesService.updateAbout(treeId, {
           main_surnames: tagsToSave,
@@ -145,6 +154,13 @@ export function TreeAboutBasicsEditor({
             <p className="mt-2 text-sm italic text-slate-400">{t('noTagsYet')}</p>
           )}
         </div>
+        <TreeAboutImageGallery
+          treeId={treeId}
+          items={initialAboutImages}
+          onItemsChange={() => {}}
+          canEdit={false}
+          disabled
+        />
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
             {t('descriptionHeading')}
@@ -231,6 +247,14 @@ export function TreeAboutBasicsEditor({
           maxLength={100}
         />
       </div>
+
+      <TreeAboutImageGallery
+        treeId={treeId}
+        items={draftImages}
+        onItemsChange={setDraftImages}
+        canEdit
+        disabled={isSaving}
+      />
 
       <div className="flex flex-col gap-1">
         <label htmlFor="tree-about-description" className="text-sm font-medium text-gray-700">

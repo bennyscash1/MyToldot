@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 
 import { TreeAboutBasicsEditor } from '@/features/about/components/TreeAboutBasicsEditor';
 import { getCurrentUserTreeRole } from '@/lib/api/auth';
+import { parseAboutImagesFromJson } from '@/lib/tree/about-images';
 import { findTreeByRouteParam } from '@/server/services/tree.service';
 
 type TreeAboutPageProps = {
@@ -29,6 +30,7 @@ export default async function TreeAboutPage({ params }: TreeAboutPageProps) {
   const role = await getCurrentUserTreeRole(tree.id);
   const canEdit = role === 'EDITOR' || role === 'OWNER';
   const t = await getTranslations('treeFamilyAboutPage');
+  const initialAboutImages = parseAboutImagesFromJson(tree.about_images) ?? [];
 
   return (
     <div className="min-h-0 flex-1 bg-[#f4f3e9]" dir={dir}>
@@ -46,6 +48,7 @@ export default async function TreeAboutPage({ params }: TreeAboutPageProps) {
           initialName={tree.name}
           initialDescription={tree.description}
           initialMainSurnames={[...tree.main_surnames]}
+          initialAboutImages={initialAboutImages}
           canEdit={canEdit}
         />
       </div>

@@ -53,7 +53,22 @@
     "familyTagsPlaceholder": "Type a tag and press Enter",
     "familyTagsHint": "Press Enter or comma to add. Backspace on an empty field removes the last tag.",
     "removeTag": "Remove tag",
-    "noTagsYet": "No tags yet."
+    "noTagsYet": "No tags yet.",
+    "galleryHeading": "Photo gallery",
+    "addImage": "Add image",
+    "galleryUploading": "Uploading…",
+    "galleryUploadError": "Could not upload the image. Please try again.",
+    "galleryMaxImages": "You can add at most {max} images.",
+    "galleryEmptyHint": "No photos yet. Add images to illustrate your family story.",
+    "deleteImage": "Delete",
+    "deleteImageConfirm": "Remove this image from the gallery? The file will be deleted when you save.",
+    "imageCaptionLabel": "Caption",
+    "imageCaptionPlaceholder": "Optional caption",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "openLightbox": "View larger",
+    "lightboxTitle": "Image preview",
+    "lightboxClose": "Close"
   },
   "common": {
     "loading": "Loading…",

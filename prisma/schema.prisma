@@ -61,6 +61,8 @@ model Tree {
   about_text                 String?
   // Short list of family surnames highlighted on the About page.
   main_surnames              String[] @default([])
+  /// Gallery images on the tree About page: [{ path, caption, order }], paths in profile-pictures bucket.
+  about_images               Json?    @map("about_images")
   created_at                 DateTime @default(now())
   updated_at                 DateTime @updatedAt
 

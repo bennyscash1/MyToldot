@@ -1,24 +1,12 @@
 /**
- * POST /api/v1/uploads/profile-image
+ * POST /api/v1/uploads/tree-about-image
  *
- * Server-side profile image upload.
+ * Same bucket and upload helper as profile images; tree-scoped gallery (no person).
+ * Images are resized/compressed on the server with the same max dimension as the
+ * client `browser-image-compression` pipeline (`PROFILE_UPLOAD_MAX_DIMENSION`).
  *
- * Why this exists:
- *   The browser Supabase client used to upload directly. In the anonymous MVP
- *   that path attaches a stale/empty bearer token from the auth cookie, which
- *   Supabase Storage rejects with `Invalid Compact JWS` (HTTP 403). Doing the
- *   upload server-side with the service-role client bypasses RLS and never
- *   sends a user JWT, so the upload is reliable.
- *
- * Contract:
- *   Request:  multipart/form-data
- *     - file:     the image (required, jpeg/png/webp, ≤ 5MB)
- *     - treeId:   tree the person belongs to (required)
- *     - personId: target person (required, must belong to treeId)
- *
- *   Response: { data: { path: string, publicUrl: string }, error: null }
- *     `path` is the storage path inside the `profile-pictures` bucket and is
- *     what should be persisted on `Person.profile_image`.
+ * Request: multipart/form-data — file, treeId
+ * Response: { path, publicUrl } (envelope)
  */
 
 import { NextRequest } from 'next/server';
@@ -26,21 +14,19 @@ import { z } from 'zod';
 
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
-import { prisma } from '@/lib/prisma';
-import { processProfileLikeUploadImage } from '@/lib/images/profileLikeServerResize';
 import { requireTreeRole } from '@/lib/api/auth';
+import { processProfileLikeUploadImage } from '@/lib/images/profileLikeServerResize';
 import {
   ALLOWED_PROFILE_IMAGE_TYPES,
   PROFILE_IMAGE_MAX_BYTES,
-  buildProfileImagePath,
+  buildTreeAboutImagePath,
   uploadProfileImageAdmin,
 } from '@/lib/supabase/storage';
 import { isSupabaseAdminConfigured } from '@/lib/supabase/admin';
 import { CuidSchema } from '@/features/family-tree/schemas/person.schema';
 
-const idsSchema = z.object({
+const treeIdSchema = z.object({
   treeId: CuidSchema,
-  personId: CuidSchema,
 });
 
 interface UploadResponseDto {
@@ -49,18 +35,17 @@ interface UploadResponseDto {
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  // Per-tree EDITOR check happens after we parse the form (need the treeId).
   if (!isSupabaseAdminConfigured()) {
     console.error(
-      '[uploads/profile-image] Missing SUPABASE_SERVICE_ROLE_KEY — server-side uploads are disabled.',
+      '[uploads/tree-about-image] Missing SUPABASE_SERVICE_ROLE_KEY — server-side uploads are disabled.',
     );
     throw Errors.internal(
       'Server-side uploads are not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server env.',
     );
   }
 
-  const contentType = req.headers.get('content-type') ?? '';
-  if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
+  const contentTypeHeader = req.headers.get('content-type') ?? '';
+  if (!contentTypeHeader.toLowerCase().startsWith('multipart/form-data')) {
     throw Errors.badRequest('Expected multipart/form-data request body.');
   }
 
@@ -68,9 +53,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw Errors.badRequest('Could not parse multipart form body.');
   });
 
-  const ids = idsSchema.safeParse({
+  const ids = treeIdSchema.safeParse({
     treeId: form.get('treeId'),
-    personId: form.get('personId'),
   });
   if (!ids.success) {
     const message = ids.error.issues
@@ -78,7 +62,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       .join('; ');
     throw Errors.unprocessable(message);
   }
-  const { treeId, personId } = ids.data;
+  const { treeId } = ids.data;
   await requireTreeRole(treeId, 'EDITOR');
 
   const fileEntry = form.get('file');
@@ -86,8 +70,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw Errors.badRequest('Missing `file` field in form data.');
   }
 
-  // `Blob` is the structural superset of `File`; `File.name` is only present
-  // when the client sent one. Fall back to a stable default for path building.
   const file = fileEntry as Blob & { name?: string; type: string; size: number };
   const originalName =
     typeof file.name === 'string' && file.name.length > 0 ? file.name : 'upload.bin';
@@ -112,16 +94,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  // Authorisation: confirm the person actually belongs to the supplied tree
-  // (defence-in-depth on top of the per-tree EDITOR check above).
-  const person = await prisma.person.findFirst({
-    where: { id: personId, tree_id: treeId },
-    select: { id: true },
-  });
-  if (!person) {
-    throw Errors.notFound('Person');
-  }
-
   const rawBuffer = Buffer.from(await file.arrayBuffer());
   let processedBuffer: Buffer;
   let uploadContentType: string;
@@ -130,9 +102,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     processedBuffer = processed.buffer;
     uploadContentType = processed.contentType;
   } catch (processError) {
-    console.error('[uploads/profile-image] image processing failed', {
+    console.error('[uploads/tree-about-image] image processing failed', {
       treeId,
-      personId,
       contentType: file.type,
       error:
         processError instanceof Error
@@ -144,7 +115,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  const path = buildProfileImagePath(treeId, personId, originalName, uploadContentType);
+  const path = buildTreeAboutImagePath(treeId, originalName, uploadContentType);
 
   try {
     const result = await uploadProfileImageAdmin({
@@ -155,12 +126,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     return ok<UploadResponseDto>(result, 201);
   } catch (uploadError) {
-    console.error('[uploads/profile-image] upload failed', {
+    console.error('[uploads/tree-about-image] upload failed', {
       treeId,
-      personId,
       path,
       contentType: uploadContentType,
-      size: processedBuffer.length,
       error:
         uploadError instanceof Error
           ? { name: uploadError.name, message: uploadError.message }
@@ -169,7 +138,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw Errors.internal(
       uploadError instanceof Error
         ? uploadError.message
-        : 'Profile image upload failed.',
+        : 'Tree about image upload failed.',
     );
   }
 });

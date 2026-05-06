@@ -53,7 +53,22 @@
     "familyTagsPlaceholder": "הקלידו תגית ולחצו Enter",
     "familyTagsHint": "Enter או פסיק להוספה. Backspace על שדה ריק מסירה את התגית האחרונה.",
     "removeTag": "הסר תגית",
-    "noTagsYet": "עדיין אין תגיות."
+    "noTagsYet": "עדיין אין תגיות.",
+    "galleryHeading": "גלריית תמונות",
+    "addImage": "הוסף תמונה",
+    "galleryUploading": "מעלה…",
+    "galleryUploadError": "לא ניתן להעלות את התמונה. נסו שוב.",
+    "galleryMaxImages": "ניתן להוסיף עד {max} תמונות.",
+    "galleryEmptyHint": "אין עדיין תמונות. הוסיפו תמונות לסיפור המשפחה.",
+    "deleteImage": "מחק",
+    "deleteImageConfirm": "להסיר תמונה זו מהגלריה? הקובץ יימחק בעת השמירה.",
+    "imageCaptionLabel": "כיתוב",
+    "imageCaptionPlaceholder": "כיתוב (אופציונלי)",
+    "moveUp": "הזז למעלה",
+    "moveDown": "הזז למטה",
+    "openLightbox": "הצגה מוגדלת",
+    "lightboxTitle": "תצוגת תמונה",
+    "lightboxClose": "סגור"
   },
   "common": {
     "loading": "טוען…",
