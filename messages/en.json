@@ -258,5 +258,18 @@
     "title": "About this family",
     "close": "Close",
     "save": "Save"
+  },
+  "siteAbout": {
+    "metaTitle": "About Toldotay",
+    "metaDescription": "Toldotay preserves family legacy with precision—from the root down. Our vision, story, and top-down approach to lineage.",
+    "heroTitle": "Toldotay – Preserving the Past, Rooting the Future",
+    "section1Title": "Our Vision",
+    "section1Body": "The \"Toldotay\" system was born from a profound realization: a family story is much more than a sequence of names and dates; it is the foundation upon which the identity of future generations is built. In a digital world where information is often lost or becomes cluttered and unverified, we created Toldotay to provide families with a sacred, precise, and protected space to preserve their legacy.",
+    "section2Title": "The Origin of the Idea",
+    "section2Body": "The concept grew from the need for a living \"Family Encyclopedia.\" We observed how many family trees, over time, turn into a chaotic blend of data where the core lineage is lost among unrelated side branches. We realized that what was missing was a tool focused on the Root—the solid infrastructure from which everything grew.",
+    "section3Title": "The Toldotay Difference: Precision from the Foundation Down",
+    "section3Body": "Toldotay's philosophy is different from anything you've experienced. We believe in a \"Top-Down\" approach. The system is specifically engineered for family lineages that demand exemplary order and a clear hierarchical structure. Unlike other platforms that allow \"data pollution\" by adding lateral family connections that don't belong to the core dynasty, Toldotay safeguards the integrity of your tree. Our focus is on the direct and authentic lineage. We provide the stable infrastructure that allows you to build your family tree in a controlled manner, ensuring that every person added is an integral part of the true family narrative.",
+    "section4Title": "Empowering Future Generations",
+    "section4Body": "Our ultimate goal is to bridge the gap between the past and the future. Toldotay allows you to ensure that your children and grandchildren will not only know the names of their ancestors but will understand exactly where they came from. Thanks to our precise framework, your heritage is preserved in a clean and honorable way—one that will stand the test of time and continue to grow alongside your family."
   }
 }
