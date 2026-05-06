@@ -86,6 +86,10 @@ model User {
   email      String  @unique
   full_name  String?
   avatar_url String?
+  // GOOGLE AUTH ADDED: Supabase user id for Google identity (when linked).
+  googleId   String? @unique
+  // GOOGLE AUTH ADDED: Auth source marker for manual/google/both flows.
+  authProvider String @default("manual")
   /// UI locale persisted for signed-in users (`he` | `en`).
   preferred_language String @default("he")
 

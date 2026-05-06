@@ -14,7 +14,7 @@ import {
 // Execution order on every request:
 //  1. Supabase — refreshes the session cookie &
 //     resolves the active user (or null).
-//  2. Route guard — API routes under /api/v1/
+//  2. Route guard — API routes under /api/
 //     that require authentication are blocked here.
 //  3. Signed-in locale — redirect `/` and `/{locale}/…` to match
 //     `User.preferred_language` (cookie mirror + occasional /auth/me fetch).
@@ -25,7 +25,7 @@ import {
 //  • Anonymous visitors can READ the tree (all GET endpoints below).
 //  • All POST/PATCH/DELETE endpoints require an authenticated session;
 //    the route handler then enforces the per-tree TreeMember.role gate.
-//  • Auth endpoints (login/signup/logout/me) are intentionally public.
+//  • Auth endpoints (login/signup/logout/me/callback) are intentionally public.
 // ──────────────────────────────────────────────
 
 // Routes that are always public, even for non-authed users.
@@ -40,6 +40,8 @@ const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   { method: 'POST', pattern: /^\/api\/v1\/auth\/logout$/ },
   // Public profile lookup — returns `{ user: null }` for anonymous visitors.
   { method: 'GET', pattern: /^\/api\/v1\/auth\/me$/ },
+  // GOOGLE AUTH ADDED: OAuth callback must be public.
+  { method: 'GET', pattern: /^\/api\/auth\/callback$/ },
 
   // Tree reads (anonymous browsing of the family tree).
   { method: 'GET', pattern: /^\/api\/v1\/trees$/ },
@@ -124,7 +126,8 @@ export async function middleware(request: NextRequest) {
     await updateSessionAndGetUser(request);
 
   // ── Step 2: API route guards ──────────────
-  if (pathname.startsWith('/api/v1/')) {
+  // GOOGLE AUTH ADDED: bypass next-intl for ALL /api/* routes.
+  if (pathname.startsWith('/api/')) {
     const isPublicApiRoute = PUBLIC_API_ROUTES.some(
       (r) => r.method === request.method && r.pattern.test(pathname),
     );
@@ -241,7 +244,7 @@ export const config = {
   matcher: [
     // All UI routes (excludes _next internals and static files)
     '/((?!_next|_vercel|.*\\..*).*)',
-    // All API v1 routes
-    '/api/v1/:path*',
+    // All API routes
+    '/api/:path*',
   ],
 };

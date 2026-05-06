@@ -30,8 +30,9 @@ interface SignupBody {
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const body: SignupBody = await req.json();
+  const normalizedEmail = body.email?.trim().toLowerCase() ?? '';
 
-  if (!body.email?.trim() || !body.password || !body.full_name?.trim()) {
+  if (!normalizedEmail || !body.password || !body.full_name?.trim()) {
     throw Errors.badRequest('`email`, `password`, and `full_name` are required');
   }
 
@@ -43,11 +44,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw Errors.internal('Supabase is not configured on this server');
   }
 
+  // GOOGLE AUTH ADDED: enforce email-first uniqueness before creating auth users.
+  const existingByEmail = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true },
+  });
+  if (existingByEmail) {
+    throw Errors.conflict('An account with this email already exists. Please log in.');
+  }
+
   const supabase = await createSupabaseServerClient();
 
   // 1. Create the Supabase Auth user.
   const { data, error } = await supabase.auth.signUp({
-    email: body.email.trim().toLowerCase(),
+    email: normalizedEmail,
     password: body.password,
     options: {
       data: { full_name: body.full_name.trim() },
@@ -82,6 +92,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         id:                 data.user.id,
         email:              data.user.email!,
         full_name:          body.full_name.trim(),
+        // GOOGLE AUTH ADDED: explicit provider marker for manual registrations.
+        authProvider:       'manual',
         preferred_language: 'he',
       },
       select: { id: true, email: true, full_name: true },
@@ -95,6 +107,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           id:        data.user.id,
           email:     data.user.email!,
           full_name: body.full_name.trim(),
+          // GOOGLE AUTH ADDED: explicit provider marker for manual registrations.
+          authProvider: 'manual',
         },
         select: { id: true, email: true, full_name: true },
       });

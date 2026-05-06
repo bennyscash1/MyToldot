@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/routing';
 import { Input }  from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { authService } from '@/services/auth.service';
 import { ServiceError } from '@/services/api.client';
 
@@ -24,6 +26,7 @@ import { ServiceError } from '@/services/api.client';
 export function LoginForm() {
   const t      = useTranslations('auth');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
@@ -64,12 +67,14 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
       {/* Global error banner */}
-      {error && (
+      {(error || searchParams.get('error') === 'oauth_failed') && (
         <div
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {error}
+          {error ??
+            // GOOGLE AUTH ADDED: user-friendly callback failure message.
+            'Google sign-in failed. Please try again or use email/password.'}
         </div>
       )}
 
@@ -97,6 +102,14 @@ export function LoginForm() {
       <Button type="submit" isLoading={isSubmitting} size="lg" className="w-full">
         {isSubmitting ? t('loggingIn') : t('loginButton')}
       </Button>
+
+      {/* GOOGLE AUTH ADDED */}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gray-200" />
+        <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+      <GoogleSignInButton />
 
       <p className="text-center text-sm text-gray-500">
         {t('noAccount')}{' '}

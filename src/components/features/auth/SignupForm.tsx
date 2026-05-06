@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/routing';
 import { Input }  from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { authService } from '@/services/auth.service';
 import { ServiceError } from '@/services/api.client';
 
@@ -133,6 +134,14 @@ export function SignupForm() {
       <Button type="submit" isLoading={isSubmitting} size="lg" className="w-full">
         {isSubmitting ? t('signingUp') : t('signupButton')}
       </Button>
+
+      {/* GOOGLE AUTH ADDED */}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gray-200" />
+        <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+      <GoogleSignInButton />
 
       <p className="text-center text-sm text-gray-500">
         {t('hasAccount')}{' '}

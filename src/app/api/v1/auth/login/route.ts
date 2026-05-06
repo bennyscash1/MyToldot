@@ -18,6 +18,7 @@ import {
   createSupabaseServerClient,
   isSupabaseServerConfigured,
 } from '@/lib/supabase/server';
+import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 
@@ -28,8 +29,9 @@ interface LoginBody {
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const body: LoginBody = await req.json();
+  const normalizedEmail = body.email?.trim().toLowerCase() ?? '';
 
-  if (!body.email?.trim() || !body.password) {
+  if (!normalizedEmail || !body.password) {
     throw Errors.badRequest('`email` and `password` are required');
   }
 
@@ -40,13 +42,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: body.email.trim().toLowerCase(),
+    email: normalizedEmail,
     password: body.password,
   });
 
   if (error || !data.user) {
     // Use a generic message — never confirm whether the email exists.
     throw Errors.unauthorized('Invalid email or password');
+  }
+
+  // GOOGLE AUTH ADDED: block manual password login for Google-only accounts.
+  const mirroredUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { authProvider: true },
+  });
+  if (mirroredUser?.authProvider === 'google') {
+    await supabase.auth.signOut();
+    throw Errors.forbidden(
+      'You registered with Google. Please use Google Sign-In or reset your password to set one.',
+    );
   }
 
   // Return a safe subset of the user — never expose raw Supabase internals.
