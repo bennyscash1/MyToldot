@@ -31,7 +31,8 @@
   },
   "treeNav": {
     "breadcrumbLabel": "Family tree breadcrumb",
-    "home": "Home"
+    "home": "Home",
+    "about": "About"
   },
   "common": {
     "loading": "Loading…",
@@ -229,6 +230,12 @@
     "languageHintGuest": "Switching language updates this visit only. Sign in to save your preference.",
     "languageHebrew": "עברית",
     "languageEnglish": "English",
-    "languageActive": "Current"
+    "languageActive": "Current",
+    "contentComingSoon": "Content coming soon"
+  },
+  "treeAbout": {
+    "title": "About this family",
+    "close": "Close",
+    "save": "Save"
   }
 }

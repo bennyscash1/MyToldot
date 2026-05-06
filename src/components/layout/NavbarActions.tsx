@@ -3,9 +3,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
-import { Link, useRouter } from '@/i18n/routing';
+import { Link, usePathname, useRouter, type Locale } from '@/i18n/routing';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRouteLocale } from '@/hooks/useRouteLocale';
 import { authService } from '@/services/auth.service';
+import { updateUserLanguage } from '@/server/actions/user.actions';
+import {
+  PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
+} from '@/lib/locale-preference';
 
 // ──────────────────────────────────────────────
 // NavbarActions — Client Component
@@ -41,9 +47,20 @@ interface UserMenuProps {
   initials:     string;
   onLogout:     () => void;
   isLoggingOut: boolean;
+  preferredLanguage: Locale;
+  onLocaleSwitch: (nextLocale: Locale) => Promise<void>;
+  isSwitchingLocale: boolean;
 }
 
-function UserMenu({ email, initials, onLogout, isLoggingOut }: UserMenuProps) {
+function UserMenu({
+  email,
+  initials,
+  onLogout,
+  isLoggingOut,
+  preferredLanguage,
+  onLocaleSwitch,
+  isSwitchingLocale,
+}: UserMenuProps) {
   const t                           = useTranslations('auth');
   const [isOpen, setIsOpen]         = useState(false);
   const menuRef                     = useRef<HTMLDivElement>(null);
@@ -87,6 +104,30 @@ function UserMenu({ email, initials, onLogout, isLoggingOut }: UserMenuProps) {
             <p className="text-xs font-medium text-gray-500">{t('signedInAs')}</p>
             <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{email}</p>
           </div>
+          <div className="border-b border-gray-100 px-4 py-2">
+            <p className="mb-1 text-xs font-medium text-gray-500">עברית / English</p>
+            <div className="flex items-center gap-2">
+              {(['he', 'en'] as const).map((lang) => {
+                const isActive = preferredLanguage === lang;
+                return (
+                  <button
+                    key={lang}
+                    type="button"
+                    role="menuitem"
+                    disabled={isSwitchingLocale}
+                    onClick={() => { void onLocaleSwitch(lang); }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      isActive
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    } disabled:opacity-60`}
+                  >
+                    {lang === 'he' ? 'עברית' : 'English'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <button
             type="button"
@@ -120,7 +161,35 @@ export function NavbarActions() {
   const t                                 = useTranslations('auth');
   const { isLoading, isAuthenticated, profile } = usePermissions();
   const router                            = useRouter();
+  const pathname                          = usePathname();
+  const locale                            = useRouteLocale();
   const [isLoggingOut, setLoggingOut]     = useState(false);
+  const [isSwitchingLocale, setSwitchingLocale] = useState(false);
+
+  function persistLocaleCookie(nextLocale: Locale) {
+    document.cookie = `${PREFERRED_LOCALE_COOKIE}=${nextLocale}; path=/; max-age=${PREFERRED_LOCALE_MAX_AGE_SECONDS}; samesite=lax`;
+  }
+
+  function getInternalPath(currentPathname: string): string {
+    const withoutLocale = currentPathname.replace(/^\/(en|he)(?=\/|$)/, '');
+    return withoutLocale.length > 0 ? withoutLocale : '/';
+  }
+
+  async function handleLocaleSwitch(nextLocale: Locale) {
+    if (nextLocale === locale) return;
+    setSwitchingLocale(true);
+    try {
+      persistLocaleCookie(nextLocale);
+      const res = await updateUserLanguage(nextLocale);
+      if (!res.ok && process.env.NODE_ENV !== 'production') {
+        console.warn('[NavbarActions] Failed to persist locale in DB:', res.error.message);
+      }
+      router.replace(getInternalPath(pathname), { locale: nextLocale });
+      router.refresh();
+    } finally {
+      setSwitchingLocale(false);
+    }
+  }
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -173,6 +242,9 @@ export function NavbarActions() {
         initials={initials}
         onLogout={handleLogout}
         isLoggingOut={isLoggingOut}
+        preferredLanguage={locale}
+        onLocaleSwitch={handleLocaleSwitch}
+        isSwitchingLocale={isSwitchingLocale}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import {
   PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
   parsePreferredLocale,
   parsePreferredLocaleCookie,
 } from '@/lib/locale-preference';
@@ -95,10 +96,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (safeNextPath) {
-      return NextResponse.redirect(new URL(safeNextPath, request.nextUrl.origin));
+      const response = NextResponse.redirect(new URL(safeNextPath, request.nextUrl.origin));
+      response.cookies.set(PREFERRED_LOCALE_COOKIE, redirectLocale, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: PREFERRED_LOCALE_MAX_AGE_SECONDS,
+        secure: request.nextUrl.protocol === 'https:',
+      });
+      return response;
     }
 
-    return NextResponse.redirect(new URL(`/${redirectLocale}`, request.nextUrl.origin));
+    const response = NextResponse.redirect(
+      new URL(`/${redirectLocale}`, request.nextUrl.origin),
+    );
+    response.cookies.set(PREFERRED_LOCALE_COOKIE, redirectLocale, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: PREFERRED_LOCALE_MAX_AGE_SECONDS,
+      secure: request.nextUrl.protocol === 'https:',
+    });
+    return response;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

@@ -31,7 +31,8 @@
   },
   "treeNav": {
     "breadcrumbLabel": "פירורי ניווט לעץ המשפחה",
-    "home": "בית"
+    "home": "בית",
+    "about": "אודות"
   },
   "common": {
     "loading": "טוען…",
@@ -229,6 +230,12 @@
     "languageHintGuest": "החלפת שפה משפיעה על הביקור הנוכחי בלבד. התחברו כדי לשמור העדפה.",
     "languageHebrew": "עברית",
     "languageEnglish": "English",
-    "languageActive": "נבחר"
+    "languageActive": "נבחר",
+    "contentComingSoon": "תוכן יתווסף בקרוב"
+  },
+  "treeAbout": {
+    "title": "אודות המשפחה",
+    "close": "סגור",
+    "save": "שמור"
   }
 }

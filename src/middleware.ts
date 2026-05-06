@@ -4,6 +4,7 @@ import { routing } from './i18n/routing';
 import { updateSessionAndGetUser } from './lib/supabase/middleware';
 import {
   PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
   parsePreferredLocaleCookie,
   type PreferredLocale,
 } from './lib/locale-preference';
@@ -59,7 +60,7 @@ function localeCookieOptions(request: NextRequest) {
     path:     '/',
     httpOnly: true,
     sameSite: 'lax' as const,
-    maxAge:   60 * 60 * 24 * 365,
+    maxAge:   PREFERRED_LOCALE_MAX_AGE_SECONDS,
     secure:   request.nextUrl.protocol === 'https:',
   };
 }
@@ -184,6 +185,36 @@ export async function middleware(request: NextRequest) {
           preferred,
         );
         return redirectResponse;
+      }
+    }
+  }
+
+  if (!user) {
+    const preferredFromCookie = parsePreferredLocaleCookie(
+      request.cookies.get(PREFERRED_LOCALE_COOKIE)?.value,
+    );
+    if (preferredFromCookie) {
+      if (pathname === '/' || pathname === '') {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${preferredFromCookie}/`;
+        const redirectResponse = NextResponse.redirect(url);
+        mergeSupabaseCookies(redirectResponse, supabaseResponse);
+        return redirectResponse;
+      }
+
+      const localeMatch = pathname.match(/^\/(en|he)(?=\/|$)/);
+      if (localeMatch) {
+        const urlLocale = localeMatch[1] as PreferredLocale;
+        if (urlLocale !== preferredFromCookie) {
+          const newPath =
+            pathname.replace(/^\/(en|he)/, `/${preferredFromCookie}`) ||
+            `/${preferredFromCookie}`;
+          const url = request.nextUrl.clone();
+          url.pathname = newPath;
+          const redirectResponse = NextResponse.redirect(url);
+          mergeSupabaseCookies(redirectResponse, supabaseResponse);
+          return redirectResponse;
+        }
       }
     }
   }

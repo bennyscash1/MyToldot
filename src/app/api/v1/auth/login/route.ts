@@ -21,6 +21,11 @@ import {
 import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
+import {
+  PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
+  parsePreferredLocale,
+} from '@/lib/locale-preference';
 
 interface LoginBody {
   email: string;
@@ -54,7 +59,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // GOOGLE AUTH ADDED: block manual password login for Google-only accounts.
   const mirroredUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    select: { authProvider: true },
+    select: { authProvider: true, preferred_language: true },
   });
   if (mirroredUser?.authProvider === 'google') {
     await supabase.auth.signOut();
@@ -64,11 +69,21 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Return a safe subset of the user — never expose raw Supabase internals.
-  return ok({
+  const response = ok({
     user: {
       id: data.user.id,
       email: data.user.email,
       full_name: data.user.user_metadata?.full_name ?? null,
     },
   });
+  const preferredLocale =
+    parsePreferredLocale(mirroredUser?.preferred_language) ?? 'he';
+  response.cookies.set(PREFERRED_LOCALE_COOKIE, preferredLocale, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: PREFERRED_LOCALE_MAX_AGE_SECONDS,
+    secure: req.nextUrl.protocol === 'https:',
+  });
+  return response;
 });

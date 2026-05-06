@@ -8,7 +8,8 @@
 
 import { z } from 'zod';
 
-export const PREFERRED_LOCALE_COOKIE = 'TOLDOT_PREF_LOCALE';
+export const PREFERRED_LOCALE_COOKIE = 'PREFERRED_LOCALE';
+export const PREFERRED_LOCALE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export const PreferredLocaleSchema = z.enum(['he', 'en']);
 

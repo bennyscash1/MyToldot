@@ -21,6 +21,10 @@ import { prisma } from '@/lib/prisma';
 import { isMissingUserPreferredLanguageColumn } from '@/lib/prisma-user-preferred-language';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
+import {
+  PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
+} from '@/lib/locale-preference';
 
 interface SignupBody {
   email: string;
@@ -123,5 +127,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
   }
 
-  return ok({ user }, 201);
+  const response = ok({ user }, 201);
+  response.cookies.set(PREFERRED_LOCALE_COOKIE, 'he', {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: PREFERRED_LOCALE_MAX_AGE_SECONDS,
+    secure: req.nextUrl.protocol === 'https:',
+  });
+  return response;
 });

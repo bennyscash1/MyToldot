@@ -11,6 +11,7 @@ import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPa
 
 type TreeShortCodePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
+  searchParams: Promise<{ about?: string | string[] }>;
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,8 +19,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('title') };
 }
 
-export default async function TreeShortCodePage({ params }: TreeShortCodePageProps) {
+export default async function TreeShortCodePage({
+  params,
+  searchParams,
+}: TreeShortCodePageProps) {
   const { locale, shortCode } = await params;
+  const sp = await searchParams;
   const dir = locale === 'he' ? 'rtl' : 'ltr';
   let treeData: TreePageData;
   try {
@@ -41,7 +46,14 @@ export default async function TreeShortCodePage({ params }: TreeShortCodePagePro
   // Per-tree role drives every UI affordance — no global gate.
   const treeRole = treeData.membershipRole;
   const canEditTree = treeRole === 'EDITOR' || treeRole === 'OWNER';
+  const canEditAbout = canEditTree;
   const canDeletePerson = treeRole === 'OWNER';
+  const openAboutRaw = sp?.about;
+  const openAboutOnLoad =
+    openAboutRaw === '1' ||
+    openAboutRaw === 'true' ||
+    (Array.isArray(openAboutRaw) &&
+      (openAboutRaw[0] === '1' || openAboutRaw[0] === 'true'));
 
   if (!treeData.treeId) {
     return (
@@ -73,6 +85,8 @@ export default async function TreeShortCodePage({ params }: TreeShortCodePagePro
             canEdit={canEditTree}
             canDeletePerson={canDeletePerson}
             strictMode={treeData.strictLineageEnforcement}
+            canEditAbout={canEditAbout}
+            openAboutOnLoad={openAboutOnLoad}
           />
         </div>
       </div>

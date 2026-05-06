@@ -1,17 +1,22 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/routing';
 
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRouteLocale } from '@/hooks/useRouteLocale';
 import { cn } from '@/lib/utils';
 import type { Locale } from '@/i18n/routing';
 import { updateUserLanguage } from '@/server/actions/user.actions';
+import {
+  PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
+} from '@/lib/locale-preference';
 
 // ──────────────────────────────────────────────
 // LanguageSwitcher
 //
-// Client Component — needs useRouter / useLocale.
+// Client Component — useRouter + useRouteLocale (URL segment, not stale useLocale).
 // Renders a compact EN / HE pill toggle.
 // Uses next-intl's typed router so locale switching
 // preserves the current pathname automatically.
@@ -22,20 +27,32 @@ const LOCALES: { value: Locale; labelKey: 'en' | 'he' }[] = [
   { value: 'he', labelKey: 'he' },
 ];
 
+function getInternalPath(pathname: string): string {
+  const withoutLocale = pathname.replace(/^\/(en|he)(?=\/|$)/, '');
+  return withoutLocale.length > 0 ? withoutLocale : '/';
+}
+
+function persistGuestLocaleCookie(nextLocale: Locale) {
+  document.cookie = `${PREFERRED_LOCALE_COOKIE}=${nextLocale}; path=/; max-age=${PREFERRED_LOCALE_MAX_AGE_SECONDS}; samesite=lax`;
+}
+
 export function LanguageSwitcher() {
   const t = useTranslations('languageSwitcher');
-  const locale = useLocale() as Locale;
+  const locale = useRouteLocale();
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated } = usePermissions();
 
   async function handleSwitch(nextLocale: Locale) {
     if (nextLocale === locale) return;
+    persistGuestLocaleCookie(nextLocale);
     if (isAuthenticated) {
       const res = await updateUserLanguage(nextLocale);
-      if (!res.ok) return;
+      if (!res.ok && process.env.NODE_ENV !== 'production') {
+        console.warn('[LanguageSwitcher] Failed to persist locale in DB:', res.error.message);
+      }
     }
-    router.replace(pathname, { locale: nextLocale });
+    router.replace(getInternalPath(pathname), { locale: nextLocale });
     router.refresh();
   }
 

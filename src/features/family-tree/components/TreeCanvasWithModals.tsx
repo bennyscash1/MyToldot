@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/routing';
+import { usePathname, useRouter } from '@/i18n/routing';
 
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow, PlaceholderMeta, RelationshipRow } from '../lib/types';
@@ -10,6 +10,7 @@ import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { AddRelativePopover } from './panels/AddRelativePopover';
 import { PersonSidePanel } from './panels/PersonSidePanel';
+import { TreeAboutModal } from './panels/TreeAboutModal';
 import { PersonForm } from '@/features/persons/components/PersonForm';
 
 export interface TreeCanvasWithModalsProps {
@@ -21,6 +22,8 @@ export interface TreeCanvasWithModalsProps {
   canEdit: boolean;
   canDeletePerson: boolean;
   strictMode?: boolean;
+  canEditAbout: boolean;
+  openAboutOnLoad?: boolean;
 }
 
 export function TreeCanvasWithModals({
@@ -32,8 +35,11 @@ export function TreeCanvasWithModals({
   canEdit,
   canDeletePerson,
   strictMode = false,
+  canEditAbout,
+  openAboutOnLoad = false,
 }: TreeCanvasWithModalsProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const locale = useLocale();
   const tTree = useTranslations('treePage');
   const tPersonForm = useTranslations('personForm');
@@ -66,6 +72,7 @@ export function TreeCanvasWithModals({
 
   const [sidePersonId, setSidePersonId] = useState<string | null>(null);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
   const firstPersonModalRef = useRef<HTMLDivElement>(null);
 
   const onSelectPerson = useCallback(
@@ -102,6 +109,19 @@ export function TreeCanvasWithModals({
       window.removeEventListener('mousedown', onMouseDown);
     };
   }, [showFirstPersonForm, closeFirstPersonForm]);
+
+  useEffect(() => {
+    if (openAboutOnLoad) {
+      setShowAboutModal(true);
+    }
+  }, [openAboutOnLoad]);
+
+  const closeAboutModal = useCallback(() => {
+    setShowAboutModal(false);
+    if (openAboutOnLoad) {
+      router.replace(pathname);
+    }
+  }, [openAboutOnLoad, pathname, router]);
 
   const handleOpenAddFromPanel = useCallback(
     (kind: 'add-parent' | 'add-spouse' | 'add-child') => {
@@ -284,6 +304,13 @@ export function TreeCanvasWithModals({
           errorMessage={lastError}
         />
       )}
+
+      <TreeAboutModal
+        treeId={treeId}
+        canEdit={canEditAbout}
+        open={showAboutModal}
+        onClose={closeAboutModal}
+      />
     </div>
   );
 }

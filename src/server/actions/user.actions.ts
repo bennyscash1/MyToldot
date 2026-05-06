@@ -8,6 +8,7 @@ import { withAction, type ActionResult } from '@/lib/api/action-result';
 import { isMissingUserPreferredLanguageColumn } from '@/lib/prisma-user-preferred-language';
 import {
   PREFERRED_LOCALE_COOKIE,
+  PREFERRED_LOCALE_MAX_AGE_SECONDS,
   PreferredLocaleSchema,
   type PreferredLocale,
 } from '@/lib/locale-preference';
@@ -21,7 +22,7 @@ function preferredLocaleCookieOptions() {
     path:     '/' as const,
     httpOnly: true,
     sameSite: 'lax' as const,
-    maxAge:   60 * 60 * 24 * 365,
+    maxAge:   PREFERRED_LOCALE_MAX_AGE_SECONDS,
     secure:   process.env.NODE_ENV === 'production',
   };
 }
