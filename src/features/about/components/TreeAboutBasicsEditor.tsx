@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { linkifyPlainText } from '@/features/about/components/linkify';
 import { TreeAboutImageGallery } from '@/features/about/components/TreeAboutImageGallery';
 import { normalizeAboutImages } from '@/lib/tree/about-images';
 import { ServiceError } from '@/services/api.client';
@@ -168,8 +169,8 @@ export function TreeAboutBasicsEditor({
           <div className="prose prose-slate mt-3 max-w-none">
             {descriptionParagraphs.length > 0 ? (
               descriptionParagraphs.map((paragraph, idx) => (
-                <p key={idx} className="whitespace-pre-line text-slate-700">
-                  {paragraph}
+                <p key={idx} className="text-slate-700">
+                  {linkifyPlainText(paragraph, `tree-about-desc-${idx}`)}
                 </p>
               ))
             ) : (
