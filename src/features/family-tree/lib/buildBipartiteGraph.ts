@@ -35,6 +35,11 @@ import type {
 
 const COUPLE_TYPES = new Set(['SPOUSE', 'ENGAGED', 'DIVORCED']);
 const PARENT_TYPES = new Set(['PARENT_CHILD', 'ADOPTED_PARENT']);
+const COUPLE_TYPE_PRIORITY: Record<string, number> = {
+  SPOUSE: 3,
+  ENGAGED: 2,
+  DIVORCED: 1,
+};
 
 /** Sort ids lexicographically so (A,B) and (B,A) produce the same key. */
 function coupleKey(a: string, b: string): string {
@@ -58,12 +63,17 @@ export function buildBipartiteGraph(
     is_engaged: boolean;
   }
   const unionsByKey = new Map<string, UnionRecord>();
+  const unionPriorityByKey = new Map<string, number>();
 
   for (const r of relationships) {
     if (!COUPLE_TYPES.has(r.relationship_type)) continue;
     if (!personById.has(r.person1_id) || !personById.has(r.person2_id)) continue;
     const key = coupleKey(r.person1_id, r.person2_id);
-    if (unionsByKey.has(key)) continue; // first couple row wins; later ones ignored
+    const incomingPriority = COUPLE_TYPE_PRIORITY[r.relationship_type] ?? 0;
+    const existingPriority = unionPriorityByKey.get(key) ?? -1;
+    // Prefer the strongest semantic status for the same couple pair
+    // instead of silently keeping whichever row happened to be read first.
+    if (existingPriority > incomingPriority) continue;
     const [a, b] = r.person1_id < r.person2_id
       ? [r.person1_id, r.person2_id]
       : [r.person2_id, r.person1_id];
@@ -75,6 +85,7 @@ export function buildBipartiteGraph(
       is_divorced: r.relationship_type === 'DIVORCED',
       is_engaged: r.relationship_type === 'ENGAGED',
     });
+    unionPriorityByKey.set(key, incomingPriority);
   }
 
   // ── Pass 2: resolve each child's parent union ───────────────────────────
@@ -97,11 +108,35 @@ export function buildBipartiteGraph(
     if (parents.length === 0) continue;
 
     if (parents.length >= 2) {
-      // Use the first two parents. Multi-parent trees (bio + adoptive) are
-      // an edge case we'll extend later; MVP collapses to 2 for layout.
-      const [p1, p2] = parents;
+      // Prefer an explicit couple union among all known parents first.
+      // This prevents arbitrary pairing when a child has >2 recorded parents.
+      const sortedParents = [...parents].sort();
+      let selectedPair: [string, string] | null = null;
+      let selectedUnion: UnionRecord | null = null;
+
+      for (let i = 0; i < sortedParents.length; i += 1) {
+        for (let j = i + 1; j < sortedParents.length; j += 1) {
+          const p1 = sortedParents[i];
+          const p2 = sortedParents[j];
+          const existing = unionsByKey.get(coupleKey(p1, p2));
+          if (existing?.kind === 'couple') {
+            if (!selectedUnion || existing.id < selectedUnion.id) {
+              selectedUnion = existing;
+              selectedPair = [p1, p2];
+            }
+          }
+        }
+      }
+
+      if (!selectedPair) {
+        // No explicit spouse/engaged/divorced pair exists among this child's
+        // parents; use a deterministic pair for a synthetic coparent union.
+        selectedPair = [sortedParents[0], sortedParents[1]];
+      }
+
+      const [p1, p2] = selectedPair;
       const key = coupleKey(p1, p2);
-      const existing = unionsByKey.get(key);
+      const existing = selectedUnion ?? unionsByKey.get(key);
       if (existing) {
         childUnionOf.set(childId, existing.id);
         keptUnions.set(existing.id, existing);

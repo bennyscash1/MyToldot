@@ -15,8 +15,11 @@ export const PLACEHOLDER_NODE_HEIGHT = 80;
 
 // Vertical space between generations (top-of-row to top-of-next-row).
 // Must be > PERSON_NODE_HEIGHT (212) to prevent generation rows from overlapping.
-// 280 = 212 (card height) + 68 (comfortable gap for the descent line).
-export const GEN_HEIGHT = 280;
+// 332 = 212 (card height) + 120 (extra vertical breathing room).
+export const GEN_HEIGHT = 332;
 
 // Horizontal gap ELK leaves between nodes in the same layer (minimum).
-export const NODE_GAP = 48;
+export const NODE_GAP = 80;
+
+// Minimum spacing between edges and nearby nodes in ELK routing.
+export const EDGE_NODE_GAP = 40;

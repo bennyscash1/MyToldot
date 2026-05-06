@@ -1,6 +1,12 @@
 import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkNode } from 'elkjs';
-import { GEN_HEIGHT, NODE_GAP, PERSON_NODE_HEIGHT, UNION_NODE_HEIGHT } from './constants';
+import {
+  EDGE_NODE_GAP,
+  GEN_HEIGHT,
+  NODE_GAP,
+  PERSON_NODE_HEIGHT,
+  UNION_NODE_HEIGHT,
+} from './constants';
 import type { BipartiteEdge, BipartiteGraph, BipartiteNode } from './types';
 
 // Union nodes are tiny pills (UNION_NODE_HEIGHT = 12px) while person cards are
@@ -55,8 +61,11 @@ export async function layoutBipartiteGraph(
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'DOWN',
-      'elk.layered.spacing.nodeNodeBetweenLayers': String(GEN_HEIGHT),
+      // Keep ELK layered distance moderate and use our own fixed generation
+      // projection for final Y so rows remain stable and easy to scan.
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
       'elk.spacing.nodeNode': String(NODE_GAP),
+      'elk.spacing.edgeNode': String(EDGE_NODE_GAP),
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       // Force ELK to respect our generational partitioning. Without this,
