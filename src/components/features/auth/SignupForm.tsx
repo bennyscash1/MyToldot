@@ -89,6 +89,14 @@ export function SignupForm() {
         </div>
       )}
 
+      {/* GOOGLE AUTH ADDED */}
+      <GoogleSignInButton />
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gray-200" />
+        <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+
       <Input
         label={t('fullName')}
         type="text"
@@ -134,14 +142,6 @@ export function SignupForm() {
       <Button type="submit" isLoading={isSubmitting} size="lg" className="w-full">
         {isSubmitting ? t('signingUp') : t('signupButton')}
       </Button>
-
-      {/* GOOGLE AUTH ADDED */}
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-gray-200" />
-        <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
-        <div className="h-px flex-1 bg-gray-200" />
-      </div>
-      <GoogleSignInButton />
 
       <p className="text-center text-sm text-gray-500">
         {t('hasAccount')}{' '}
