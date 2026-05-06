@@ -19,10 +19,17 @@ export function GoogleSignInButton() {
       return;
     }
 
+    const callbackUrl = new URL('/api/auth/callback', window.location.origin);
+    // GOOGLE AUTH ADDED: preserve where the user started (path + query).
+    callbackUrl.searchParams.set(
+      'next',
+      `${window.location.pathname}${window.location.search}`,
+    );
+
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     });
 

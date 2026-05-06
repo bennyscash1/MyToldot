@@ -24,8 +24,19 @@ function buildLoginErrorRedirect(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+function resolveSafeNextPath(rawNext: string | null): string | null {
+  if (!rawNext) return null;
+  if (!rawNext.startsWith('/')) return null;
+  // Block callback loops and API jumps.
+  if (rawNext.startsWith('/api/')) return null;
+  return rawNext;
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
+  const safeNextPath = resolveSafeNextPath(
+    request.nextUrl.searchParams.get('next'),
+  );
 
   try {
     const code = request.nextUrl.searchParams.get('code');
@@ -81,6 +92,10 @@ export async function GET(request: NextRequest) {
           'google'
         )
       `;
+    }
+
+    if (safeNextPath) {
+      return NextResponse.redirect(new URL(safeNextPath, request.nextUrl.origin));
     }
 
     return NextResponse.redirect(new URL(`/${redirectLocale}`, request.nextUrl.origin));
