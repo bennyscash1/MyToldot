@@ -56,6 +56,8 @@ export interface LayoutResult {
 export async function layoutBipartiteGraph(
   graph: BipartiteGraph,
 ): Promise<LayoutResult> {
+  const orderedNodes = orderNodesForElk(graph);
+
   const elkGraph: ElkNode = {
     id: 'root',
     layoutOptions: {
@@ -68,13 +70,15 @@ export async function layoutBipartiteGraph(
       'elk.spacing.edgeNode': String(EDGE_NODE_GAP),
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+      // Keep in-layer model ordering stable so spouse partners can stay adjacent.
+      'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
       // Force ELK to respect our generational partitioning. Without this,
       // same-generation spouse edges can cause ELK to collapse nodes into
       // the wrong layer when a parent-placeholder path runs through a spouse.
       'elk.partitioning.activate': 'true',
-      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      'elk.layered.considerModelOrder.strategy': 'NODES',
     },
-    children: graph.nodes.map((n) => ({
+    children: orderedNodes.map((n) => ({
       id: n.id,
       width: n.width,
       height: n.height,
@@ -111,6 +115,26 @@ export async function layoutBipartiteGraph(
     });
   }
 
+  // ── Pass 1.5: keep couple unions centered between spouses ────────────────
+  // ELK can legally place same-generation union pills far away within the row,
+  // which makes spouse lines span across unrelated siblings. Re-center each
+  // 2-parent couple/corparent union between its two parents to keep spouse
+  // connections local and visually correct.
+  for (const node of nodeMap.values()) {
+    if (node.kind !== 'union') continue;
+    const parentIds = node.union?.parent_ids;
+    if (!parentIds || parentIds.length !== 2) continue;
+
+    const p1 = nodeMap.get(parentIds[0]);
+    const p2 = nodeMap.get(parentIds[1]);
+    if (!p1 || !p2) continue;
+
+    const p1CenterX = p1.x + p1.width / 2;
+    const p2CenterX = p2.x + p2.width / 2;
+    const midX = (p1CenterX + p2CenterX) / 2;
+    node.x = midX - node.width / 2;
+  }
+
   // ── Pass 2: nuclear spouse Y-pin ─────────────────────────────────────────
   // For every spouse edge (person → union), hard-set person.y to match the
   // union's row. Mathematically redundant when gen values are correct, but
@@ -135,3 +159,53 @@ export async function layoutBipartiteGraph(
 
 /** No-op — kept for any future HMR cleanup. */
 export function disposeElkWorker(): void {}
+
+function orderNodesForElk(graph: BipartiteGraph): BipartiteNode[] {
+  const partnerOf = new Map<string, string>();
+  for (const node of graph.nodes) {
+    if (node.kind !== 'union') continue;
+    const parentIds = node.union?.parent_ids;
+    if (!parentIds || parentIds.length !== 2) continue;
+    const [a, b] = parentIds;
+    partnerOf.set(a, b);
+    partnerOf.set(b, a);
+  }
+
+  const byGen = new Map<number, BipartiteNode[]>();
+  for (const n of graph.nodes) {
+    const list = byGen.get(n.gen) ?? [];
+    list.push(n);
+    byGen.set(n.gen, list);
+  }
+
+  const gens = [...byGen.keys()].sort((a, b) => a - b);
+  const ordered: BipartiteNode[] = [];
+
+  for (const gen of gens) {
+    const layer = byGen.get(gen) ?? [];
+    const persons = layer.filter((n) => n.kind === 'person');
+    const unions = layer.filter((n) => n.kind === 'union');
+
+    const personById = new Map(persons.map((p) => [p.id, p]));
+    const used = new Set<string>();
+    const orderedPersons: BipartiteNode[] = [];
+
+    for (const p of persons) {
+      if (used.has(p.id)) continue;
+      orderedPersons.push(p);
+      used.add(p.id);
+
+      const partnerId = partnerOf.get(p.id);
+      if (!partnerId || used.has(partnerId)) continue;
+      const partner = personById.get(partnerId);
+      if (!partner) continue;
+
+      orderedPersons.push(partner);
+      used.add(partnerId);
+    }
+
+    ordered.push(...orderedPersons, ...unions);
+  }
+
+  return ordered;
+}
