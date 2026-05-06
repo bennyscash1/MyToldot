@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
@@ -62,10 +70,10 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    const onMouseDown = (e: MouseEvent) => {
+    const onMouseDown = (e: globalThis.MouseEvent) => {
       if (!modalRef.current) return;
       if (!modalRef.current.contains(e.target as Node)) onClose();
     };
@@ -106,7 +114,7 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
     setDraftSurnames((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSurnameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleSurnameKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
       commitSurnameInput();
