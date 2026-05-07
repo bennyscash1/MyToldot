@@ -285,6 +285,13 @@
     "section3Title": "The Toldotay Difference: Precision from the Foundation Down",
     "section3Body": "Toldotay's philosophy is different from anything you've experienced. We believe in a \"Top-Down\" approach. The system is specifically engineered for family lineages that demand exemplary order and a clear hierarchical structure. Unlike other platforms that allow \"data pollution\" by adding lateral family connections that don't belong to the core dynasty, Toldotay safeguards the integrity of your tree. Our focus is on the direct and authentic lineage. We provide the stable infrastructure that allows you to build your family tree in a controlled manner, ensuring that every person added is an integral part of the true family narrative.",
     "section4Title": "Empowering Future Generations",
-    "section4Body": "Our ultimate goal is to bridge the gap between the past and the future. Toldotay allows you to ensure that your children and grandchildren will not only know the names of their ancestors but will understand exactly where they came from. Thanks to our precise framework, your heritage is preserved in a clean and honorable way—one that will stand the test of time and continue to grow alongside your family."
+    "section4Body": "Our ultimate goal is to bridge the gap between the past and the future. Toldotay allows you to ensure that your children and grandchildren will not only know the names of their ancestors but will understand exactly where they came from. Thanks to our precise framework, your heritage is preserved in a clean and honorable way—one that will stand the test of time and continue to grow alongside your family.",
+    "section5Title": "How to connect your family tree to your account",
+    "section5Body": "To join an existing family tree, you must first register on the platform.\nOnce registered, ask the tree owner to share their tree number — the number that appears in the URL when they view their family tree.\n\nEnter that number in the designated field on the homepage, and the tree will be linked to your account.\n\nWant to make edits?\nClick \"Request Edit Access\" — the tree owner will receive a notification and can approve your request.",
+    "contactTitle": "Contact",
+    "contactEmail": "benish211@gmail.com",
+    "contactLinkedInLabel": "LinkedIn",
+    "contactLinkedInUrl": "https://www.linkedin.com/in/benny-shor/",
+    "contactCredit": "The system was built by Benny Shor"
   }
 }

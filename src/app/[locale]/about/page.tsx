@@ -37,6 +37,10 @@ export default async function AboutPage({ params }: LocalePageProps) {
       title: t('section4Title'),
       body: t('section4Body'),
     },
+    {
+      title: t('section5Title'),
+      body: t('section5Body'),
+    },
   ] as const;
 
   return (
@@ -52,15 +56,37 @@ export default async function AboutPage({ params }: LocalePageProps) {
         <div className="mt-12 flex flex-col gap-12 sm:mt-14">
           {sections.map(({ title, body }, index) => (
             <section key={index}>
-              <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
-                {title}
-              </h2>
+              {title && (
+                <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
+                  {title}
+                </h2>
+              )}
               <p className="mt-4 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
                 {body}
               </p>
             </section>
           ))}
         </div>
+
+        <section className="mt-14 border-t border-slate-200 pt-8">
+          <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
+            {t('contactTitle')}
+          </h2>
+          <div className="mt-4 flex flex-col gap-2 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
+            <a className="underline hover:no-underline" href={`mailto:${t('contactEmail')}`}>
+              {t('contactEmail')}
+            </a>
+            <a
+              className="underline hover:no-underline"
+              href={t('contactLinkedInUrl')}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('contactLinkedInLabel')}
+            </a>
+            <p>{t('contactCredit')}</p>
+          </div>
+        </section>
       </div>
     </article>
   );
