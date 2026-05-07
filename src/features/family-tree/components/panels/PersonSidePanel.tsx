@@ -7,6 +7,7 @@ import type { PersonPatch } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow } from '../../lib/types';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
+import { AiBioSearch } from './AiBioSearch';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-[#3e5045] focus:outline-none focus:ring-1 focus:ring-[#3e5045]/40';
@@ -213,6 +214,8 @@ export function PersonSidePanel({
                 className={`${inputClass} resize-y min-h-[120px]`}
               />
             </label>
+
+            <AiBioSearch personId={person.id} onApply={setBio} />
 
             {(onAddParent || onAddSpouse || onAddChild) && (
               <div className="mb-4 flex flex-col gap-2">
