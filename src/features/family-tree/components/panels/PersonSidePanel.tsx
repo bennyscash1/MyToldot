@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 
 import type { PersonPatch } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow } from '../../lib/types';
+import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
 import { AiBioSearch } from './AiBioSearch';
@@ -88,7 +89,9 @@ export function PersonSidePanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const previewUrl = profileImagePublicUrl(person.profile_image) ?? person.profile_image;
+  const previewUrl =
+    profileImagePublicUrl(person.profile_image) ?? person.profile_image?.trim() ?? null;
+  const photoSrc = previewUrl || DEFAULT_PERSON_IMAGE_SRC;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -144,14 +147,12 @@ export function PersonSidePanel({
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
             <div className="mb-4 flex flex-col items-center">
               <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-                {previewUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={previewUrl} alt="" className="h-48 w-48 object-cover" />
-                ) : (
-                  <div className="flex h-48 w-48 items-center justify-center bg-slate-100 text-4xl text-slate-400">
-                    {(fullName.trim()[0] ?? '?').toUpperCase()}
-                  </div>
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoSrc}
+                  alt=""
+                  className="h-48 w-48 object-cover object-top bg-slate-100"
+                />
               </div>
               <input
                 ref={fileRef}

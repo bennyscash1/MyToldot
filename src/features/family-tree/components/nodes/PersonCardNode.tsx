@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import clsx from 'clsx';
 
+import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import type { PersonNodeData } from '../../lib/types';
 import {
@@ -87,22 +88,16 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
 }
 
 function Avatar({ person }: { person: PersonNodeData['person'] }) {
-  const initials = (person.first_name_he?.[0] ?? person.first_name[0] ?? '?').toUpperCase();
-  const src = profileImagePublicUrl(person.profile_image) ?? person.profile_image ?? null;
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt=""
-        className="h-[132px] w-full flex-shrink-0 rounded-t-[10px] object-cover"
-      />
-    );
-  }
+  const uploaded =
+    profileImagePublicUrl(person.profile_image) ?? person.profile_image?.trim() ?? null;
+  const src = uploaded || DEFAULT_PERSON_IMAGE_SRC;
   return (
-    <div className="flex h-[132px] w-full flex-shrink-0 items-center justify-center rounded-t-[10px] bg-slate-100 text-2xl font-semibold text-slate-400">
-      {initials}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className="h-[132px] w-full flex-shrink-0 rounded-t-[10px] object-cover object-top bg-slate-100"
+    />
   );
 }
 
