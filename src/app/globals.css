@@ -84,6 +84,12 @@
   stroke-dasharray: 6 4;
 }
 
+/* Internal anchor edge for solo (single-parent) unions — kept in the
+   ELK input as a layout constraint but visually hidden. NOT a marriage. */
+.react-flow__edge.shortree-edge-hidden .react-flow__edge-path {
+  stroke: transparent;
+}
+
 @keyframes toldot-drawer {
   from {
     opacity: 0;

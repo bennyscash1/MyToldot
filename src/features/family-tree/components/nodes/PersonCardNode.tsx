@@ -10,6 +10,7 @@ import type { PersonNodeData } from '../../lib/types';
 import {
   PERSON_NODE_HEIGHT,
   PERSON_NODE_WIDTH,
+  PERSON_SPOUSE_HANDLE_Y,
 } from '../../lib/constants';
 
 // ────────────────────────────────────────────────────────────────
@@ -46,11 +47,14 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
           : 'border border-slate-200/90',
       )}
     >
-      {/* Outgoing spouse edge — left side, for when this card is to the RIGHT of the union node. */}
+      {/* Outgoing spouse edge — left side, for when this card is to the RIGHT of the union node.
+          PERSON_SPOUSE_HANDLE_Y aligns the handle with the avatar center (face level) rather
+          than the geometric card center. UnionNode pill must use the same Y. */}
       <Handle
         id="left"
         type="source"
         position={Position.Left}
+        style={{ top: PERSON_SPOUSE_HANDLE_Y }}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
       {/* Incoming child edge — top centre. */}
@@ -70,11 +74,12 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
         {years ? <div className="mt-0.5 text-xs text-slate-500">{years}</div> : null}
       </div>
 
-      {/* Outgoing spouse edge — right side. */}
+      {/* Outgoing spouse edge — right side. Aligned to avatar center (see left handle). */}
       <Handle
         id="right"
         type="source"
         position={Position.Right}
+        style={{ top: PERSON_SPOUSE_HANDLE_Y }}
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
       <Handle

@@ -10,6 +10,12 @@ export const PERSON_NODE_HEIGHT = 212;
 export const UNION_NODE_WIDTH = 24;
 export const UNION_NODE_HEIGHT = 12;
 
+// Y offset (from the top of a person card) at which spouse handles attach.
+// Targets the vertical center of the 132px avatar so spouse lines visually
+// connect at face level. The union pill in the same row must vertically
+// center on this same Y, otherwise spouse edges render diagonally.
+export const PERSON_SPOUSE_HANDLE_Y = 66;
+
 // Vertical space between generations (top-of-row to top-of-next-row).
 // Must be > PERSON_NODE_HEIGHT (212) to prevent generation rows from overlapping.
 // 332 = 212 (card height) + 120 (extra vertical breathing room).

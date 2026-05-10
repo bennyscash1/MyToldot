@@ -4,16 +4,16 @@ import {
   EDGE_NODE_GAP,
   GEN_HEIGHT,
   NODE_GAP,
-  PERSON_NODE_HEIGHT,
+  PERSON_SPOUSE_HANDLE_Y,
   UNION_NODE_HEIGHT,
 } from './constants';
 import type { BipartiteEdge, BipartiteGraph, BipartiteNode } from './types';
 
-// Union nodes are tiny pills (UNION_NODE_HEIGHT = 12px) while person cards are
-// tall (PERSON_NODE_HEIGHT = 212px). Both live in the same generation row, so we
-// offset the union node downward so its vertical midpoint aligns with the
-// person card midpoint. This makes spouse edges perfectly horizontal.
-const UNION_Y_OFFSET = (PERSON_NODE_HEIGHT - UNION_NODE_HEIGHT) / 2; // = 100
+// Both the person card and the union pill live in the same generation
+// row, but the spouse-edge attachment point on the person card is at
+// PERSON_SPOUSE_HANDLE_Y (avatar center). The union pill must vertically
+// center on that same Y so spouse edges render perfectly horizontal.
+const UNION_Y_OFFSET = PERSON_SPOUSE_HANDLE_Y - UNION_NODE_HEIGHT / 2; // = 60
 
 // Partition offset: ELK partitions must be positive integers.
 // We add 1000 so that negative generations (ancestors) still produce valid
@@ -120,19 +120,23 @@ export async function layoutBipartiteGraph(
   // which makes spouse lines span across unrelated siblings. Re-center each
   // 2-parent couple/corparent union between its two parents to keep spouse
   // connections local and visually correct.
-  for (const node of nodeMap.values()) {
-    if (node.kind !== 'union') continue;
-    const parentIds = node.union?.parent_ids;
-    if (!parentIds || parentIds.length !== 2) continue;
+  recenterCoupleUnions(nodeMap);
 
-    const p1 = nodeMap.get(parentIds[0]);
-    const p2 = nodeMap.get(parentIds[1]);
-    if (!p1 || !p2) continue;
-
-    const p1CenterX = p1.x + p1.width / 2;
-    const p2CenterX = p2.x + p2.width / 2;
-    const midX = (p1CenterX + p2CenterX) / 2;
-    node.x = midX - node.width / 2;
+  // ── Pass 1.6: enforce couple adjacency within each generation ────────────
+  // ELK's crossing minimization can break couple adjacency despite
+  // forceNodeModelOrder=true: when a parent's union has multiple child
+  // edges into the same row, ELK clusters the bloodline children together
+  // and pushes spouses to the periphery. Pass 1.5 then centers the
+  // couple-union pill between non-adjacent parents, and the straight
+  // spouse line slices across whatever cards sit between them — which is
+  // exactly what users see as "a horizontal line connecting siblings".
+  //
+  // This pass detects 2-parent unions whose parents aren't horizontally
+  // adjacent and swaps the partner into a slot next to its anchor. Then
+  // we re-run union re-centering so pill positions follow the new
+  // person X grid.
+  if (enforceCoupleAdjacency(nodeMap)) {
+    recenterCoupleUnions(nodeMap);
   }
 
   // ── Pass 2: nuclear spouse Y-pin ─────────────────────────────────────────
@@ -160,15 +164,109 @@ export async function layoutBipartiteGraph(
 /** No-op — kept for any future HMR cleanup. */
 export function disposeElkWorker(): void {}
 
+function recenterCoupleUnions(nodeMap: Map<string, PositionedNode>): void {
+  for (const node of nodeMap.values()) {
+    if (node.kind !== 'union') continue;
+    const parentIds = node.union?.parent_ids;
+    if (!parentIds || parentIds.length !== 2) continue;
+
+    const p1 = nodeMap.get(parentIds[0]);
+    const p2 = nodeMap.get(parentIds[1]);
+    if (!p1 || !p2) continue;
+
+    const p1CenterX = p1.x + p1.width / 2;
+    const p2CenterX = p2.x + p2.width / 2;
+    const midX = (p1CenterX + p2CenterX) / 2;
+    node.x = midX - node.width / 2;
+  }
+}
+
+/**
+ * Detect 2-parent unions whose parents aren't horizontally adjacent in
+ * their generation, and reorder persons in that gen so they are. Returns
+ * true if anything moved (caller must re-run `recenterCoupleUnions`).
+ *
+ * Couple unions are processed in id-sorted order so the result is
+ * deterministic. For a person with multiple spouses, only the first
+ * couple processed wins the adjacent slot — secondary spouses may stay
+ * far. The smoothstep fallback in useElkLayout.ts handles those leftover
+ * far-spouse edges so they route around obstacles instead of through
+ * sibling cards.
+ */
+function enforceCoupleAdjacency(nodeMap: Map<string, PositionedNode>): boolean {
+  const personsByGen = new Map<number, PositionedNode[]>();
+  for (const node of nodeMap.values()) {
+    if (node.kind !== 'person') continue;
+    const list = personsByGen.get(node.gen) ?? [];
+    list.push(node);
+    personsByGen.set(node.gen, list);
+  }
+  for (const list of personsByGen.values()) {
+    list.sort((a, b) => a.x - b.x);
+  }
+
+  // Snapshot the X grid per gen so we can re-assign positions in the new
+  // order without inventing new X values (preserves ELK's overall span).
+  const xGridByGen = new Map<number, number[]>();
+  for (const [gen, list] of personsByGen) {
+    xGridByGen.set(gen, list.map((p) => p.x));
+  }
+
+  const couples = Array.from(nodeMap.values())
+    .filter((n) => n.kind === 'union' && n.union?.parent_ids?.length === 2)
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  let changed = false;
+  for (const u of couples) {
+    const ids = u.union?.parent_ids;
+    if (!ids || ids.length !== 2) continue;
+    const a = nodeMap.get(ids[0]);
+    const b = nodeMap.get(ids[1]);
+    if (!a || !b || a.gen !== b.gen) continue;
+
+    const list = personsByGen.get(a.gen);
+    if (!list) continue;
+
+    const aIdx = list.indexOf(a);
+    const bIdx = list.indexOf(b);
+    if (aIdx === -1 || bIdx === -1) continue;
+    if (Math.abs(aIdx - bIdx) <= 1) continue;
+
+    // Move b adjacent to a, preserving which side (left/right) b was on.
+    const bWasRightOfA = bIdx > aIdx;
+    list.splice(bIdx, 1);
+    const newAIdx = list.indexOf(a);
+    list.splice(bWasRightOfA ? newAIdx + 1 : newAIdx, 0, b);
+    changed = true;
+  }
+
+  if (!changed) return false;
+
+  for (const [gen, list] of personsByGen) {
+    const xs = xGridByGen.get(gen);
+    if (!xs) continue;
+    for (let i = 0; i < list.length; i += 1) {
+      list[i].x = xs[i];
+    }
+  }
+
+  return true;
+}
+
 function orderNodesForElk(graph: BipartiteGraph): BipartiteNode[] {
-  const partnerOf = new Map<string, string>();
+  // Multi-partner support: a person with two spouses has two couple unions,
+  // and we want both partners listed near the anchor in model order. We
+  // can't satisfy all-adjacent in 1D, so the deterministic rule is: the
+  // partner with the lowest id sits in the immediately-adjacent slot;
+  // secondary partners follow after in id-ascending order.
+  const partnersOf = new Map<string, string[]>();
   for (const node of graph.nodes) {
     if (node.kind !== 'union') continue;
     const parentIds = node.union?.parent_ids;
     if (!parentIds || parentIds.length !== 2) continue;
     const [a, b] = parentIds;
-    partnerOf.set(a, b);
-    partnerOf.set(b, a);
+    (partnersOf.get(a) ?? partnersOf.set(a, []).get(a)!).push(b);
+    (partnersOf.get(b) ?? partnersOf.set(b, []).get(b)!).push(a);
   }
 
   const byGen = new Map<number, BipartiteNode[]>();
@@ -195,13 +293,14 @@ function orderNodesForElk(graph: BipartiteGraph): BipartiteNode[] {
       orderedPersons.push(p);
       used.add(p.id);
 
-      const partnerId = partnerOf.get(p.id);
-      if (!partnerId || used.has(partnerId)) continue;
-      const partner = personById.get(partnerId);
-      if (!partner) continue;
-
-      orderedPersons.push(partner);
-      used.add(partnerId);
+      const partnerIds = (partnersOf.get(p.id) ?? []).slice().sort();
+      for (const partnerId of partnerIds) {
+        if (used.has(partnerId)) continue;
+        const partner = personById.get(partnerId);
+        if (!partner) continue;
+        orderedPersons.push(partner);
+        used.add(partnerId);
+      }
     }
 
     ordered.push(...orderedPersons, ...unions);

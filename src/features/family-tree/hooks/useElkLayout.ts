@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { buildBipartiteGraph } from '../lib/buildBipartiteGraph';
+import { PERSON_NODE_WIDTH } from '../lib/constants';
 import { layoutBipartiteGraph, type LayoutResult } from '../lib/elkLayout';
 import type { FlowEdge, FlowNode, PersonRow, RelationshipRow } from '../lib/types';
 
@@ -161,6 +162,7 @@ function toFlowElements(
       const union  = posById.get(e.target);
       let sourceHandle: string | undefined;
       let targetHandle: string | undefined;
+      let edgeType: 'straight' | 'smoothstep' = 'straight';
       if (person && union) {
         const personCenterX = person.x + person.width / 2;
         const unionCenterX  = union.x  + union.width  / 2;
@@ -171,17 +173,41 @@ function toFlowElements(
           sourceHandle = 'left';
           targetHandle = 'spouse-right';
         }
+
+        // Pass 1.6 in elkLayout.ts is supposed to keep couples adjacent so
+        // this distance stays small. If it's still huge, the straight line
+        // would slice across other cards — fall back to smoothstep so the
+        // edge bends around obstacles. Warns so we notice if Pass 1.6 has
+        // a gap (e.g. multi-spouse anchors that 1D ordering can't satisfy).
+        const dx = Math.abs(personCenterX - unionCenterX);
+        if (dx > PERSON_NODE_WIDTH * 1.5) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[shortree] spouse edge ${e.id} spans ${Math.round(dx)}px — falling back to smoothstep. Pass 1.6 may have a gap.`,
+          );
+          edgeType = 'smoothstep';
+        }
       }
+
+      // Solo unions are internal anchors (single-parent line of descent),
+      // not real marriages. The spouse edge stays in ELK's input as a
+      // layout constraint, but we render it transparent so no bogus
+      // "marriage line" appears in the parent's row.
+      const isSoloUnion =
+        union?.kind === 'union' && union.union?.kind === 'solo';
+
       return {
         id: e.id,
         source: e.source,
         target: e.target,
-        type: 'straight',
+        type: edgeType,
         sourceHandle,
         targetHandle,
-        className: e.meta?.is_divorced
-          ? 'shortree-edge-divorced'
-          : 'shortree-edge-spouse',
+        className: isSoloUnion
+          ? 'shortree-edge-hidden'
+          : e.meta?.is_divorced
+            ? 'shortree-edge-divorced'
+            : 'shortree-edge-spouse',
       } as FlowEdge;
     }
 
