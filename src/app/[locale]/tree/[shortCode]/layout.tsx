@@ -54,10 +54,11 @@ export default async function TreeShortCodeLayout({
             {isOwner && (
               <Link
                 href={`/tree/${shortCode}/manage`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm hover:border-emerald-300 hover:text-emerald-800"
+                aria-label={tManage('navManageFamily')}
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-xl border text-sm font-medium shadow-sm transition-colors hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
               >
-                <GearIcon className="h-4 w-4" aria-hidden />
-                <span>{tManage('navManageFamily')}</span>
+                <GearIcon className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="hidden sm:inline">{tManage('navManageFamily')}</span>
               </Link>
             )}
           </div>

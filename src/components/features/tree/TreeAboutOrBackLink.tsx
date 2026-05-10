@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 
 const btnClass =
-  'inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm hover:border-emerald-300 hover:text-emerald-800';
+  'inline-flex items-center gap-2 h-10 px-4 rounded-xl border text-sm font-medium shadow-sm transition-colors hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300';
 
 /** On `/tree/:code/about`, shows “Back to tree”; otherwise “About {name}”. */
 export function TreeAboutOrBackLink({
@@ -21,18 +21,20 @@ export function TreeAboutOrBackLink({
   const onAboutPage = /\/tree\/[^/]+\/about$/.test(pathname ?? '');
 
   if (onAboutPage) {
+    const backLabel = t('backToTree');
     return (
-      <Link href={`/tree/${shortCode}`} className={btnClass}>
+      <Link href={`/tree/${shortCode}`} className={btnClass} aria-label={backLabel}>
         <BackChevronIcon className="h-4 w-4 shrink-0 rtl:rotate-180" aria-hidden />
-        <span>{t('backToTree')}</span>
+        <span className="hidden sm:inline">{backLabel}</span>
       </Link>
     );
   }
 
+  const aboutLabel = t('aboutWithFamily', { name: familyLabel });
   return (
-    <Link href={`/tree/${shortCode}/about`} className={btnClass}>
+    <Link href={`/tree/${shortCode}/about`} className={btnClass} aria-label={aboutLabel}>
       <InfoIcon className="h-4 w-4 shrink-0" aria-hidden />
-      <span>{t('aboutWithFamily', { name: familyLabel })}</span>
+      <span className="hidden sm:inline">{aboutLabel}</span>
     </Link>
   );
 }
