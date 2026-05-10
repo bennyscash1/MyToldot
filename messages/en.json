@@ -33,7 +33,8 @@
     "breadcrumbLabel": "Family tree breadcrumb",
     "home": "Home",
     "about": "About",
-    "aboutWithFamily": "About {name}"
+    "aboutWithFamily": "About {name}",
+    "backToTree": "Back to tree"
   },
   "treeFamilyAboutPage": {
     "metaTitle": "{name} — About",

@@ -33,7 +33,8 @@
     "breadcrumbLabel": "פירורי ניווט לעץ המשפחה",
     "home": "בית",
     "about": "אודות",
-    "aboutWithFamily": "אודות {name}"
+    "aboutWithFamily": "אודות {name}",
+    "backToTree": "חזרה לעץ"
   },
   "treeFamilyAboutPage": {
     "metaTitle": "{name} — אודות",
