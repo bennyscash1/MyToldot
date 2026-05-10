@@ -47,15 +47,18 @@ export interface UseTreeMutationsResult {
   relationships: RelationshipRow[];
   /** Creates a standalone person (no relationships). Returns the new person's id, or null on failure. */
   createPerson: (input: PersonInput) => Promise<string | null>;
-  addParent: (args: { childId: string; parent: PersonInput; adoptive?: boolean }) => Promise<void>;
-  addSpouse: (args: { personId: string; spouse: PersonInput; marriage_date?: Date | null }) => Promise<void>;
+  addParent: (args: { childId: string; parent: PersonInput; adoptive?: boolean }) => Promise<boolean>;
+  addSpouse: (args: { personId: string; spouse: PersonInput; marriage_date?: Date | null }) => Promise<boolean>;
   /** Returns the new child's id after a successful create (real id, not temp). */
   addChild: (args: { parent1Id: string; parent2Id?: string | null; child: PersonInput }) => Promise<string | null>;
+  addSibling: (args: { existingSiblingId: string; sibling: PersonInput }) => Promise<boolean>;
   updatePerson: (args: { personId: string; patch: PersonPatch }) => Promise<void>;
   deletePerson: (personId: string) => Promise<void>;
   isSaving: boolean;
   lastError: string | null;
   clearError: () => void;
+  lastBlocked: { ownerEmail?: string } | null;
+  clearBlocked: () => void;
 }
 
 function tmpId(prefix: string): string {
@@ -99,6 +102,7 @@ export function useTreeMutations({
   const [persons, setPersons] = useState<PersonRow[]>(initialPersons);
   const [relationships, setRelationships] = useState<RelationshipRow[]>(initialRelationships);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lastBlocked, setLastBlocked] = useState<{ ownerEmail?: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const asMutationResult = useCallback(
@@ -109,7 +113,11 @@ export function useTreeMutations({
         if (err instanceof ServiceError) {
           return {
             ok: false as const,
-            error: { code: err.code, message: err.message },
+            error: {
+              code: err.code,
+              message: err.message,
+              details: err.details,
+            },
           };
         }
         throw err;
@@ -125,7 +133,10 @@ export function useTreeMutations({
       tempRelationships?: RelationshipRow[];
       run: () => Promise<
         | { ok: true; data: T }
-        | { ok: false; error: { code: string; message: string } }
+        | {
+            ok: false;
+            error: { code: string; message: string; details?: Record<string, unknown> };
+          }
       >;
       /** Called on success to compute id-swap instructions. */
       onSuccess?: (data: T) => {
@@ -143,7 +154,15 @@ export function useTreeMutations({
       try {
         const result = await run();
         if (!result.ok) {
-          setLastError(result.error.message);
+          if (result.error.code === 'BRANCHING_NOT_ALLOWED') {
+            const raw = result.error.details?.ownerEmail;
+            const ownerEmail = typeof raw === 'string' ? raw : undefined;
+            setLastBlocked({ ownerEmail });
+            setLastError(null);
+          } else {
+            setLastBlocked(null);
+            setLastError(result.error.message);
+          }
           setPersons((prev) => prev.filter((p) => !tempPersonIds.has(p.id)));
           setRelationships((prev) => prev.filter((r) => !tempRelIds.has(r.id)));
           return undefined;
@@ -167,8 +186,10 @@ export function useTreeMutations({
           }),
         );
         setLastError(null);
+        setLastBlocked(null);
         return result.data;
       } catch (err) {
+        setLastBlocked(null);
         setLastError(err instanceof Error ? err.message : 'Unknown error');
         setPersons((prev) => prev.filter((p) => !tempPersonIds.has(p.id)));
         setRelationships((prev) => prev.filter((r) => !tempRelIds.has(r.id)));
@@ -223,9 +244,10 @@ export function useTreeMutations({
         start_date: null,
         end_date: null,
       };
+      let success = false;
       await new Promise<void>((resolve) => {
         startTransition(async () => {
-          await runOptimistic({
+          const data = await runOptimistic({
             tempPersons: [tempPerson],
             tempRelationships: [tempRel],
             run: () =>
@@ -237,14 +259,16 @@ export function useTreeMutations({
                   adoptive,
                 }),
               ),
-            onSuccess: (data) => ({
-              swapPersonIds: { [newPersonId]: data.person.id },
-              swapRelationshipIds: { [newRelId]: data.relationship_ids[0] },
+            onSuccess: (d) => ({
+              swapPersonIds: { [newPersonId]: d.person.id },
+              swapRelationshipIds: { [newRelId]: d.relationship_ids[0] },
             }),
           });
+          success = data !== undefined;
           resolve();
         });
       });
+      return success;
     },
     [asMutationResult, treeId, treeRouteBase, runOptimistic],
   );
@@ -255,12 +279,12 @@ export function useTreeMutations({
       const focusedPerson = persons.find((p) => p.id === personId);
       if (!focusedPerson) {
         setLastError('Focused person was not found');
-        return;
+        return false;
       }
       const spouseGender = oppositeBinaryGender(focusedPerson.gender);
       if (!spouseGender) {
         setLastError('Cannot add spouse unless the focused person is male or female.');
-        return;
+        return false;
       }
       const normalizedSpouse: PersonInput = { ...spouse, gender: spouseGender };
       const newPersonId = tmpId('person');
@@ -274,9 +298,10 @@ export function useTreeMutations({
         start_date: marriage_date ?? null,
         end_date: null,
       };
+      let success = false;
       await new Promise<void>((resolve) => {
         startTransition(async () => {
-          await runOptimistic({
+          const data = await runOptimistic({
             tempPersons: [tempPerson],
             tempRelationships: [tempRel],
             run: () =>
@@ -288,14 +313,16 @@ export function useTreeMutations({
                   marriage_date: marriage_date ?? null,
                 }),
               ),
-            onSuccess: (data) => ({
-              swapPersonIds: { [newPersonId]: data.person.id },
-              swapRelationshipIds: { [newRelId]: data.relationship_ids[0] },
+            onSuccess: (d) => ({
+              swapPersonIds: { [newPersonId]: d.person.id },
+              swapRelationshipIds: { [newRelId]: d.relationship_ids[0] },
             }),
           });
+          success = data !== undefined;
           resolve();
         });
       });
+      return success;
     },
     [asMutationResult, treeId, treeRouteBase, persons, runOptimistic],
   );
@@ -348,6 +375,98 @@ export function useTreeMutations({
       return out;
     },
     [asMutationResult, treeId, treeRouteBase, runOptimistic],
+  );
+
+  // ── addSibling ─────────────────────────────────────────────────
+  const addSibling = useCallback<UseTreeMutationsResult['addSibling']>(
+    async ({ existingSiblingId, sibling }) => {
+      const parentRels = relationships.filter(
+        (r) =>
+          r.person2_id === existingSiblingId &&
+          (r.relationship_type === 'PARENT_CHILD' || r.relationship_type === 'ADOPTED_PARENT'),
+      );
+
+      const newPersonId = tmpId('person');
+      const tempPerson = inputToRow(newPersonId, sibling);
+
+      if (parentRels.length === 0) {
+        const newRelId = tmpId('rel');
+        const tempRel: RelationshipRow = {
+          id: newRelId,
+          relationship_type: 'SIBLING',
+          person1_id: existingSiblingId,
+          person2_id: newPersonId,
+          start_date: null,
+          end_date: null,
+        };
+        let success = false;
+        await new Promise<void>((resolve) => {
+          startTransition(async () => {
+            const data = await runOptimistic({
+              tempPersons: [tempPerson],
+              tempRelationships: [tempRel],
+              run: () =>
+                asMutationResult(() =>
+                  apiClient.post<AddedRelativeDto>(`${treeRouteBase}/add-sibling`, {
+                    treeId,
+                    existingSiblingId,
+                    sibling,
+                  }),
+                ),
+              onSuccess: (d) => ({
+                swapPersonIds: { [newPersonId]: d.person.id },
+                swapRelationshipIds: { [newRelId]: d.relationship_ids[0] },
+              }),
+            });
+            success = data !== undefined;
+            resolve();
+          });
+        });
+        return success;
+      }
+
+      const tempRels: RelationshipRow[] = parentRels.map((pr) => ({
+        id: tmpId('rel'),
+        relationship_type: pr.relationship_type,
+        person1_id: pr.person1_id,
+        person2_id: newPersonId,
+        start_date: null,
+        end_date: null,
+      }));
+
+      let success = false;
+      await new Promise<void>((resolve) => {
+        startTransition(async () => {
+          const data = await runOptimistic({
+            tempPersons: [tempPerson],
+            tempRelationships: tempRels,
+            run: () =>
+              asMutationResult(() =>
+                apiClient.post<AddedRelativeDto>(`${treeRouteBase}/add-sibling`, {
+                  treeId,
+                  existingSiblingId,
+                  sibling,
+                }),
+              ),
+            onSuccess: (d) => {
+              const swapRelationshipIds: Record<string, string> = {};
+              tempRels.forEach((tr, i) => {
+                const realId = d.relationship_ids[i];
+                if (realId) swapRelationshipIds[tr.id] = realId;
+              });
+              return {
+                swapPersonIds: { [newPersonId]: d.person.id },
+                swapRelationshipIds,
+              };
+            },
+          });
+          success = data !== undefined;
+          resolve();
+        });
+      });
+      return success;
+    },
+    [asMutationResult, treeId, treeRouteBase, relationships, runOptimistic],
   );
 
   // ── updatePerson ───────────────────────────────────────────────
@@ -448,10 +567,13 @@ export function useTreeMutations({
     addParent,
     addSpouse,
     addChild,
+    addSibling,
     updatePerson,
     deletePerson,
     isSaving: isPending,
     lastError,
     clearError: () => setLastError(null),
+    lastBlocked,
+    clearBlocked: () => setLastBlocked(null),
   };
 }

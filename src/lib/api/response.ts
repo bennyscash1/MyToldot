@@ -9,7 +9,7 @@ import { ApiError } from './errors';
 // this contract to handle responses uniformly.
 //
 //  Success: { data: T,    error: null  }
-//  Failure: { data: null, error: { code, message } }
+//  Failure: { data: null, error: { code, message, details? } }
 //
 // This makes client-side exhaustive checking trivial:
 //   if (res.error) { showError(res.error.message) }
@@ -26,6 +26,7 @@ export interface ApiErrorEnvelope {
   error: {
     code: string;
     message: string;
+    details?: Record<string, unknown>;
   };
 }
 
@@ -45,7 +46,14 @@ export function err(
 ): NextResponse<ApiErrorEnvelope> {
   if (error instanceof ApiError) {
     return NextResponse.json(
-      { data: null, error: { code: error.code, message: error.message } },
+      {
+        data: null,
+        error: {
+          code: error.code,
+          message: error.message,
+          ...(error.details ? { details: error.details } : {}),
+        },
+      },
       { status: error.status },
     );
   }

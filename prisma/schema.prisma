@@ -57,6 +57,8 @@ model Tree {
   description                String?
   is_public                  Boolean  @default(false) // privacy gate
   strict_lineage_enforcement Boolean  @default(false) // when true: only blood/adoptive edges allowed; no informal links
+  /// When false, lateral expansion is restricted (see `isPersonAllowed` in branching.ts).
+  allow_branching              Boolean  @default(false) @map("allow_branching")
   // Long-form heritage description shown on the About page.
   about_text                 String?
   // Short list of family surnames highlighted on the About page.

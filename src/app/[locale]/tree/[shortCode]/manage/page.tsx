@@ -9,6 +9,7 @@ import {
   FamilyManageMembersTable,
   type FamilyMemberRow,
 } from '@/components/features/tree/FamilyManageMembersTable';
+import { AllowBranchingToggle } from '@/components/features/tree/AllowBranchingToggle';
 
 type ManagePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
@@ -64,6 +65,9 @@ export default async function FamilyManagePage({ params }: ManagePageProps) {
           <p className="mt-1 text-slate-600">{t('pageSubtitle', { name: tree.name })}</p>
         </div>
       </header>
+      <div className="mx-auto max-w-7xl px-4 pt-6">
+        <AllowBranchingToggle treeId={tree.id} initialValue={tree.allow_branching} />
+      </div>
       <FamilyManageMembersTable
         treeRouteSegment={shortCode}
         locale={locale}

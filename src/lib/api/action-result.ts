@@ -11,7 +11,15 @@ import { ApiError } from './errors';
  */
 export type ActionResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: { code: string; message: string; fieldErrors?: Record<string, string[]> } };
+  | {
+      ok: false;
+      error: {
+        code: string;
+        message: string;
+        details?: Record<string, unknown>;
+        fieldErrors?: Record<string, string[]>;
+      };
+    };
 
 export function success<T>(data: T): ActionResult<T> {
   return { ok: true, data };
@@ -21,8 +29,9 @@ export function failure(
   code: string,
   message: string,
   fieldErrors?: Record<string, string[]>,
+  details?: Record<string, unknown>,
 ): ActionResult<never> {
-  return { ok: false, error: { code, message, fieldErrors } };
+  return { ok: false, error: { code, message, fieldErrors, ...(details ? { details } : {}) } };
 }
 
 /**
@@ -43,7 +52,7 @@ export async function withAction<T>(fn: () => Promise<T>): Promise<ActionResult<
       return failure('UNPROCESSABLE_ENTITY', 'Validation failed', fieldErrors);
     }
     if (err instanceof ApiError) {
-      return failure(err.code, err.message);
+      return failure(err.code, err.message, undefined, err.details);
     }
     console.error('[Server Action] Unhandled error:', err);
     return failure('INTERNAL_SERVER_ERROR', 'An unexpected error occurred');

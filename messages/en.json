@@ -246,6 +246,16 @@
     "emptyFiltered": "No members in this filter.",
     "emptyAll": "No members yet."
   },
+  "branching": {
+    "toggleLabel": "Allow family branching",
+    "toggleHelp": "When off, only direct blood-line or marriage relatives can be added. When on, editors may add any person.",
+    "blocked": {
+      "title": "Addition not allowed",
+      "body": "The tree owner has not enabled family branching, so this person cannot be added right now.",
+      "contactOwner": "Contact the tree owner:",
+      "close": "Close"
+    }
+  },
   "aboutPage": {
     "title": "About this family",
     "description": "A short heritage description and the main surnames featured in this tree.",

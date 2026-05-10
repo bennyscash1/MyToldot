@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma';
 import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
+import { isPersonAllowed } from '@/lib/api/branching';
 import { isStrictLineageActive } from '@/lib/api/lineage';
 import type { CreatePersonBody, PersonDto } from '@/types/api';
 
@@ -63,6 +64,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!body.first_name?.trim()) throw Errors.badRequest('`first_name` is required');
 
   await requireTreeRole(body.tree_id, 'EDITOR');
+
+  const branching = await isPersonAllowed(body.tree_id, { kind: 'standalone' });
+  if (!branching.allowed) {
+    throw Errors.branchingNotAllowed(branching.ownerEmail);
+  }
 
   // Expose strict_lineage status in the response metadata so the
   // client can show an informational banner after creation.

@@ -12,6 +12,7 @@ import { AddRelativePopover } from './panels/AddRelativePopover';
 import { PersonSidePanel } from './panels/PersonSidePanel';
 import { TreeAboutModal } from './panels/TreeAboutModal';
 import { PersonForm } from '@/features/persons/components/PersonForm';
+import { BlockedActionDialog } from '@/components/ui/BlockedActionDialog';
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
@@ -52,11 +53,14 @@ export function TreeCanvasWithModals({
     addParent,
     addSpouse,
     addChild,
+    addSibling,
     updatePerson,
     deletePerson,
     isSaving,
     lastError,
     clearError,
+    lastBlocked,
+    clearBlocked,
   } = useTreeMutations({
     treeId,
     treeRouteCode,
@@ -78,20 +82,23 @@ export function TreeCanvasWithModals({
   const onSelectPerson = useCallback(
     (personId: string) => {
       clearError();
+      clearBlocked();
       setSidePersonId(personId);
     },
-    [clearError],
+    [clearError, clearBlocked],
   );
 
   const closeFirstPersonForm = useCallback(() => {
     setShowFirstPersonForm(false);
     clearError();
-  }, [clearError]);
+    clearBlocked();
+  }, [clearError, clearBlocked]);
 
   const onAddFirstPerson = useCallback(() => {
     clearError();
+    clearBlocked();
     setShowFirstPersonForm(true);
-  }, [clearError]);
+  }, [clearError, clearBlocked]);
 
   useEffect(() => {
     if (!showFirstPersonForm) return;
@@ -127,6 +134,7 @@ export function TreeCanvasWithModals({
     (kind: 'add-parent' | 'add-spouse' | 'add-child') => {
       if (!sidePersonId || typeof window === 'undefined') return;
       clearError();
+      clearBlocked();
       const meta: PlaceholderMeta =
         kind === 'add-child'
           ? { kind, anchor_id: sidePersonId, parent_ids: [sidePersonId] as [string] }
@@ -137,7 +145,7 @@ export function TreeCanvasWithModals({
         screenY: Math.round(window.innerHeight / 2),
       });
     },
-    [sidePersonId, clearError],
+    [sidePersonId, clearError, clearBlocked],
   );
 
   const handleAddParentFromPanel = useCallback(async () => {
@@ -157,25 +165,29 @@ export function TreeCanvasWithModals({
       if (!popover) return;
       const { meta } = popover;
       try {
+        let okResult = false;
         if (meta.kind === 'add-parent') {
-          await addParent({ childId: meta.anchor_id, parent: input });
+          okResult = await addParent({ childId: meta.anchor_id, parent: input });
         } else if (meta.kind === 'add-spouse') {
-          await addSpouse({ personId: meta.anchor_id, spouse: input, marriage_date: null });
+          okResult = await addSpouse({ personId: meta.anchor_id, spouse: input, marriage_date: null });
         } else if (meta.kind === 'add-child') {
           const pids = meta.parent_ids;
           if (!pids?.length) return;
-          await addChild({
+          const childId = await addChild({
             parent1Id: pids[0],
             parent2Id: pids.length > 1 ? pids[1] : null,
             child: input,
           });
+          okResult = childId !== null;
+        } else if (meta.kind === 'add-sibling') {
+          okResult = await addSibling({ existingSiblingId: meta.anchor_id, sibling: input });
         }
-        setPopover(null);
+        if (okResult) setPopover(null);
       } catch {
-        /* errors surface via lastError */
+        /* errors surface via lastError / lastBlocked */
       }
     },
-    [popover, addParent, addSpouse, addChild],
+    [popover, addParent, addSpouse, addChild, addSibling],
   );
 
   const handleFirstRootSubmit = useCallback(
@@ -310,6 +322,12 @@ export function TreeCanvasWithModals({
         canEdit={canEditAbout}
         open={showAboutModal}
         onClose={closeAboutModal}
+      />
+
+      <BlockedActionDialog
+        open={lastBlocked !== null}
+        ownerEmail={lastBlocked?.ownerEmail}
+        onClose={clearBlocked}
       />
     </div>
   );

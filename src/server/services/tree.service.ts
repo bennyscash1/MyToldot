@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { deleteProfileImage } from '@/lib/supabase/storage';
 import { requireTreeRole } from '@/lib/api/auth';
+import { isPersonAllowed } from '@/lib/api/branching';
 import { Errors } from '@/lib/api/errors';
 import { generateUniqueTreeSlug, generateUniqueTreeShortCode } from '@/lib/tree/slug';
 import {
@@ -79,6 +80,12 @@ export const AddChildSchema = z.object({
   parent1Id: CuidSchema,
   parent2Id: CuidSchema.optional().nullable(),
   child: PersonInputSchema,
+});
+
+export const AddSiblingSchema = z.object({
+  treeId: CuidSchema,
+  existingSiblingId: CuidSchema,
+  sibling: PersonInputSchema,
 });
 
 export const RemovePersonSchema = z.object({
@@ -157,6 +164,7 @@ const TREE_ROUTE_LOOKUP_SELECT = {
   is_public: true,
   root_person_id: true,
   strict_lineage_enforcement: true,
+  allow_branching: true,
   _count: { select: { persons: true } },
 } as const;
 
@@ -452,6 +460,12 @@ export async function createPersonInTree(
 ): Promise<PersonDto> {
   await requireTreeRole(treeId, 'EDITOR');
   const data = PersonInputSchema.parse(input);
+
+  const branching = await isPersonAllowed(treeId, { kind: 'standalone' });
+  if (!branching.allowed) {
+    throw Errors.branchingNotAllowed(branching.ownerEmail);
+  }
+
   return prisma.person.create({
     data: { ...data, tree_id: treeId },
     select: PERSON_SELECT,
@@ -507,6 +521,15 @@ export async function addParentInTree(
   const { treeId, childId, parent, adoptive } = AddParentSchema.parse(input);
   await requireTreeRole(treeId, 'EDITOR');
 
+  const branching = await isPersonAllowed(treeId, {
+    kind: 'parent',
+    anchorId: childId,
+    adoptive: adoptive ?? false,
+  });
+  if (!branching.allowed) {
+    throw Errors.branchingNotAllowed(branching.ownerEmail);
+  }
+
   return prisma.$transaction(async (tx) => {
     await assertPersonsInTree(tx, treeId, [childId]);
 
@@ -549,6 +572,11 @@ export async function addChildInTree(
 
   const parentIds = parent2Id ? [parent1Id, parent2Id] : [parent1Id];
 
+  const branching = await isPersonAllowed(treeId, { kind: 'child', anchorIds: parentIds });
+  if (!branching.allowed) {
+    throw Errors.branchingNotAllowed(branching.ownerEmail);
+  }
+
   return prisma.$transaction(async (tx) => {
     await assertPersonsInTree(tx, treeId, parentIds);
 
@@ -581,6 +609,11 @@ export async function addSpouseInTree(
   const { treeId, personId, spouse, marriage_date } = AddSpouseSchema.parse(input);
   await requireTreeRole(treeId, 'EDITOR');
 
+  const branching = await isPersonAllowed(treeId, { kind: 'spouse', anchorId: personId });
+  if (!branching.allowed) {
+    throw Errors.branchingNotAllowed(branching.ownerEmail);
+  }
+
   return prisma.$transaction(async (tx) => {
     const focusedPerson = await tx.person.findFirst({
       where: { id: personId, tree_id: treeId },
@@ -607,5 +640,95 @@ export async function addSpouseInTree(
     });
 
     return { person: newPerson, relationship_ids: [rel.id] };
+  });
+}
+
+/**
+ * Siblings share parents. We look up the existing sibling's PARENT_CHILD rows
+ * and create matching ones for the new person. If there are no parents yet,
+ * we fall back to a loose SIBLING edge so the relation isn't lost.
+ */
+export async function addSiblingInTree(
+  input: z.infer<typeof AddSiblingSchema>,
+): Promise<AddedRelativeDto> {
+  const { treeId, existingSiblingId, sibling } = AddSiblingSchema.parse(input);
+  await requireTreeRole(treeId, 'EDITOR');
+
+  const parentRels = await prisma.relationship.findMany({
+    where: {
+      tree_id: treeId,
+      person2_id: existingSiblingId,
+      relationship_type: { in: ['PARENT_CHILD', 'ADOPTED_PARENT'] },
+    },
+    select: { person1_id: true, relationship_type: true },
+  });
+
+  if (parentRels.length === 0) {
+    const branching = await isPersonAllowed(treeId, {
+      kind: 'sibling',
+      anchorId: existingSiblingId,
+    });
+    if (!branching.allowed) {
+      throw Errors.branchingNotAllowed(branching.ownerEmail);
+    }
+  } else {
+    const branching = await isPersonAllowed(treeId, {
+      kind: 'child',
+      anchorIds: parentRels.map((p) => p.person1_id),
+    });
+    if (!branching.allowed) {
+      throw Errors.branchingNotAllowed(branching.ownerEmail);
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await assertPersonsInTree(tx, treeId, [existingSiblingId]);
+
+    const parentRelsTx = await tx.relationship.findMany({
+      where: {
+        tree_id: treeId,
+        person2_id: existingSiblingId,
+        relationship_type: { in: ['PARENT_CHILD', 'ADOPTED_PARENT'] },
+      },
+      select: { person1_id: true, relationship_type: true },
+    });
+
+    const newPerson = await tx.person.create({
+      data: { ...sibling, tree_id: treeId },
+      select: { id: true, first_name: true, last_name: true },
+    });
+
+    const relationship_ids: string[] = [];
+
+    if (parentRelsTx.length === 0) {
+      const [a, b] = normalizeSymmetric(existingSiblingId, newPerson.id, 'SIBLING');
+      const rel = await tx.relationship.create({
+        data: {
+          tree_id: treeId,
+          relationship_type: 'SIBLING',
+          person1_id: a,
+          person2_id: b,
+        },
+        select: { id: true },
+      });
+      relationship_ids.push(rel.id);
+    } else {
+      const created = await Promise.all(
+        parentRelsTx.map((pr) =>
+          tx.relationship.create({
+            data: {
+              tree_id: treeId,
+              relationship_type: pr.relationship_type,
+              person1_id: pr.person1_id,
+              person2_id: newPerson.id,
+            },
+            select: { id: true },
+          }),
+        ),
+      );
+      relationship_ids.push(...created.map((r) => r.id));
+    }
+
+    return { person: newPerson, relationship_ids };
   });
 }

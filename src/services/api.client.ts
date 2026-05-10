@@ -19,6 +19,7 @@ export class ServiceError extends Error {
     public readonly code: string,
     message: string,
     public readonly status: number,
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ServiceError';
@@ -60,11 +61,12 @@ async function request<T>(
   const envelope: ApiEnvelope<T> = await res.json();
 
   if (envelope.error !== null) {
-    throw new ServiceError(
-      envelope.error.code,
-      envelope.error.message,
-      res.status,
-    );
+    const err = envelope.error as {
+      code: string;
+      message: string;
+      details?: Record<string, unknown>;
+    };
+    throw new ServiceError(err.code, err.message, res.status, err.details);
   }
 
   return envelope.data;

@@ -14,7 +14,8 @@ export type ApiErrorCode =
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'UNPROCESSABLE_ENTITY'
-  | 'INTERNAL_SERVER_ERROR';
+  | 'INTERNAL_SERVER_ERROR'
+  | 'BRANCHING_NOT_ALLOWED';
 
 /** Structured error thrown inside API route handlers. */
 export class ApiError extends Error {
@@ -22,6 +23,7 @@ export class ApiError extends Error {
     public readonly code: ApiErrorCode,
     message: string,
     public readonly status: number,
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -51,4 +53,12 @@ export const Errors = {
 
   internal: (msg = 'An unexpected error occurred') =>
     new ApiError('INTERNAL_SERVER_ERROR', msg, 500),
+
+  branchingNotAllowed: (ownerEmail?: string) =>
+    new ApiError(
+      'BRANCHING_NOT_ALLOWED',
+      'Branching is disabled on this tree',
+      403,
+      ownerEmail ? { ownerEmail } : undefined,
+    ),
 } as const;

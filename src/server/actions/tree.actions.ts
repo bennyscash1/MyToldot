@@ -34,6 +34,7 @@ const UpdateTreeSchema = z.object({
   description: z.string().trim().max(2000).optional().nullable(),
   is_public: z.boolean().optional(),
   strict_lineage_enforcement: z.boolean().optional(),
+  allow_branching: z.boolean().optional(),
 });
 
 const JoinFamilyCodeSchema = z
@@ -146,7 +147,10 @@ export async function updateTreeSettingsAction(
     });
 
     const segment = await resolveTreeRouteRevalidateSegment(treeId);
-    if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
+    if (segment) {
+      revalidatePath(`/[locale]/tree/${segment}`, 'page');
+      revalidatePath(`/[locale]/tree/${segment}/manage`, 'page');
+    }
     return tree;
   });
 }
