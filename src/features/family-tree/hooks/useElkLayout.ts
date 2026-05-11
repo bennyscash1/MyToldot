@@ -212,12 +212,37 @@ function toFlowElements(
     }
 
     // Child / descent edge — orthogonal step path.
+    //
+    // For solo unions, the union pill is invisible (UnionNode hides kind=solo),
+    // so a child edge sourced at the union appears to start in empty space —
+    // either floating from the gap between cards or making the parent card
+    // look disconnected from its child. Re-source the visible path to the
+    // parent person's bottom handle so the line drops from the actual card.
+    //
+    // The bipartite graph still emits parent → solo_union → child as two
+    // edges, both of which ELK consumes for layout — only the rendered SVG
+    // path is changed here, so layout (X positions, gen rows, manifold
+    // routing for multi-child solo parents) is unaffected.
+    let childSource = e.source;
+    let childSourceHandle: 'children' | 'bottom' = 'children';
+    const childSourceNode = posById.get(e.source);
+    if (
+      childSourceNode?.kind === 'union' &&
+      childSourceNode.union?.kind === 'solo'
+    ) {
+      const parentId = childSourceNode.union.parent_ids[0];
+      if (parentId && posById.has(parentId)) {
+        childSource = parentId;
+        childSourceHandle = 'bottom';
+      }
+    }
+
     return {
       id: e.id,
-      source: e.source,
+      source: childSource,
       target: e.target,
       type: 'step',
-      sourceHandle: 'children',
+      sourceHandle: childSourceHandle,
       targetHandle: 'top',
       className: 'shortree-edge-child',
     } as FlowEdge;
