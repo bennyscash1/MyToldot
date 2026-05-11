@@ -44,6 +44,7 @@ export function TreeAboutBasicsEditor({
   canEdit,
 }: TreeAboutBasicsEditorProps) {
   const t = useTranslations('treeFamilyAboutPage');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? '');
@@ -52,6 +53,7 @@ export function TreeAboutBasicsEditor({
   const [draftImages, setDraftImages] =
     useState<TreeAboutImageItem[]>(initialAboutImages);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, startSaving] = useTransition();
 
   useEffect(() => {
@@ -90,6 +92,16 @@ export function TreeAboutBasicsEditor({
     }
   };
 
+  const cancelEdit = () => {
+    setName(initialName);
+    setDescription(initialDescription ?? '');
+    setDraftTags(initialMainSurnames);
+    setDraftImages(initialAboutImages);
+    setTagInput('');
+    setErrorMessage(null);
+    setIsEditing(false);
+  };
+
   function handleSave() {
     setErrorMessage(null);
     const trimmedName = name.trim();
@@ -117,6 +129,7 @@ export function TreeAboutBasicsEditor({
         });
         setTagInput('');
         setDraftTags(tagsToSave);
+        setIsEditing(false);
         router.refresh();
       } catch (err) {
         setErrorMessage(
@@ -126,10 +139,31 @@ export function TreeAboutBasicsEditor({
     });
   }
 
-  if (!canEdit) {
+  if (!canEdit || !isEditing) {
     const descriptionParagraphs = splitDescriptionParagraphs(initialDescription);
     return (
       <div className="space-y-8">
+        {canEdit && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              aria-label={t('editAbout')}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M2.695 14.763l-1.262 3.155a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+              </svg>
+              <span>{t('editAbout')}</span>
+            </button>
+          </div>
+        )}
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
             {t('treeNameHeading')}
@@ -282,9 +316,14 @@ export function TreeAboutBasicsEditor({
         </p>
       )}
 
-      <Button type="button" onClick={handleSave} isLoading={isSaving} disabled={isSaving}>
-        {t('save')}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" onClick={handleSave} isLoading={isSaving} disabled={isSaving}>
+          {t('save')}
+        </Button>
+        <Button type="button" variant="ghost" onClick={cancelEdit} disabled={isSaving}>
+          {tCommon('cancel')}
+        </Button>
+      </div>
     </div>
   );
 }

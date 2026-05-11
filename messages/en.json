@@ -48,6 +48,7 @@
     "descriptionPlaceholder": "A short description of this family tree (optional)",
     "noDescriptionYet": "No description yet.",
     "save": "Save",
+    "editAbout": "Edit",
     "saveFailed": "Could not save changes. Please try again.",
     "nameRequired": "Please enter a name for the tree.",
     "familyTagsHeading": "Family tags",
