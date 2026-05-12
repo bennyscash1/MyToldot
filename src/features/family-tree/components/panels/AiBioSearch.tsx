@@ -20,11 +20,18 @@ export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
     setError(null);
     try {
       const result = await fetchAiBiographyAction(personId);
-      if (!result.ok || !result.data.text.trim()) {
+      if (!result.ok) {
+        setError(result.error.message || 'לא נמצא מידע. נסה שוב.');
+        return;
+      }
+
+      const narrative = result.data.narrative.trim();
+      if (!narrative) {
         setError('לא נמצא מידע. נסה שוב.');
         return;
       }
-      onApply(result.data.text);
+
+      onApply(narrative);
     } catch {
       setError('לא נמצא מידע. נסה שוב.');
     } finally {
