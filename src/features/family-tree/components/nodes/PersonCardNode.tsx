@@ -39,6 +39,16 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
       ? `${birth} –`
       : '';
 
+  const birthHe = person.birth_year_hebrew ?? null;
+  const deathHe = person.is_deceased ? person.death_year_hebrew ?? null : null;
+  const hebrewYears = birthHe
+    ? person.is_deceased
+      ? deathHe
+        ? `${birthHe} – ${deathHe}`
+        : birthHe
+      : `${birthHe} –`
+    : '';
+
   const active = Boolean(is_focal || selected);
 
   return (
@@ -86,6 +96,11 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
           {displayName || '—'}
         </div>
         {years ? <div className="mt-0.5 text-xs text-slate-500">{years}</div> : null}
+        {hebrewYears ? (
+          <div dir="rtl" className="mt-0.5 text-xs text-gray-500">
+            {hebrewYears}
+          </div>
+        ) : null}
       </div>
 
       {/* Outgoing spouse edge — right side. Aligned to avatar center (see left handle). */}

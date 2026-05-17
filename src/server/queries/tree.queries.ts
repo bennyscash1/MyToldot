@@ -28,6 +28,10 @@ export interface TreeViewerPayload {
     birth_date: Date | null;
     death_date: Date | null;
     is_deceased: boolean;
+    birth_date_hebrew: string | null;
+    birth_year_hebrew: string | null;
+    death_date_hebrew: string | null;
+    death_year_hebrew: string | null;
     birth_place: string | null;
     profile_image: string | null;
   }>;
@@ -90,6 +94,10 @@ export async function getTreeViewerPayload(treeId: string): Promise<TreeViewerPa
         birth_date: true,
         death_date: true,
         is_deceased: true,
+        birth_date_hebrew: true,
+        birth_year_hebrew: true,
+        death_date_hebrew: true,
+        death_year_hebrew: true,
         birth_place: true,
         profile_image: true,
       },

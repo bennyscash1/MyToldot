@@ -86,7 +86,9 @@
     "lifeStatus": "מצב חיים",
     "alive": "בחיים",
     "deceased": "נפטר",
-    "deathDateOptional": "תאריך פטירה (אופציונלי)"
+    "deathDateOptional": "תאריך פטירה (אופציונלי)",
+    "datePlaceholder": "dd/mm/yyyy",
+    "invalidDate": "נא להזין תאריך תקין (dd/mm/yyyy)"
   },
   "personForm": {
     "addTitle": "הוספת אדם",

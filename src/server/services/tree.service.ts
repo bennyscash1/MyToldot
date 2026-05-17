@@ -16,6 +16,10 @@ import {
   type PersonPatch,
 } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
+import {
+  withHebrewDatesForCreate,
+  withHebrewDatesForUpdate,
+} from '@/server/lib/person-dates';
 
 export interface PersonDto {
   id: string;
@@ -25,6 +29,10 @@ export interface PersonDto {
   birth_date: Date | null;
   death_date: Date | null;
   is_deceased: boolean;
+  birth_date_hebrew: string | null;
+  birth_year_hebrew: string | null;
+  death_date_hebrew: string | null;
+  death_year_hebrew: string | null;
 }
 
 export interface AddedRelativeDto {
@@ -54,6 +62,30 @@ const PERSON_SELECT = {
   birth_date: true,
   death_date: true,
   is_deceased: true,
+  birth_date_hebrew: true,
+  birth_year_hebrew: true,
+  death_date_hebrew: true,
+  death_year_hebrew: true,
+} as const;
+
+const PERSON_LIST_SELECT = {
+  id: true,
+  first_name: true,
+  last_name: true,
+  maiden_name: true,
+  first_name_he: true,
+  last_name_he: true,
+  gender: true,
+  birth_date: true,
+  death_date: true,
+  is_deceased: true,
+  birth_date_hebrew: true,
+  birth_year_hebrew: true,
+  death_date_hebrew: true,
+  death_year_hebrew: true,
+  birth_place: true,
+  bio: true,
+  profile_image: true,
 } as const;
 
 const OptionalDate = z
@@ -316,21 +348,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
     const [personRows, relRows] = await Promise.all([
       prisma.person.findMany({
         where: { tree_id: treeId },
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          maiden_name: true,
-          first_name_he: true,
-          last_name_he: true,
-          gender: true,
-          birth_date: true,
-          death_date: true,
-          is_deceased: true,
-          birth_place: true,
-          bio: true,
-          profile_image: true,
-        },
+        select: PERSON_LIST_SELECT,
         orderBy: [{ last_name: 'asc' }, { first_name: 'asc' }],
       }),
       prisma.relationship.findMany({
@@ -403,21 +421,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
     const [personRows, relRows] = await Promise.all([
       prisma.person.findMany({
         where: { tree_id: tree.id },
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          maiden_name: true,
-          first_name_he: true,
-          last_name_he: true,
-          gender: true,
-          birth_date: true,
-          death_date: true,
-          is_deceased: true,
-          birth_place: true,
-          bio: true,
-          profile_image: true,
-        },
+        select: PERSON_LIST_SELECT,
         orderBy: [{ last_name: 'asc' }, { first_name: 'asc' }],
       }),
       prisma.relationship.findMany({
@@ -458,26 +462,12 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
   };
 }
 
-/**
- * Server-side invariant: a living person can never carry a death_date. We
- * apply this on every create path and on updates that explicitly flip the
- * flag to false. Protects against stale client state slipping through.
- */
-function normalizeLifeStatusInput<T extends { is_deceased?: boolean; death_date?: Date | null }>(
-  data: T,
-): T {
-  if (data.is_deceased === false) {
-    data.death_date = null;
-  }
-  return data;
-}
-
 export async function createPersonInTree(
   treeId: string,
   input: PersonInput,
 ): Promise<PersonDto> {
   await requireTreeRole(treeId, 'EDITOR');
-  const data = normalizeLifeStatusInput(PersonInputSchema.parse(input));
+  const data = withHebrewDatesForCreate(PersonInputSchema.parse(input));
 
   const branching = await isPersonAllowed(treeId, { kind: 'standalone' });
   if (!branching.allowed) {
@@ -497,13 +487,20 @@ export async function updatePersonInTree(
 ): Promise<PersonDto> {
   await requireTreeRole(treeId, 'EDITOR');
   const id = CuidSchema.parse(personId);
-  const data = normalizeLifeStatusInput(PersonPatchSchema.parse(patch));
+  const parsed = PersonPatchSchema.parse(patch);
 
   const existing = await prisma.person.findFirst({
     where: { id, tree_id: treeId },
-    select: { id: true },
+    select: {
+      id: true,
+      birth_date: true,
+      death_date: true,
+      is_deceased: true,
+    },
   });
   if (!existing) throw Errors.notFound('Person');
+
+  const data = withHebrewDatesForUpdate(parsed, existing);
 
   return prisma.person.update({
     where: { id },
@@ -561,7 +558,7 @@ export async function addParentInTree(
     }
 
     const newPerson = await tx.person.create({
-      data: { ...normalizeLifeStatusInput(parent), tree_id: treeId },
+      data: { ...withHebrewDatesForCreate(parent), tree_id: treeId },
       select: { id: true, first_name: true, last_name: true },
     });
 
@@ -599,7 +596,7 @@ export async function addChildInTree(
     await assertPersonsInTree(tx, treeId, parentIds);
 
     const newPerson = await tx.person.create({
-      data: { ...normalizeLifeStatusInput(child), tree_id: treeId },
+      data: { ...withHebrewDatesForCreate(child), tree_id: treeId },
       select: { id: true, first_name: true, last_name: true },
     });
 
@@ -642,7 +639,7 @@ export async function addSpouseInTree(
 
     const newPerson = await tx.person.create({
       data: {
-        ...normalizeLifeStatusInput(spouse),
+        ...withHebrewDatesForCreate(spouse),
         gender: enforcedSpouseGender,
         tree_id: treeId,
       },
@@ -716,7 +713,7 @@ export async function addSiblingInTree(
     });
 
     const newPerson = await tx.person.create({
-      data: { ...normalizeLifeStatusInput(sibling), tree_id: treeId },
+      data: { ...withHebrewDatesForCreate(sibling), tree_id: treeId },
       select: { id: true, first_name: true, last_name: true },
     });
 

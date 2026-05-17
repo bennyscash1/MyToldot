@@ -98,6 +98,10 @@ export interface PersonDto {
   birth_date: string | null;
   death_date: string | null;
   is_deceased: boolean;
+  birth_date_hebrew: string | null;
+  birth_year_hebrew: string | null;
+  death_date_hebrew: string | null;
+  death_year_hebrew: string | null;
   birth_place: string | null;
   bio: string | null;
   profile_image: string | null;

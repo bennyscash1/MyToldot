@@ -3,7 +3,9 @@
 import { useRef, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import { DateInput } from '@/components/ui/DateInput';
 import { Input }  from '@/components/ui/Input';
+import { parseGregorianDate } from '@/lib/dates/gregorian';
 import { Button } from '@/components/ui/Button';
 import { cn }     from '@/lib/utils';
 import { personsService }  from '@/services/persons.service';
@@ -73,6 +75,7 @@ const GENDER_OPTIONS: { value: Gender; labelKey: string }[] = [
 
 export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFormProps) {
   const t = useTranslations('personForm');
+  const tPerson = useTranslations('person');
   const tCommon = useTranslations('common');
 
   // ── Form state ──
@@ -118,6 +121,15 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
     const newErrors: typeof errors = {};
     if (!form.first_name.trim()) {
       newErrors.first_name = t('errorRequired');
+    }
+    if (form.birth_date.trim() && !parseGregorianDate(form.birth_date)) {
+      newErrors.birth_date = tPerson('invalidDate');
+    }
+    if (form.death_date.trim() && !parseGregorianDate(form.death_date)) {
+      newErrors.death_date = tPerson('invalidDate');
+    }
+    if (form.marriage_date.trim() && !parseGregorianDate(form.marriage_date)) {
+      newErrors.marriage_date = tPerson('invalidDate');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -339,20 +351,28 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
           {t('sectionDates')}
         </legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            type="date"
-            label={t('birthDate')}
-            value={form.birth_date}
-            onChange={(e) => setField('birth_date', e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-          />
-          <Input
-            type="date"
-            label={t('deathDate')}
-            value={form.death_date}
-            onChange={(e) => setField('death_date', e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-          />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">{t('birthDate')}</label>
+            <DateInput
+              value={form.birth_date}
+              onChange={(v) => setField('birth_date', v)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+            {errors.birth_date && (
+              <p className="text-xs text-red-500" role="alert">{errors.birth_date}</p>
+            )}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">{t('deathDate')}</label>
+            <DateInput
+              value={form.death_date}
+              onChange={(v) => setField('death_date', v)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+            {errors.death_date && (
+              <p className="text-xs text-red-500" role="alert">{errors.death_date}</p>
+            )}
+          </div>
         </div>
         <Input
           label={t('birthPlace')}
@@ -368,13 +388,18 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
           {t('sectionAdditional')}
         </legend>
 
-        <Input
-          type="date"
-          label={t('marriageDate')}
-          hint={t('marriageDateHint')}
-          value={form.marriage_date}
-          onChange={(e) => setField('marriage_date', e.target.value)}
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">{t('marriageDate')}</label>
+          <DateInput
+            value={form.marriage_date}
+            onChange={(v) => setField('marriage_date', v)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+          <p className="text-xs text-gray-400">{t('marriageDateHint')}</p>
+          {errors.marriage_date && (
+            <p className="text-xs text-red-500" role="alert">{errors.marriage_date}</p>
+          )}
+        </div>
 
         {/* Notes / bio — textarea via className override trick */}
         <div className="flex flex-col gap-1">

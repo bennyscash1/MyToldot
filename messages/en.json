@@ -86,7 +86,9 @@
     "lifeStatus": "Life status",
     "alive": "Living",
     "deceased": "Deceased",
-    "deathDateOptional": "Date of passing (optional)"
+    "deathDateOptional": "Date of passing (optional)",
+    "datePlaceholder": "dd/mm/yyyy",
+    "invalidDate": "Please enter a valid date (dd/mm/yyyy)"
   },
   "personForm": {
     "addTitle": "Add Person",

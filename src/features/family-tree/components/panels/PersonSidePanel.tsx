@@ -14,6 +14,8 @@ import type { PersonRow } from '../../lib/types';
 import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
+import { DateInput } from '@/components/ui/DateInput';
+import { formatGregorianDate, parseGregorianDate } from '@/lib/dates/gregorian';
 import { cn } from '@/lib/utils';
 import { AiBioSearch } from './AiBioSearch';
 
@@ -32,13 +34,6 @@ function splitFullName(full: string): { first_name_he: string | null; last_name_
   const parts = t.split(/\s+/);
   if (parts.length === 1) return { first_name_he: parts[0], last_name_he: null };
   return { first_name_he: parts[0], last_name_he: parts.slice(1).join(' ') };
-}
-
-function toDateInput(d: Date | string | null | undefined): string {
-  if (!d) return '';
-  const date = d instanceof Date ? d : new Date(d);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
 }
 
 export interface PersonSidePanelProps {
@@ -74,10 +69,10 @@ export function PersonSidePanel({
   const tPerson = useTranslations('person');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullName, setFullName] = useState(() => fullNameFromPerson(person));
-  const [birthDate, setBirthDate] = useState(() => toDateInput(person.birth_date));
+  const [birthDate, setBirthDate] = useState(() => formatGregorianDate(person.birth_date));
   const [isDeceased, setIsDeceased] = useState<boolean>(person.is_deceased);
   const [deathDate, setDeathDate] = useState(() =>
-    person.is_deceased ? toDateInput(person.death_date) : '',
+    person.is_deceased ? formatGregorianDate(person.death_date) : '',
   );
   const [bio, setBio] = useState(() => person.bio ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -87,9 +82,9 @@ export function PersonSidePanel({
 
   useEffect(() => {
     setFullName(fullNameFromPerson(person));
-    setBirthDate(toDateInput(person.birth_date));
+    setBirthDate(formatGregorianDate(person.birth_date));
     setIsDeceased(person.is_deceased);
-    setDeathDate(person.is_deceased ? toDateInput(person.death_date) : '');
+    setDeathDate(person.is_deceased ? formatGregorianDate(person.death_date) : '');
     setBio(person.bio ?? '');
     setConfirmDelete(false);
     setLocalError(null);
@@ -129,13 +124,26 @@ export function PersonSidePanel({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+
+    const parsedBirth = birthDate.trim() ? parseGregorianDate(birthDate) : null;
+    if (birthDate.trim() && !parsedBirth) {
+      setLocalError(tPerson('invalidDate'));
+      return;
+    }
+    const parsedDeath =
+      isDeceased && deathDate.trim() ? parseGregorianDate(deathDate) : null;
+    if (isDeceased && deathDate.trim() && !parsedDeath) {
+      setLocalError(tPerson('invalidDate'));
+      return;
+    }
+
     const { first_name_he, last_name_he } = splitFullName(fullName);
     const patch: PersonPatch = {
       first_name_he: first_name_he ?? undefined,
       last_name_he: last_name_he ?? undefined,
-      birth_date: birthDate ? new Date(birthDate) : null,
+      birth_date: parsedBirth,
       is_deceased: isDeceased,
-      death_date: isDeceased && deathDate ? new Date(deathDate) : null,
+      death_date: parsedDeath,
       bio: bio.trim() || null,
       profile_image: person.profile_image,
     };
@@ -221,12 +229,16 @@ export function PersonSidePanel({
 
             <label className="mb-3 flex flex-col gap-1">
               <span className="text-xs font-medium text-slate-600">תאריך לידה</span>
-              <input
-                type="date"
+              <DateInput
                 value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
+                onChange={setBirthDate}
                 className={inputClass}
               />
+              {person.birth_date_hebrew ? (
+                <span dir="rtl" className="mt-1 text-xs text-gray-500">
+                  {person.birth_date_hebrew}
+                </span>
+              ) : null}
             </label>
 
             <div className="mb-3 flex flex-col gap-2">
@@ -285,13 +297,17 @@ export function PersonSidePanel({
                   <span className="text-xs font-medium text-slate-600">
                     {tPerson('deathDateOptional')}
                   </span>
-                  <input
-                    type="date"
+                  <DateInput
                     value={deathDate}
-                    onChange={(e) => setDeathDate(e.target.value)}
+                    onChange={setDeathDate}
                     className={inputClass}
                     tabIndex={isDeceased ? 0 : -1}
                   />
+                  {person.death_date_hebrew ? (
+                    <span dir="rtl" className="mt-1 text-xs text-gray-500">
+                      {person.death_date_hebrew}
+                    </span>
+                  ) : null}
                 </label>
               </div>
             </div>

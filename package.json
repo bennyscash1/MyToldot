@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "npx dotenv-cli -e .env.local -- prisma migrate deploy",
     "db:push": "npx dotenv-cli -e .env.local -- prisma db push",
-    "backfill:tree-codes": "npx dotenv-cli -e .env.local -- node scripts/backfill-tree-short-codes.cjs"
+    "backfill:tree-codes": "npx dotenv-cli -e .env.local -- node scripts/backfill-tree-short-codes.cjs",
+    "backfill:hebrew-dates": "npx dotenv-cli -e .env.local -- tsx --conditions=import scripts/backfill-hebrew-dates.ts"
   },
   "dependencies": {
     "@hebcal/core": "^6.3.0",
@@ -40,6 +41,7 @@
     "postcss": "^8",
     "prisma": "^6.19.3",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.22.1",
     "typescript": "^5"
   }
 }

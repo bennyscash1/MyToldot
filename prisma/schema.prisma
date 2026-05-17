@@ -149,6 +149,10 @@ model Person {
   birth_date  DateTime?
   death_date  DateTime?
   is_deceased Boolean   @default(false)
+  birth_date_hebrew  String?
+  birth_year_hebrew  String?
+  death_date_hebrew  String?
+  death_year_hebrew  String?
   birth_place String?
   bio         String? // free-text biography
 

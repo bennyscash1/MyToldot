@@ -11,6 +11,7 @@ import type {
   PersonInput,
   PersonPatch,
 } from '@/features/family-tree/schemas/person.schema';
+import { deriveHebrewDateFields } from '@/features/persons/lib/hebrewDate';
 import { apiClient, ServiceError } from '@/services/api.client';
 import type { PersonRow, RelationshipRow } from '../lib/types';
 
@@ -76,6 +77,13 @@ function oppositeBinaryGender(
 /** Shapes a PersonInput into the PersonRow used by the renderer. */
 function inputToRow(id: string, input: PersonInput): PersonRow {
   const isDeceased = input.is_deceased ?? false;
+  const birthDate = input.birth_date ?? null;
+  const deathDate = isDeceased ? input.death_date ?? null : null;
+  const hebrew = deriveHebrewDateFields({
+    birth_date: birthDate,
+    death_date: deathDate,
+    is_deceased: isDeceased,
+  });
   return {
     id,
     first_name: input.first_name,
@@ -84,10 +92,10 @@ function inputToRow(id: string, input: PersonInput): PersonRow {
     first_name_he: input.first_name_he ?? null,
     last_name_he: input.last_name_he ?? null,
     gender: input.gender,
-    birth_date: input.birth_date ?? null,
-    // Mirror server invariant: a living person never carries a death_date.
-    death_date: isDeceased ? input.death_date ?? null : null,
+    birth_date: birthDate,
+    death_date: deathDate,
     is_deceased: isDeceased,
+    ...hebrew,
     birth_place: input.birth_place ?? null,
     bio: input.bio ?? null,
     profile_image: input.profile_image ?? null,
@@ -483,11 +491,17 @@ export function useTreeMutations({
         prev.map((p) => {
           if (p.id !== personId) return p;
           const nextIsDeceased = patch.is_deceased ?? p.is_deceased;
+          const nextBirthDate = patch.birth_date ?? p.birth_date;
           // Mirror server invariant: flipping to alive clears death_date.
           const nextDeathDate =
             patch.is_deceased === false
               ? null
               : (patch.death_date ?? p.death_date);
+          const hebrew = deriveHebrewDateFields({
+            birth_date: nextBirthDate,
+            death_date: nextDeathDate,
+            is_deceased: nextIsDeceased,
+          });
           return {
             ...p,
             first_name: patch.first_name ?? p.first_name,
@@ -496,9 +510,10 @@ export function useTreeMutations({
             last_name_he: patch.last_name_he ?? p.last_name_he,
             maiden_name: patch.maiden_name ?? p.maiden_name,
             gender: patch.gender ?? p.gender,
-            birth_date: patch.birth_date ?? p.birth_date,
+            birth_date: nextBirthDate,
             death_date: nextDeathDate,
             is_deceased: nextIsDeceased,
+            ...hebrew,
             birth_place: patch.birth_place ?? p.birth_place,
             bio: patch.bio ?? p.bio,
             profile_image: patch.profile_image ?? p.profile_image,

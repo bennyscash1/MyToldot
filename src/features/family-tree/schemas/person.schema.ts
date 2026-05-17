@@ -1,14 +1,20 @@
 import { z } from 'zod';
 
-// The form sends dates as ISO strings (`<input type="date">` value).
-// We coerce to Date here, but preserve "undefined" for missing values — an
-// omitted date must stay omitted, not become `new Date(undefined)` → Invalid.
-const isoDate = z
-  .union([z.string().min(1), z.date()])
-  .transform((v) => (v instanceof Date ? v : new Date(v)))
-  .refine((d) => !Number.isNaN(d.getTime()), { message: 'Invalid date' });
+import { parseGregorianDate } from '@/lib/dates/gregorian';
 
-const optionalIsoDate = isoDate.optional().nullable();
+// Forms send dd/mm/yyyy; API may send yyyy-mm-dd. Coerce to UTC date-only Date.
+const gregorianDate = z
+  .union([z.string().min(1), z.date()])
+  .transform((v) => {
+    if (v instanceof Date) return v;
+    return parseGregorianDate(v);
+  })
+  .refine(
+    (d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()),
+    { message: 'Invalid date' },
+  );
+
+const optionalGregorianDate = gregorianDate.optional().nullable();
 
 export const GenderSchema = z.enum(['MALE', 'FEMALE', 'OTHER', 'UNKNOWN']);
 
@@ -22,8 +28,8 @@ const personFieldsShape = {
   first_name_he: z.string().trim().max(100).optional().nullable(),
   last_name_he: z.string().trim().max(100).optional().nullable(),
   gender: GenderSchema,
-  birth_date: optionalIsoDate,
-  death_date: optionalIsoDate,
+  birth_date: optionalGregorianDate,
+  death_date: optionalGregorianDate,
   birth_place: z.string().trim().max(200).optional().nullable(),
   bio: z.string().trim().max(5000).optional().nullable(),
   profile_image: z.string().trim().max(500).optional().nullable(),

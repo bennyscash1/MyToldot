@@ -12,6 +12,8 @@ import { Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
 import { isPersonAllowed } from '@/lib/api/branching';
 import { isStrictLineageActive } from '@/lib/api/lineage';
+import { coerceGregorianDate } from '@/lib/dates/gregorian';
+import { buildRestCreatePersonDates } from '@/server/lib/person-dates';
 import type { CreatePersonBody, PersonDto } from '@/types/api';
 
 // ─────────────────────────────────────────────
@@ -28,6 +30,10 @@ const PERSON_SELECT = {
   birth_date: true,
   death_date: true,
   is_deceased: true,
+  birth_date_hebrew: true,
+  birth_year_hebrew: true,
+  death_date_hebrew: true,
+  death_year_hebrew: true,
   birth_place: true,
   bio: true,
   profile_image: true,
@@ -78,7 +84,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Server invariant: a living person never carries a death_date.
   // Force-clear here so stale client state can't slip through.
   const isDeceased = body.is_deceased ?? false;
-  const deathDate = isDeceased && body.death_date ? new Date(body.death_date) : null;
+  const birthDate = body.birth_date ? coerceGregorianDate(body.birth_date) : null;
+  const deathDate =
+    isDeceased && body.death_date ? coerceGregorianDate(body.death_date) : null;
+  const hebrewDates = buildRestCreatePersonDates({
+    birth_date: birthDate,
+    death_date: deathDate,
+    is_deceased: isDeceased,
+  });
 
   const person = await prisma.person.create({
     data: {
@@ -87,9 +100,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       last_name:      body.last_name?.trim()      ?? null,
       maiden_name:    body.maiden_name?.trim()     ?? null,
       gender:         body.gender                  ?? 'UNKNOWN',
-      birth_date:     body.birth_date ? new Date(body.birth_date)   : null,
+      birth_date:     birthDate,
       death_date:     deathDate,
       is_deceased:    isDeceased,
+      ...hebrewDates,
       birth_place:    body.birth_place?.trim()     ?? null,
       bio:            body.bio?.trim()             ?? null,
       profile_image:  body.profile_image           ?? null,

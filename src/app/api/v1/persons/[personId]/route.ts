@@ -12,6 +12,8 @@ import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
 import { deleteProfileImage } from '@/lib/supabase/storage';
+import { coerceGregorianDate } from '@/lib/dates/gregorian';
+import { buildRestPatchPersonDates } from '@/server/lib/person-dates';
 import type { UpdatePersonBody, PersonDto } from '@/types/api';
 
 const PERSON_SELECT = {
@@ -24,6 +26,10 @@ const PERSON_SELECT = {
   birth_date: true,
   death_date: true,
   is_deceased: true,
+  birth_date_hebrew: true,
+  birth_year_hebrew: true,
+  death_date_hebrew: true,
+  death_year_hebrew: true,
   birth_place: true,
   bio: true,
   profile_image: true,
@@ -69,6 +75,35 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
   // Server invariant: when the caller explicitly flips is_deceased to false,
   // any death_date in this patch (or already on the row) must be cleared.
   const forceClearDeathDate = body.is_deceased === false;
+  const nextBirthDate =
+    body.birth_date !== undefined
+      ? body.birth_date
+        ? coerceGregorianDate(body.birth_date)
+        : null
+      : existing.birth_date;
+  const nextIsDeceased = body.is_deceased ?? existing.is_deceased;
+  const nextDeathDate = forceClearDeathDate
+    ? null
+    : body.death_date !== undefined
+      ? body.death_date
+        ? coerceGregorianDate(body.death_date)
+        : null
+      : existing.death_date;
+
+  const hebrewPatch = buildRestPatchPersonDates(
+    {
+      ...(body.birth_date !== undefined && { birth_date: nextBirthDate }),
+      ...(body.death_date !== undefined || body.is_deceased !== undefined
+        ? { death_date: nextDeathDate }
+        : {}),
+      ...(body.is_deceased !== undefined && { is_deceased: nextIsDeceased }),
+    },
+    {
+      birth_date: existing.birth_date,
+      death_date: existing.death_date,
+      is_deceased: existing.is_deceased,
+    },
+  );
 
   const updated = await prisma.person.update({
     where: { id: personId },
@@ -77,13 +112,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
       ...(body.last_name     !== undefined && { last_name:     body.last_name?.trim()    ?? null }),
       ...(body.maiden_name   !== undefined && { maiden_name:   body.maiden_name?.trim()  ?? null }),
       ...(body.gender        !== undefined && { gender:        body.gender               }),
-      ...(body.birth_date    !== undefined && { birth_date:    body.birth_date ? new Date(body.birth_date)   : null }),
+      ...(body.birth_date    !== undefined && { birth_date:    nextBirthDate             }),
       ...(forceClearDeathDate
-        ? { death_date: null }
-        : body.death_date !== undefined && {
-            death_date: body.death_date ? new Date(body.death_date) : null,
-          }),
-      ...(body.is_deceased   !== undefined && { is_deceased:   body.is_deceased          }),
+        ? { death_date: null, death_date_hebrew: null, death_year_hebrew: null }
+        : body.death_date !== undefined && { death_date: nextDeathDate }),
+      ...(body.is_deceased   !== undefined && { is_deceased:   nextIsDeceased            }),
+      ...(hebrewPatch ?? {}),
       ...(body.birth_place   !== undefined && { birth_place:   body.birth_place?.trim()  ?? null }),
       ...(body.bio           !== undefined && { bio:           body.bio?.trim()          ?? null }),
       ...(body.profile_image !== undefined && { profile_image: body.profile_image        ?? null }),
