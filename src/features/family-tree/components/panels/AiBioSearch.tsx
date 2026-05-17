@@ -50,6 +50,10 @@ export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
         {isLoading ? 'מחפש…' : 'חפש מידע'}
       </button>
 
+      <p className="text-center text-xs leading-snug text-slate-500">
+        לתוצאות אמינות יותר, מלא תאריכים, הורים ואחים במידת האפשר.
+      </p>
+
       {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</div>}
     </div>
   );
