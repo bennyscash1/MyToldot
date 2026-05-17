@@ -27,6 +27,7 @@ export interface TreeViewerPayload {
     gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
     birth_date: Date | null;
     death_date: Date | null;
+    is_deceased: boolean;
     birth_place: string | null;
     profile_image: string | null;
   }>;
@@ -88,6 +89,7 @@ export async function getTreeViewerPayload(treeId: string): Promise<TreeViewerPa
         gender: true,
         birth_date: true,
         death_date: true,
+        is_deceased: true,
         birth_place: true,
         profile_image: true,
       },

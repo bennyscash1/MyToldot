@@ -30,9 +30,14 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
     .join(' ');
 
   const birth = formatYear(person.birth_date);
-  const death = formatYear(person.death_date);
-  const years =
-    birth && death ? `${birth} – ${death}` : birth ? `${birth} –` : death ? `– ${death}` : '';
+  const death = person.is_deceased ? formatYear(person.death_date) : null;
+  const years = person.is_deceased
+    ? birth && death
+      ? `${birth} – ${death}`
+      : birth ?? ''
+    : birth
+      ? `${birth} –`
+      : '';
 
   const active = Boolean(is_focal || selected);
 
@@ -66,6 +71,15 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
       />
 
       <Avatar person={person} />
+
+      {person.is_deceased && (
+        <span
+          aria-label="deceased"
+          title="deceased"
+          className="absolute right-2 top-2 z-10 h-2 w-2 rounded-full shadow-sm ring-1 ring-white/80"
+          style={{ backgroundColor: '#f4a259' }}
+        />
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 pb-2 pt-1 text-center">
         <div className="line-clamp-2 w-full text-sm font-bold leading-tight text-slate-900" title={displayName}>

@@ -1,13 +1,20 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useLocale } from 'next-intl';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 
 import type { PersonPatch } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow } from '../../lib/types';
 import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
+import { cn } from '@/lib/utils';
 import { AiBioSearch } from './AiBioSearch';
 
 const inputClass =
@@ -64,22 +71,48 @@ export function PersonSidePanel({
 }: PersonSidePanelProps) {
   const locale = useLocale();
   const panelDir = locale === 'he' ? 'rtl' : 'ltr';
+  const tPerson = useTranslations('person');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullName, setFullName] = useState(() => fullNameFromPerson(person));
   const [birthDate, setBirthDate] = useState(() => toDateInput(person.birth_date));
-  const [deathDate, setDeathDate] = useState(() => toDateInput(person.death_date));
+  const [isDeceased, setIsDeceased] = useState<boolean>(person.is_deceased);
+  const [deathDate, setDeathDate] = useState(() =>
+    person.is_deceased ? toDateInput(person.death_date) : '',
+  );
   const [bio, setBio] = useState(() => person.bio ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const aliveBtnRef = useRef<HTMLButtonElement>(null);
+  const deceasedBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setFullName(fullNameFromPerson(person));
     setBirthDate(toDateInput(person.birth_date));
-    setDeathDate(toDateInput(person.death_date));
+    setIsDeceased(person.is_deceased);
+    setDeathDate(person.is_deceased ? toDateInput(person.death_date) : '');
     setBio(person.bio ?? '');
     setConfirmDelete(false);
     setLocalError(null);
   }, [person]);
+
+  const selectAlive = () => {
+    setIsDeceased(false);
+    setDeathDate('');
+  };
+  const selectDeceased = () => {
+    setIsDeceased(true);
+  };
+  const onRadioKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    if (isDeceased) {
+      selectAlive();
+      aliveBtnRef.current?.focus();
+    } else {
+      selectDeceased();
+      deceasedBtnRef.current?.focus();
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -101,7 +134,8 @@ export function PersonSidePanel({
       first_name_he: first_name_he ?? undefined,
       last_name_he: last_name_he ?? undefined,
       birth_date: birthDate ? new Date(birthDate) : null,
-      death_date: deathDate ? new Date(deathDate) : null,
+      is_deceased: isDeceased,
+      death_date: isDeceased && deathDate ? new Date(deathDate) : null,
       bio: bio.trim() || null,
       profile_image: person.profile_image,
     };
@@ -185,25 +219,81 @@ export function PersonSidePanel({
               />
             </label>
 
-            <div className="mb-3 grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-slate-600">תאריך לידה</span>
-                <input
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-slate-600">תאריך פטירה</span>
-                <input
-                  type="date"
-                  value={deathDate}
-                  onChange={(e) => setDeathDate(e.target.value)}
-                  className={inputClass}
-                />
-              </label>
+            <label className="mb-3 flex flex-col gap-1">
+              <span className="text-xs font-medium text-slate-600">תאריך לידה</span>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            <div className="mb-3 flex flex-col gap-2">
+              <span className="text-xs font-medium text-slate-600">{tPerson('lifeStatus')}</span>
+              <div
+                role="radiogroup"
+                aria-label={tPerson('lifeStatus')}
+                className="inline-flex w-full rounded-lg border border-gray-200 bg-white p-0.5"
+              >
+                <button
+                  ref={aliveBtnRef}
+                  type="button"
+                  role="radio"
+                  aria-checked={!isDeceased}
+                  tabIndex={isDeceased ? -1 : 0}
+                  onClick={selectAlive}
+                  onKeyDown={onRadioKeyDown}
+                  className={cn(
+                    'flex-1 rounded-md px-3 py-1.5 text-sm transition-all duration-200',
+                    !isDeceased
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-200',
+                  )}
+                >
+                  {tPerson('alive')}
+                </button>
+                <button
+                  ref={deceasedBtnRef}
+                  type="button"
+                  role="radio"
+                  aria-checked={isDeceased}
+                  tabIndex={isDeceased ? 0 : -1}
+                  onClick={selectDeceased}
+                  onKeyDown={onRadioKeyDown}
+                  className={cn(
+                    'flex-1 rounded-md px-3 py-1.5 text-sm transition-all duration-200',
+                    isDeceased
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-200',
+                  )}
+                >
+                  {tPerson('deceased')}
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                'mb-3 grid overflow-hidden transition-all duration-200',
+                isDeceased ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+              )}
+              aria-hidden={!isDeceased}
+            >
+              <div className="min-h-0">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-slate-600">
+                    {tPerson('deathDateOptional')}
+                  </span>
+                  <input
+                    type="date"
+                    value={deathDate}
+                    onChange={(e) => setDeathDate(e.target.value)}
+                    className={inputClass}
+                    tabIndex={isDeceased ? 0 : -1}
+                  />
+                </label>
+              </div>
             </div>
 
             <label className="mb-4 flex flex-col gap-1">

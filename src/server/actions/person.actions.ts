@@ -72,6 +72,7 @@ const NAME_AND_VITALS_SELECT = {
   gender: true,
   birth_date: true,
   death_date: true,
+  is_deceased: true,
   birth_place: true,
 } as const;
 
@@ -84,6 +85,7 @@ interface NameAndVitals {
   gender: Gender;
   birth_date: Date | null;
   death_date: Date | null;
+  is_deceased: boolean;
   birth_place: string | null;
 }
 
@@ -113,6 +115,7 @@ function buildSubject(
     gender: Gender;
     birth_date: Date | null;
     death_date: Date | null;
+    is_deceased: boolean;
     birth_place: string | null;
     bio: string | null;
     tree: { about_text: string | null } | null;

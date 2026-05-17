@@ -75,6 +75,7 @@ function oppositeBinaryGender(
 
 /** Shapes a PersonInput into the PersonRow used by the renderer. */
 function inputToRow(id: string, input: PersonInput): PersonRow {
+  const isDeceased = input.is_deceased ?? false;
   return {
     id,
     first_name: input.first_name,
@@ -84,7 +85,9 @@ function inputToRow(id: string, input: PersonInput): PersonRow {
     last_name_he: input.last_name_he ?? null,
     gender: input.gender,
     birth_date: input.birth_date ?? null,
-    death_date: input.death_date ?? null,
+    // Mirror server invariant: a living person never carries a death_date.
+    death_date: isDeceased ? input.death_date ?? null : null,
+    is_deceased: isDeceased,
     birth_place: input.birth_place ?? null,
     bio: input.bio ?? null,
     profile_image: input.profile_image ?? null,
@@ -477,24 +480,30 @@ export function useTreeMutations({
       if (!snapshot) return;
 
       setPersons((prev) =>
-        prev.map((p) =>
-          p.id === personId
-            ? {
-                ...p,
-                first_name: patch.first_name ?? p.first_name,
-                last_name: patch.last_name ?? p.last_name,
-                first_name_he: patch.first_name_he ?? p.first_name_he,
-                last_name_he: patch.last_name_he ?? p.last_name_he,
-                maiden_name: patch.maiden_name ?? p.maiden_name,
-                gender: patch.gender ?? p.gender,
-                birth_date: patch.birth_date ?? p.birth_date,
-                death_date: patch.death_date ?? p.death_date,
-                birth_place: patch.birth_place ?? p.birth_place,
-                bio: patch.bio ?? p.bio,
-                profile_image: patch.profile_image ?? p.profile_image,
-              }
-            : p,
-        ),
+        prev.map((p) => {
+          if (p.id !== personId) return p;
+          const nextIsDeceased = patch.is_deceased ?? p.is_deceased;
+          // Mirror server invariant: flipping to alive clears death_date.
+          const nextDeathDate =
+            patch.is_deceased === false
+              ? null
+              : (patch.death_date ?? p.death_date);
+          return {
+            ...p,
+            first_name: patch.first_name ?? p.first_name,
+            last_name: patch.last_name ?? p.last_name,
+            first_name_he: patch.first_name_he ?? p.first_name_he,
+            last_name_he: patch.last_name_he ?? p.last_name_he,
+            maiden_name: patch.maiden_name ?? p.maiden_name,
+            gender: patch.gender ?? p.gender,
+            birth_date: patch.birth_date ?? p.birth_date,
+            death_date: nextDeathDate,
+            is_deceased: nextIsDeceased,
+            birth_place: patch.birth_place ?? p.birth_place,
+            bio: patch.bio ?? p.bio,
+            profile_image: patch.profile_image ?? p.profile_image,
+          };
+        }),
       );
 
       await new Promise<void>((resolve) => {

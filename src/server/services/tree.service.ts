@@ -24,6 +24,7 @@ export interface PersonDto {
   gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
   birth_date: Date | null;
   death_date: Date | null;
+  is_deceased: boolean;
 }
 
 export interface AddedRelativeDto {
@@ -52,6 +53,7 @@ const PERSON_SELECT = {
   gender: true,
   birth_date: true,
   death_date: true,
+  is_deceased: true,
 } as const;
 
 const OptionalDate = z
@@ -324,6 +326,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
           gender: true,
           birth_date: true,
           death_date: true,
+          is_deceased: true,
           birth_place: true,
           bio: true,
           profile_image: true,
@@ -410,6 +413,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
           gender: true,
           birth_date: true,
           death_date: true,
+          is_deceased: true,
           birth_place: true,
           bio: true,
           profile_image: true,
@@ -454,12 +458,26 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
   };
 }
 
+/**
+ * Server-side invariant: a living person can never carry a death_date. We
+ * apply this on every create path and on updates that explicitly flip the
+ * flag to false. Protects against stale client state slipping through.
+ */
+function normalizeLifeStatusInput<T extends { is_deceased?: boolean; death_date?: Date | null }>(
+  data: T,
+): T {
+  if (data.is_deceased === false) {
+    data.death_date = null;
+  }
+  return data;
+}
+
 export async function createPersonInTree(
   treeId: string,
   input: PersonInput,
 ): Promise<PersonDto> {
   await requireTreeRole(treeId, 'EDITOR');
-  const data = PersonInputSchema.parse(input);
+  const data = normalizeLifeStatusInput(PersonInputSchema.parse(input));
 
   const branching = await isPersonAllowed(treeId, { kind: 'standalone' });
   if (!branching.allowed) {
@@ -479,7 +497,7 @@ export async function updatePersonInTree(
 ): Promise<PersonDto> {
   await requireTreeRole(treeId, 'EDITOR');
   const id = CuidSchema.parse(personId);
-  const data = PersonPatchSchema.parse(patch);
+  const data = normalizeLifeStatusInput(PersonPatchSchema.parse(patch));
 
   const existing = await prisma.person.findFirst({
     where: { id, tree_id: treeId },
@@ -543,7 +561,7 @@ export async function addParentInTree(
     }
 
     const newPerson = await tx.person.create({
-      data: { ...parent, tree_id: treeId },
+      data: { ...normalizeLifeStatusInput(parent), tree_id: treeId },
       select: { id: true, first_name: true, last_name: true },
     });
 
@@ -581,7 +599,7 @@ export async function addChildInTree(
     await assertPersonsInTree(tx, treeId, parentIds);
 
     const newPerson = await tx.person.create({
-      data: { ...child, tree_id: treeId },
+      data: { ...normalizeLifeStatusInput(child), tree_id: treeId },
       select: { id: true, first_name: true, last_name: true },
     });
 
@@ -623,7 +641,11 @@ export async function addSpouseInTree(
     const enforcedSpouseGender = oppositeBinaryGender(focusedPerson.gender);
 
     const newPerson = await tx.person.create({
-      data: { ...spouse, gender: enforcedSpouseGender, tree_id: treeId },
+      data: {
+        ...normalizeLifeStatusInput(spouse),
+        gender: enforcedSpouseGender,
+        tree_id: treeId,
+      },
       select: { id: true, first_name: true, last_name: true },
     });
 
@@ -694,7 +716,7 @@ export async function addSiblingInTree(
     });
 
     const newPerson = await tx.person.create({
-      data: { ...sibling, tree_id: treeId },
+      data: { ...normalizeLifeStatusInput(sibling), tree_id: treeId },
       select: { id: true, first_name: true, last_name: true },
     });
 

@@ -23,6 +23,7 @@ const PERSON_SELECT = {
   gender: true,
   birth_date: true,
   death_date: true,
+  is_deceased: true,
   birth_place: true,
   bio: true,
   profile_image: true,
@@ -65,6 +66,10 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
 
   const body: UpdatePersonBody = await req.json();
 
+  // Server invariant: when the caller explicitly flips is_deceased to false,
+  // any death_date in this patch (or already on the row) must be cleared.
+  const forceClearDeathDate = body.is_deceased === false;
+
   const updated = await prisma.person.update({
     where: { id: personId },
     data: {
@@ -73,7 +78,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
       ...(body.maiden_name   !== undefined && { maiden_name:   body.maiden_name?.trim()  ?? null }),
       ...(body.gender        !== undefined && { gender:        body.gender               }),
       ...(body.birth_date    !== undefined && { birth_date:    body.birth_date ? new Date(body.birth_date)   : null }),
-      ...(body.death_date    !== undefined && { death_date:    body.death_date ? new Date(body.death_date)   : null }),
+      ...(forceClearDeathDate
+        ? { death_date: null }
+        : body.death_date !== undefined && {
+            death_date: body.death_date ? new Date(body.death_date) : null,
+          }),
+      ...(body.is_deceased   !== undefined && { is_deceased:   body.is_deceased          }),
       ...(body.birth_place   !== undefined && { birth_place:   body.birth_place?.trim()  ?? null }),
       ...(body.bio           !== undefined && { bio:           body.bio?.trim()          ?? null }),
       ...(body.profile_image !== undefined && { profile_image: body.profile_image        ?? null }),

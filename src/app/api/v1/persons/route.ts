@@ -27,6 +27,7 @@ const PERSON_SELECT = {
   gender: true,
   birth_date: true,
   death_date: true,
+  is_deceased: true,
   birth_place: true,
   bio: true,
   profile_image: true,
@@ -74,6 +75,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // client can show an informational banner after creation.
   const strictMode = await isStrictLineageActive(body.tree_id);
 
+  // Server invariant: a living person never carries a death_date.
+  // Force-clear here so stale client state can't slip through.
+  const isDeceased = body.is_deceased ?? false;
+  const deathDate = isDeceased && body.death_date ? new Date(body.death_date) : null;
+
   const person = await prisma.person.create({
     data: {
       tree_id:        body.tree_id,
@@ -82,7 +88,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       maiden_name:    body.maiden_name?.trim()     ?? null,
       gender:         body.gender                  ?? 'UNKNOWN',
       birth_date:     body.birth_date ? new Date(body.birth_date)   : null,
-      death_date:     body.death_date ? new Date(body.death_date)   : null,
+      death_date:     deathDate,
+      is_deceased:    isDeceased,
       birth_place:    body.birth_place?.trim()     ?? null,
       bio:            body.bio?.trim()             ?? null,
       profile_image:  body.profile_image           ?? null,

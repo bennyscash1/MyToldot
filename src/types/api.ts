@@ -97,6 +97,7 @@ export interface PersonDto {
   gender: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
   birth_date: string | null;
   death_date: string | null;
+  is_deceased: boolean;
   birth_place: string | null;
   bio: string | null;
   profile_image: string | null;
@@ -114,6 +115,7 @@ export interface CreatePersonBody {
   gender?: PersonDto['gender'];
   birth_date?: string;
   death_date?: string;
+  is_deceased?: boolean;
   birth_place?: string;
   bio?: string;
   first_name_he?: string;

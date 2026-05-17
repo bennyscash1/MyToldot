@@ -82,6 +82,12 @@
     "edit": "ערוך",
     "footerCopyright": "© {year} עץ משפחה"
   },
+  "person": {
+    "lifeStatus": "מצב חיים",
+    "alive": "בחיים",
+    "deceased": "נפטר",
+    "deathDateOptional": "תאריך פטירה (אופציונלי)"
+  },
   "personForm": {
     "addTitle": "הוספת אדם",
     "editTitle": "עריכת אדם",

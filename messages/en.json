@@ -82,6 +82,12 @@
     "edit": "Edit",
     "footerCopyright": "© {year} Family Tree"
   },
+  "person": {
+    "lifeStatus": "Life status",
+    "alive": "Living",
+    "deceased": "Deceased",
+    "deathDateOptional": "Date of passing (optional)"
+  },
   "personForm": {
     "addTitle": "Add Person",
     "editTitle": "Edit Person",

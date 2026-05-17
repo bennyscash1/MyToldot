@@ -92,6 +92,10 @@ export function PersonForm({
     const effectiveGender = forcedGender ?? gender;
     if (!effectiveGender) return;
 
+    // Quick-add / firstRoot variants don't expose a life-status toggle — new
+    // persons default to alive (is_deceased: false). The 'full' variant still
+    // shows a death_date input; if it is set, we infer the person is deceased.
+    const inferredDeceased = variant === 'full' && Boolean(deathDate);
     const value: PersonInput = {
       first_name: firstName.trim(),
       last_name: lastName.trim() || null,
@@ -100,7 +104,8 @@ export function PersonForm({
       maiden_name: maidenName.trim() || null,
       gender: effectiveGender,
       birth_date: birthDate ? new Date(birthDate) : null,
-      death_date: deathDate ? new Date(deathDate) : null,
+      death_date: inferredDeceased && deathDate ? new Date(deathDate) : null,
+      is_deceased: inferredDeceased,
       birth_place: birthPlace.trim() || null,
       bio: bio.trim() || null,
       profile_image: initialValue?.profile_image ?? null,

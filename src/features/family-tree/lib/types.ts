@@ -25,6 +25,7 @@ export interface PersonRow {
   gender: Gender;
   birth_date: Date | string | null;
   death_date: Date | string | null;
+  is_deceased: boolean;
   birth_place: string | null;
   /** Optional — may be loaded from DB even if the canvas omits it in the hash. */
   bio?: string | null;

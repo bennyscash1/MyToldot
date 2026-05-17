@@ -148,6 +148,7 @@ model Person {
   gender      Gender    @default(UNKNOWN)
   birth_date  DateTime?
   death_date  DateTime?
+  is_deceased Boolean   @default(false)
   birth_place String?
   bio         String? // free-text biography
 
