@@ -77,6 +77,7 @@ model Tree {
   members       TreeMember[]
   persons       Person[]
   relationships Relationship[]
+  person_photos PersonPhoto[]
 
   @@map("trees")
 }
@@ -102,7 +103,8 @@ model User {
 
   // A user can be a member of many trees with different roles.
   // All editing rights are enforced per-tree via TreeMember.role.
-  tree_memberships TreeMember[]
+  tree_memberships       TreeMember[]
+  uploaded_person_photos PersonPhoto[] @relation("PersonPhotoUploader")
 
   @@map("users")
 }
@@ -178,9 +180,33 @@ model Person {
   // directly; they exist so Prisma can resolve the opposing relation).
   root_of_tree        Tree?        @relation("TreeRootPerson")
   linked_tree_members TreeMember[] @relation("TreeMemberLinkedPerson")
+  photos              PersonPhoto[]
 
   @@index([tree_id])
   @@map("persons")
+}
+
+// ─────────────────────────────────────────────
+// PERSON PHOTO  (gallery images per person, max 5)
+// ─────────────────────────────────────────────
+
+model PersonPhoto {
+  id           String   @id @default(cuid())
+  person_id    String   @map("person_id")
+  tree_id      String   @map("tree_id")
+  storage_path String   @map("storage_path")
+  caption      String?
+  sort_order   Int      @default(0) @map("sort_order")
+  uploaded_by  String?  @map("uploaded_by")
+  created_at   DateTime @default(now()) @map("created_at")
+
+  person   Person @relation(fields: [person_id], references: [id], onDelete: Cascade)
+  tree     Tree   @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+  uploader User?  @relation("PersonPhotoUploader", fields: [uploaded_by], references: [id], onDelete: SetNull)
+
+  @@index([person_id])
+  @@index([tree_id])
+  @@map("person_photos")
 }
 
 // ─────────────────────────────────────────────

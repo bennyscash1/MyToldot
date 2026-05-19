@@ -87,6 +87,26 @@
     "placeholder": "dd/mm/yyyy",
     "clear": "נקה"
   },
+  "gallery": {
+    "title": "תמונות נוספות",
+    "count": "{current}/{max} תמונות",
+    "addPhoto": "הוסף",
+    "editCaption": "כיתוב",
+    "captionPlaceholder": "הוסף כיתוב לתמונה (אופציונלי)",
+    "confirmDelete": "למחוק את התמונה?",
+    "tapToEdit": "לחץ על תמונה לעריכה",
+    "save": "שמור",
+    "cancel": "ביטול",
+    "close": "סגור",
+    "delete": "מחק",
+    "errors": {
+      "unsupportedType": "סוג קובץ לא נתמך",
+      "uploadFailed": "ההעלאה נכשלה",
+      "deleteFailed": "המחיקה נכשלה",
+      "captionFailed": "שמירת הכיתוב נכשלה",
+      "maxReached": "ניתן להעלות עד 5 תמונות לאדם"
+    }
+  },
   "person": {
     "lifeStatus": "מצב חיים",
     "alive": "בחיים",

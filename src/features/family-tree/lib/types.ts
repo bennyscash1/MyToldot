@@ -15,6 +15,16 @@ export type RelationshipType =
   | 'DIVORCED'
   | 'ADOPTED_PARENT';
 
+export interface PersonPhotoDTO {
+  id: string;
+  person_id: string;
+  tree_id: string;
+  storage_path: string;
+  caption: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface PersonRow {
   id: string;
   first_name: string;

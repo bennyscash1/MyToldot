@@ -15,7 +15,8 @@ export type ApiErrorCode =
   | 'CONFLICT'
   | 'UNPROCESSABLE_ENTITY'
   | 'INTERNAL_SERVER_ERROR'
-  | 'BRANCHING_NOT_ALLOWED';
+  | 'BRANCHING_NOT_ALLOWED'
+  | 'MAX_PHOTOS_REACHED';
 
 /** Structured error thrown inside API route handlers. */
 export class ApiError extends Error {
@@ -61,4 +62,7 @@ export const Errors = {
       403,
       ownerEmail ? { ownerEmail } : undefined,
     ),
+
+  maxPhotosReached: (msg = 'Maximum number of photos per person reached') =>
+    new ApiError('MAX_PHOTOS_REACHED', msg, 409),
 } as const;

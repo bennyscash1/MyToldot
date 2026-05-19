@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/routing';
 
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
-import type { PersonRow, PlaceholderMeta, RelationshipRow } from '../lib/types';
+import type { PersonPhotoDTO, PersonRow, PlaceholderMeta, RelationshipRow } from '../lib/types';
 import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
@@ -21,6 +21,7 @@ export interface TreeCanvasWithModalsProps {
   initialPersons: PersonRow[];
   initialRelationships: RelationshipRow[];
   initialFocalId: string | null;
+  initialPhotosByPerson: Record<string, PersonPhotoDTO[]>;
   canEdit: boolean;
   canDeletePerson: boolean;
   strictMode?: boolean;
@@ -34,6 +35,7 @@ export function TreeCanvasWithModals({
   initialPersons,
   initialRelationships,
   initialFocalId,
+  initialPhotosByPerson,
   canEdit,
   canDeletePerson,
   strictMode = false,
@@ -76,6 +78,7 @@ export function TreeCanvasWithModals({
   } | null>(null);
 
   const [sidePersonId, setSidePersonId] = useState<string | null>(null);
+  const [photosByPerson, setPhotosByPerson] = useState(initialPhotosByPerson);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
   const firstPersonModalRef = useRef<HTMLDivElement>(null);
@@ -207,6 +210,19 @@ export function TreeCanvasWithModals({
 
   const sidePerson = sidePersonId ? persons.find((p) => p.id === sidePersonId) : null;
 
+  const handleDeletePerson = useCallback(
+    async (personId: string) => {
+      await deletePerson(personId);
+      setPhotosByPerson((prev) => {
+        const next = { ...prev };
+        delete next[personId];
+        return next;
+      });
+      setSidePersonId(null);
+    },
+    [deletePerson],
+  );
+
   return (
     <div className="relative flex h-[calc(100vh-5rem)] w-full flex-col">
       <FamilyTreeViewer
@@ -299,7 +315,13 @@ export function TreeCanvasWithModals({
       {sidePerson && (
         <PersonSidePanel
           treeId={treeId}
+          treeRouteCode={treeRouteCode}
           person={sidePerson}
+          photos={photosByPerson[sidePerson.id] ?? []}
+          onPhotosChange={(next) =>
+            setPhotosByPerson((prev) => ({ ...prev, [sidePerson.id]: next }))
+          }
+          canEdit={canEdit}
           onClose={() => setSidePersonId(null)}
           onSave={async (patch) => {
             await updatePerson({ personId: sidePerson.id, patch });
@@ -307,8 +329,7 @@ export function TreeCanvasWithModals({
           onDelete={
             canDeletePerson
               ? async () => {
-                  await deletePerson(sidePerson.id);
-                  setSidePersonId(null);
+                  await handleDeletePerson(sidePerson.id);
                 }
               : undefined
           }

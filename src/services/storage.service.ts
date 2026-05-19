@@ -1,8 +1,13 @@
 'use client';
 
 import imageCompression from 'browser-image-compression';
+import {
+  ALLOWED_PHOTO_MIME,
+  MAX_PHOTO_BYTES,
+} from '@/lib/images/gallery-upload-constraints';
 import { PROFILE_UPLOAD_MAX_DIMENSION } from '@/lib/images/profile-upload-constraints';
-import { profileImagePublicUrl } from '@/lib/supabase/public-url';
+import { personGalleryPublicUrl, profileImagePublicUrl } from '@/lib/supabase/public-url';
+import type { PersonPhotoDTO } from '@/features/family-tree/lib/types';
 import type { ApiEnvelope } from '@/types/api';
 import { ServiceError } from './api.client';
 
@@ -27,6 +32,13 @@ import { ServiceError } from './api.client';
 
 const UPLOAD_ENDPOINT = '/api/v1/uploads/profile-image';
 const TREE_ABOUT_UPLOAD_ENDPOINT = '/api/v1/uploads/tree-about-image';
+const PERSON_GALLERY_UPLOAD_ENDPOINT = '/api/v1/uploads/person-gallery';
+
+const GALLERY_COMPRESSION_OPTIONS = {
+  maxSizeMB: 4,
+  maxWidthOrHeight: 2400,
+  useWebWorker: true,
+} as const;
 
 const MAX_FILE_SIZE_MB = 5;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -214,11 +226,109 @@ export const storageService = {
   },
 
   /**
+   * Uploads a person gallery photo (max 5 per person, enforced server-side).
+   */
+  async uploadPersonGalleryImage(
+    file: File,
+    treeId: string,
+    personId: string,
+    caption?: string | null,
+  ): Promise<PersonPhotoDTO> {
+    if (!(ALLOWED_PHOTO_MIME as readonly string[]).includes(file.type)) {
+      throw new ServiceError(
+        'UNSUPPORTED_FILE_TYPE',
+        'Please upload a JPEG, PNG, WebP, or HEIC image.',
+        422,
+      );
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      throw new ServiceError(
+        'FILE_TOO_LARGE',
+        `File is too large. Maximum size is ${Math.round(MAX_PHOTO_BYTES / 1024 / 1024)} MB.`,
+        422,
+      );
+    }
+
+    let fileToUpload = file;
+    if (file.type.startsWith('image/')) {
+      try {
+        const compressed = await imageCompression(file, GALLERY_COMPRESSION_OPTIONS);
+        fileToUpload = new File([compressed], file.name, {
+          type: compressed.type || file.type,
+        });
+      } catch (compressionError) {
+        console.warn(
+          '[storageService] gallery compression failed; uploading original:',
+          compressionError,
+        );
+      }
+    }
+
+    const form = new FormData();
+    form.append('file', fileToUpload, fileToUpload.name);
+    form.append('treeId', treeId);
+    form.append('personId', personId);
+    if (caption?.trim()) {
+      form.append('caption', caption.trim());
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(PERSON_GALLERY_UPLOAD_ENDPOINT, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+    } catch (networkError) {
+      console.error('[storageService] gallery upload network error:', networkError);
+      throw new ServiceError(
+        'UPLOAD_NETWORK_ERROR',
+        'Could not reach the upload service. Check your connection and try again.',
+        0,
+      );
+    }
+
+    let envelope: ApiEnvelope<PersonPhotoDTO>;
+    try {
+      envelope = (await response.json()) as ApiEnvelope<PersonPhotoDTO>;
+    } catch (parseError) {
+      console.error('[storageService] gallery upload parse error:', parseError);
+      throw new ServiceError(
+        'UPLOAD_INVALID_RESPONSE',
+        `Upload service returned a non-JSON response (status ${response.status}).`,
+        response.status,
+      );
+    }
+
+    if (envelope.error !== null) {
+      throw new ServiceError(
+        envelope.error.code,
+        envelope.error.message,
+        response.status,
+      );
+    }
+
+    return envelope.data;
+  },
+
+  /**
    * Resolves a stored path to a full public URL (no network request).
    * Uses NEXT_PUBLIC_SUPABASE_URL — safe in client bundles.
    */
   getPublicUrl(storagePath: string): string {
     const url = profileImagePublicUrl(storagePath);
+    if (!url) {
+      throw new ServiceError(
+        'SUPABASE_NOT_CONFIGURED',
+        'Supabase URL is not configured.',
+        503,
+      );
+    }
+    return url;
+  },
+
+  getGalleryPublicUrl(storagePath: string): string {
+    const url = personGalleryPublicUrl(storagePath);
     if (!url) {
       throw new ServiceError(
         'SUPABASE_NOT_CONFIGURED',

@@ -87,6 +87,26 @@
     "placeholder": "dd/mm/yyyy",
     "clear": "Clear"
   },
+  "gallery": {
+    "title": "More photos",
+    "count": "{current}/{max} photos",
+    "addPhoto": "Add",
+    "editCaption": "Caption",
+    "captionPlaceholder": "Add a caption (optional)",
+    "confirmDelete": "Delete this photo?",
+    "tapToEdit": "Tap a photo to view or edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "errors": {
+      "unsupportedType": "Unsupported file type",
+      "uploadFailed": "Upload failed",
+      "deleteFailed": "Delete failed",
+      "captionFailed": "Could not save caption",
+      "maxReached": "You can upload up to 5 photos per person"
+    }
+  },
   "person": {
     "lifeStatus": "Life status",
     "alive": "Living",

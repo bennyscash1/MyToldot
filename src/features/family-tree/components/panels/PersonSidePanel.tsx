@@ -18,6 +18,8 @@ import { DateInput } from '@/components/ui/DateInput';
 import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { cn } from '@/lib/utils';
 import { AiBioSearch } from './AiBioSearch';
+import { PersonGalleryEditor } from './PersonGalleryEditor';
+import type { PersonPhotoDTO } from '@/features/family-tree/lib/types';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-[#3e5045] focus:outline-none focus:ring-1 focus:ring-[#3e5045]/40';
@@ -38,7 +40,11 @@ function splitFullName(full: string): { first_name_he: string | null; last_name_
 
 export interface PersonSidePanelProps {
   treeId: string;
+  treeRouteCode: string;
   person: PersonRow;
+  photos: PersonPhotoDTO[];
+  onPhotosChange: (next: PersonPhotoDTO[]) => void;
+  canEdit: boolean;
   onClose: () => void;
   onSave: (patch: PersonPatch) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -53,7 +59,11 @@ export interface PersonSidePanelProps {
 
 export function PersonSidePanel({
   treeId,
+  treeRouteCode,
   person,
+  photos,
+  onPhotosChange,
+  canEdit,
   onClose,
   onSave,
   onDelete,
@@ -207,6 +217,15 @@ export function PersonSidePanel({
                 החלף תמונה
               </button>
             </div>
+
+            <PersonGalleryEditor
+              treeId={treeId}
+              personId={person.id}
+              treeRouteCode={treeRouteCode}
+              photos={photos}
+              onPhotosChange={onPhotosChange}
+              canEdit={canEdit}
+            />
 
             <label className="mb-3 flex flex-col gap-1">
               <span className="text-xs font-medium text-slate-600">שם מלא</span>

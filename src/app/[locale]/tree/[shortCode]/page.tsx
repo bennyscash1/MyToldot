@@ -82,6 +82,7 @@ export default async function TreeShortCodePage({
             initialPersons={treeData.initialPersons}
             initialRelationships={treeData.initialRelationships}
             initialFocalId={treeData.initialFocalId}
+            initialPhotosByPerson={treeData.photosByPerson}
             canEdit={canEditTree}
             canDeletePerson={canDeletePerson}
             strictMode={treeData.strictLineageEnforcement}
