@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocale } from 'next-intl';
 
+import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
 import { PersonForm } from '@/features/persons/components/PersonForm';
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
 import type { PlaceholderMeta } from '../../lib/types';
@@ -73,6 +74,7 @@ export function AddRelativePopover({
     };
     const onMouseDown = (e: MouseEvent) => {
       if (!ref.current) return;
+      if (isInsideDatePickerPopover(e.target)) return;
       if (!ref.current.contains(e.target as Node)) onClose();
     };
     window.addEventListener('keydown', onKey);

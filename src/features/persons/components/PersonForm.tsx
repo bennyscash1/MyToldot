@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 
 import { DateInput } from '@/components/ui/DateInput';
-import { formatGregorianDate, parseGregorianDate } from '@/lib/dates/gregorian';
+import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { gregorianToHebrewText } from '../lib/hebrewDate';
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
 
@@ -72,8 +72,12 @@ export function PersonForm({
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(
     forcedGender ?? (initialValue?.gender as 'MALE' | 'FEMALE' | undefined) ?? defaultGender ?? null,
   );
-  const [birthDate, setBirthDate] = useState(() => formatGregorianDate(initialValue?.birth_date));
-  const [deathDate, setDeathDate] = useState(() => formatGregorianDate(initialValue?.death_date));
+  const [birthDate, setBirthDate] = useState<Date | null>(() =>
+    coerceGregorianDate(initialValue?.birth_date),
+  );
+  const [deathDate, setDeathDate] = useState<Date | null>(() =>
+    coerceGregorianDate(initialValue?.death_date),
+  );
   const [birthPlace, setBirthPlace] = useState(initialValue?.birth_place ?? '');
   const [bio, setBio] = useState(initialValue?.bio ?? '');
 
@@ -94,21 +98,10 @@ export function PersonForm({
     const effectiveGender = forcedGender ?? gender;
     if (!effectiveGender) return;
 
-    const parsedBirth = birthDate.trim() ? parseGregorianDate(birthDate) : null;
-    if (birthDate.trim() && !parsedBirth) {
-      setLocalError('נא להזין תאריך תקין (dd/mm/yyyy)');
-      return;
-    }
-    const parsedDeath = deathDate.trim() ? parseGregorianDate(deathDate) : null;
-    if (deathDate.trim() && !parsedDeath) {
-      setLocalError('נא להזין תאריך תקין (dd/mm/yyyy)');
-      return;
-    }
-
     // Quick-add / firstRoot variants don't expose a life-status toggle — new
     // persons default to alive (is_deceased: false). The 'full' variant still
     // shows a death_date input; if it is set, we infer the person is deceased.
-    const inferredDeceased = variant === 'full' && Boolean(parsedDeath);
+    const inferredDeceased = variant === 'full' && Boolean(deathDate);
     const value: PersonInput = {
       first_name: firstName.trim(),
       last_name: lastName.trim() || null,
@@ -116,8 +109,8 @@ export function PersonForm({
       last_name_he: lastNameHe.trim() || null,
       maiden_name: maidenName.trim() || null,
       gender: effectiveGender,
-      birth_date: parsedBirth,
-      death_date: inferredDeceased && parsedDeath ? parsedDeath : null,
+      birth_date: birthDate,
+      death_date: inferredDeceased && deathDate ? deathDate : null,
       is_deceased: inferredDeceased,
       birth_place: birthPlace.trim() || null,
       bio: bio.trim() || null,
@@ -333,10 +326,10 @@ function DateFieldWithHebrew({
   onChange,
 }: {
   label: string;
-  value: string;
-  onChange: (v: string) => void;
+  value: Date | null;
+  onChange: (v: Date | null) => void;
 }) {
-  const hebrew = gregorianToHebrewText(value.trim() || null);
+  const hebrew = gregorianToHebrewText(value);
   return (
     <FieldLabel label={label}>
       <DateInput value={value} onChange={onChange} className={inputClass} />

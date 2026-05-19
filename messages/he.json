@@ -82,6 +82,11 @@
     "edit": "ערוך",
     "footerCopyright": "© {year} עץ משפחה"
   },
+  "dateInput": {
+    "openCalendar": "פתח לוח שנה",
+    "placeholder": "dd/mm/yyyy",
+    "clear": "נקה"
+  },
   "person": {
     "lifeStatus": "מצב חיים",
     "alive": "בחיים",

@@ -12,6 +12,7 @@ import {
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
+import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
 import {
   FamilyAboutEditView,
   FamilyAboutReadView,
@@ -75,6 +76,7 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
     };
     const onMouseDown = (e: globalThis.MouseEvent) => {
       if (!modalRef.current) return;
+      if (isInsideDatePickerPopover(e.target)) return;
       if (!modalRef.current.contains(e.target as Node)) onClose();
     };
     window.addEventListener('keydown', onKey);

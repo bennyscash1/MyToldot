@@ -82,6 +82,11 @@
     "edit": "Edit",
     "footerCopyright": "© {year} Family Tree"
   },
+  "dateInput": {
+    "openCalendar": "Open calendar",
+    "placeholder": "dd/mm/yyyy",
+    "clear": "Clear"
+  },
   "person": {
     "lifeStatus": "Life status",
     "alive": "Living",

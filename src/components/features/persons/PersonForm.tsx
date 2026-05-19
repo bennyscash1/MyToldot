@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { DateInput } from '@/components/ui/DateInput';
 import { Input }  from '@/components/ui/Input';
-import { parseGregorianDate } from '@/lib/dates/gregorian';
+import { gregorianDateToIsoDateOnly } from '@/lib/dates/gregorian';
 import { Button } from '@/components/ui/Button';
 import { cn }     from '@/lib/utils';
 import { personsService }  from '@/services/persons.service';
@@ -46,11 +46,11 @@ interface FormState {
   first_name_he: string;
   last_name_he:  string;
   gender:        Gender;
-  birth_date:    string;
-  death_date:    string;
+  birth_date:    Date | null;
+  death_date:    Date | null;
   birth_place:   string;
   bio:           string;
-  marriage_date: string; // UI only
+  marriage_date: Date | null; // UI only
 }
 
 const INITIAL_STATE: FormState = {
@@ -59,11 +59,11 @@ const INITIAL_STATE: FormState = {
   first_name_he: '',
   last_name_he:  '',
   gender:        'UNKNOWN',
-  birth_date:    '',
-  death_date:    '',
+  birth_date:    null,
+  death_date:    null,
   birth_place:   '',
   bio:           '',
-  marriage_date: '',
+  marriage_date: null,
 };
 
 const GENDER_OPTIONS: { value: Gender; labelKey: string }[] = [
@@ -75,7 +75,6 @@ const GENDER_OPTIONS: { value: Gender; labelKey: string }[] = [
 
 export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFormProps) {
   const t = useTranslations('personForm');
-  const tPerson = useTranslations('person');
   const tCommon = useTranslations('common');
 
   // ── Form state ──
@@ -122,15 +121,6 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
     if (!form.first_name.trim()) {
       newErrors.first_name = t('errorRequired');
     }
-    if (form.birth_date.trim() && !parseGregorianDate(form.birth_date)) {
-      newErrors.birth_date = tPerson('invalidDate');
-    }
-    if (form.death_date.trim() && !parseGregorianDate(form.death_date)) {
-      newErrors.death_date = tPerson('invalidDate');
-    }
-    if (form.marriage_date.trim() && !parseGregorianDate(form.marriage_date)) {
-      newErrors.marriage_date = tPerson('invalidDate');
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -155,8 +145,12 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
         first_name_he:  form.first_name_he.trim()  || undefined,
         last_name_he:   form.last_name_he.trim()   || undefined,
         gender:         form.gender,
-        birth_date:     form.birth_date            || undefined,
-        death_date:     form.death_date            || undefined,
+        birth_date:     form.birth_date
+          ? gregorianDateToIsoDateOnly(form.birth_date)
+          : undefined,
+        death_date:     form.death_date
+          ? gregorianDateToIsoDateOnly(form.death_date)
+          : undefined,
         birth_place:    form.birth_place.trim()    || undefined,
         bio:            form.bio.trim()            || undefined,
         // marriage_date is form-only; not sent to the API in this phase
@@ -356,7 +350,7 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
             <DateInput
               value={form.birth_date}
               onChange={(v) => setField('birth_date', v)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="w-full border-gray-300 focus:ring-emerald-400"
             />
             {errors.birth_date && (
               <p className="text-xs text-red-500" role="alert">{errors.birth_date}</p>
@@ -367,7 +361,7 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
             <DateInput
               value={form.death_date}
               onChange={(v) => setField('death_date', v)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="w-full border-gray-300 focus:ring-emerald-400"
             />
             {errors.death_date && (
               <p className="text-xs text-red-500" role="alert">{errors.death_date}</p>
@@ -393,7 +387,7 @@ export function PersonForm({ treeId, onSuccess, onCancel, strictMode }: PersonFo
           <DateInput
             value={form.marriage_date}
             onChange={(v) => setField('marriage_date', v)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            className="w-full border-gray-300 focus:ring-emerald-400"
           />
           <p className="text-xs text-gray-400">{t('marriageDateHint')}</p>
           {errors.marriage_date && (

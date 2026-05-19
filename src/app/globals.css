@@ -105,3 +105,17 @@
 .toldot-flow .react-flow__background {
   display: none;
 }
+
+/* DateInput calendar popover — emerald selection */
+.toldot-day-picker .rdp-selected .rdp-day_button {
+  background-color: #059669;
+  color: #fff;
+  border-radius: 0.375rem;
+}
+.toldot-day-picker .rdp-day_button:hover {
+  background-color: #f4f3e9;
+}
+.toldot-day-picker .rdp-today:not(.rdp-selected) .rdp-day_button {
+  text-decoration: underline;
+  text-decoration-color: #059669;
+}

@@ -15,7 +15,7 @@ import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
 import { DateInput } from '@/components/ui/DateInput';
-import { formatGregorianDate, parseGregorianDate } from '@/lib/dates/gregorian';
+import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { cn } from '@/lib/utils';
 import { AiBioSearch } from './AiBioSearch';
 
@@ -69,10 +69,12 @@ export function PersonSidePanel({
   const tPerson = useTranslations('person');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullName, setFullName] = useState(() => fullNameFromPerson(person));
-  const [birthDate, setBirthDate] = useState(() => formatGregorianDate(person.birth_date));
+  const [birthDate, setBirthDate] = useState<Date | null>(() =>
+    coerceGregorianDate(person.birth_date),
+  );
   const [isDeceased, setIsDeceased] = useState<boolean>(person.is_deceased);
-  const [deathDate, setDeathDate] = useState(() =>
-    person.is_deceased ? formatGregorianDate(person.death_date) : '',
+  const [deathDate, setDeathDate] = useState<Date | null>(() =>
+    person.is_deceased ? coerceGregorianDate(person.death_date) : null,
   );
   const [bio, setBio] = useState(() => person.bio ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -82,9 +84,11 @@ export function PersonSidePanel({
 
   useEffect(() => {
     setFullName(fullNameFromPerson(person));
-    setBirthDate(formatGregorianDate(person.birth_date));
+    setBirthDate(coerceGregorianDate(person.birth_date));
     setIsDeceased(person.is_deceased);
-    setDeathDate(person.is_deceased ? formatGregorianDate(person.death_date) : '');
+    setDeathDate(
+      person.is_deceased ? coerceGregorianDate(person.death_date) : null,
+    );
     setBio(person.bio ?? '');
     setConfirmDelete(false);
     setLocalError(null);
@@ -92,7 +96,7 @@ export function PersonSidePanel({
 
   const selectAlive = () => {
     setIsDeceased(false);
-    setDeathDate('');
+    setDeathDate(null);
   };
   const selectDeceased = () => {
     setIsDeceased(true);
@@ -125,25 +129,13 @@ export function PersonSidePanel({
     e.preventDefault();
     setLocalError(null);
 
-    const parsedBirth = birthDate.trim() ? parseGregorianDate(birthDate) : null;
-    if (birthDate.trim() && !parsedBirth) {
-      setLocalError(tPerson('invalidDate'));
-      return;
-    }
-    const parsedDeath =
-      isDeceased && deathDate.trim() ? parseGregorianDate(deathDate) : null;
-    if (isDeceased && deathDate.trim() && !parsedDeath) {
-      setLocalError(tPerson('invalidDate'));
-      return;
-    }
-
     const { first_name_he, last_name_he } = splitFullName(fullName);
     const patch: PersonPatch = {
       first_name_he: first_name_he ?? undefined,
       last_name_he: last_name_he ?? undefined,
-      birth_date: parsedBirth,
+      birth_date: birthDate,
       is_deceased: isDeceased,
-      death_date: parsedDeath,
+      death_date: isDeceased ? deathDate : null,
       bio: bio.trim() || null,
       profile_image: person.profile_image,
     };
@@ -287,8 +279,10 @@ export function PersonSidePanel({
 
             <div
               className={cn(
-                'mb-3 grid overflow-hidden transition-all duration-200',
-                isDeceased ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                'mb-3 grid transition-all duration-200',
+                isDeceased
+                  ? 'grid-rows-[1fr] overflow-visible opacity-100'
+                  : 'grid-rows-[0fr] overflow-hidden opacity-0',
               )}
               aria-hidden={!isDeceased}
             >

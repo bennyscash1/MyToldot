@@ -8,6 +8,7 @@ import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow, PlaceholderMeta, RelationshipRow } from '../lib/types';
 import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
+import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
 import { AddRelativePopover } from './panels/AddRelativePopover';
 import { PersonSidePanel } from './panels/PersonSidePanel';
 import { TreeAboutModal } from './panels/TreeAboutModal';
@@ -107,7 +108,10 @@ export function TreeCanvasWithModals({
     };
     const onMouseDown = (e: MouseEvent) => {
       if (!firstPersonModalRef.current) return;
-      if (!firstPersonModalRef.current.contains(e.target as Node)) closeFirstPersonForm();
+      if (isInsideDatePickerPopover(e.target)) return;
+      if (!firstPersonModalRef.current.contains(e.target as Node)) {
+        closeFirstPersonForm();
+      }
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('mousedown', onMouseDown);
