@@ -26,12 +26,20 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: 'about', href: '/about' },
 ];
 
+interface TreeNavContext {
+  name: string;
+  shortCode: string;
+  showDashboardLink: boolean;
+}
+
 /**
  * Reads the current pathname from the middleware-injected 'x-pathname' header,
- * extracts a 4-digit shortCode, and returns the matching tree name.
+ * extracts a 5-digit shortCode, and returns the matching tree context.
+ * `showDashboardLink` is true on the main tree page and about page; false on
+ * `/dashboard` itself and on `/manage`.
  * Returns null on any non-tree page or if the DB lookup finds nothing.
  */
-async function getCurrentTreeName(): Promise<string | null> {
+async function getCurrentTreeContext(): Promise<TreeNavContext | null> {
   try {
     const hdrs = await headers();
     const pathname = hdrs.get('x-pathname') ?? '';
@@ -40,9 +48,18 @@ async function getCurrentTreeName(): Promise<string | null> {
 
     const tree = await prisma.tree.findUnique({
       where: { shortCode: match[1] },
-      select: { name: true },
+      select: { name: true, shortCode: true },
     });
-    return tree?.name ?? null;
+    if (!tree) return null;
+
+    const trailing = pathname.slice(pathname.indexOf(match[0]) + match[0].length);
+    const showDashboardLink = !/^dashboard(?:\/|$)/.test(trailing) && !/^manage(?:\/|$)/.test(trailing);
+
+    return {
+      name: tree.name,
+      shortCode: tree.shortCode,
+      showDashboardLink,
+    };
   } catch {
     return null;
   }
@@ -56,7 +73,8 @@ export async function Navbar() {
   const logoSrc = isHebrew ? '/images/LOGO-he.png' : '/images/LOGO-en.png';
   const logoAlt = isHebrew ? 'תולדותיי' : 'Toldotay';
 
-  const treeName = await getCurrentTreeName();
+  const treeContext = await getCurrentTreeContext();
+  const tDashboard = await getTranslations('dashboard');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-[#f4f3e9]/95 backdrop-blur-sm">
@@ -102,12 +120,25 @@ export async function Navbar() {
             </li>
           ))}
 
+          {/* Dashboard view link — visible on tree pages, hidden on /dashboard and /manage */}
+          {treeContext?.showDashboardLink && (
+            <li>
+              <Link
+                href={`/tree/${treeContext.shortCode}/dashboard`}
+                className="inline-flex items-center gap-1.5 rounded-full border-s-2 border-emerald-600 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100"
+              >
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+                {tDashboard('navbarLink')}
+              </Link>
+            </li>
+          )}
+
           {/* Family name pill — visible only on /tree/[shortCode] pages */}
-          {treeName && (
+          {treeContext && (
             <li>
               <span
                 className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                aria-label={t('currentFamilyAria', { treeName })}
+                aria-label={t('currentFamilyAria', { treeName: treeContext.name })}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -118,7 +149,7 @@ export async function Navbar() {
                 >
                   <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z" />
                 </svg>
-                {treeName}
+                {treeContext.name}
               </span>
             </li>
           )}

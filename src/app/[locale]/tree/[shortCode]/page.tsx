@@ -11,7 +11,7 @@ import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPa
 
 type TreeShortCodePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
-  searchParams: Promise<{ about?: string | string[] }>;
+  searchParams: Promise<{ about?: string | string[]; focus?: string | string[] }>;
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -54,6 +54,13 @@ export default async function TreeShortCodePage({
     openAboutRaw === 'true' ||
     (Array.isArray(openAboutRaw) &&
       (openAboutRaw[0] === '1' || openAboutRaw[0] === 'true'));
+  const focusRaw = sp?.focus;
+  const initialSidePersonId =
+    typeof focusRaw === 'string' && focusRaw.length > 0
+      ? focusRaw
+      : Array.isArray(focusRaw) && focusRaw[0]
+        ? focusRaw[0]
+        : null;
 
   if (!treeData.treeId) {
     return (
@@ -88,6 +95,7 @@ export default async function TreeShortCodePage({
             strictMode={treeData.strictLineageEnforcement}
             canEditAbout={canEditAbout}
             openAboutOnLoad={openAboutOnLoad}
+            initialSidePersonId={initialSidePersonId}
           />
         </div>
       </div>

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const { HDate } = require\\('@hebcal/core'\\); const d = new HDate\\(new Date\\(2024, 0, 15\\)\\); console.log\\('hebrew:', d.toString\\(\\), 'getDate:', d.getDate\\(\\), 'getMonth:', d.getMonth\\(\\), 'getFullYear:', d.getFullYear\\(\\), 'greg:', d.greg\\(\\).toISOString\\(\\)\\); const next = new HDate\\(d.getDate\\(\\), d.getMonth\\(\\), d.getFullYear\\(\\)+1\\); console.log\\('next year same hebrew date:', next.toString\\(\\), 'greg:', next.greg\\(\\).toISOString\\(\\)\\);\")"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 
 import { Link } from '@/i18n/routing';
@@ -15,8 +16,17 @@ export default async function TreeShortCodeLayout({
   params,
 }: TreeShortCodeLayoutProps) {
   const { locale, shortCode } = await params;
+  const hdrs = await headers();
+  const pathname = hdrs.get('x-pathname') ?? '';
+  const isDashboard = /\/tree\/\d{5}\/dashboard(?:\/|$)/.test(pathname);
+
+  if (isDashboard) {
+    return <div className="flex min-h-0 flex-1 flex-col">{children}</div>;
+  }
+
   const t = await getTranslations('treeNav');
   const tManage = await getTranslations('familyManage');
+  const tDashboard = await getTranslations('dashboard');
 
   const tree = await findTreeByRouteParam(shortCode);
   const familyLabel = tree?.name ?? shortCode;
@@ -50,6 +60,14 @@ export default async function TreeShortCodeLayout({
             </li>
           </ol>
           <div className="inline-flex shrink-0 items-center gap-2">
+            <Link
+              href={`/tree/${shortCode}/dashboard`}
+              aria-label={tDashboard('navbarLink')}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-700 hover:bg-emerald-100 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+            >
+              <SparkleIcon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="hidden sm:inline">{tDashboard('navbarLink')}</span>
+            </Link>
             <TreeAboutOrBackLink shortCode={shortCode} familyLabel={familyLabel} />
             {isOwner && (
               <Link
@@ -66,6 +84,20 @@ export default async function TreeShortCodeLayout({
       </nav>
       {children}
     </div>
+  );
+}
+
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 2.5a.75.75 0 0 1 .7.48l1.6 4.16a4 4 0 0 0 2.36 2.36l4.16 1.6a.75.75 0 0 1 0 1.4l-4.16 1.6a4 4 0 0 0-2.36 2.36l-1.6 4.16a.75.75 0 0 1-1.4 0l-1.6-4.16a4 4 0 0 0-2.36-2.36l-4.16-1.6a.75.75 0 0 1 0-1.4l4.16-1.6a4 4 0 0 0 2.36-2.36l1.6-4.16a.75.75 0 0 1 .7-.48Z" />
+    </svg>
   );
 }
 

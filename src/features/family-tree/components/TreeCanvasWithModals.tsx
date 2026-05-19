@@ -27,6 +27,7 @@ export interface TreeCanvasWithModalsProps {
   strictMode?: boolean;
   canEditAbout: boolean;
   openAboutOnLoad?: boolean;
+  initialSidePersonId?: string | null;
 }
 
 export function TreeCanvasWithModals({
@@ -41,6 +42,7 @@ export function TreeCanvasWithModals({
   strictMode = false,
   canEditAbout,
   openAboutOnLoad = false,
+  initialSidePersonId = null,
 }: TreeCanvasWithModalsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -77,7 +79,7 @@ export function TreeCanvasWithModals({
     screenY: number;
   } | null>(null);
 
-  const [sidePersonId, setSidePersonId] = useState<string | null>(null);
+  const [sidePersonId, setSidePersonId] = useState<string | null>(initialSidePersonId);
   const [photosByPerson, setPhotosByPerson] = useState(initialPhotosByPerson);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
