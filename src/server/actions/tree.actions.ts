@@ -295,6 +295,58 @@ export async function requestEditorAccess(
 }
 
 /**
+ * One-click "join + request editor access" for logged-in non-members.
+ * Creates a `tree_members` row with role=EDITOR_PENDING; idempotent for
+ * existing VIEWER (upgrades) and EDITOR_PENDING (no-op). EDITOR/OWNER
+ * return ALREADY_EDITOR so the client can clear stale UI.
+ */
+export async function joinAndRequestEditorAccess(
+  treeId: string,
+): Promise<ActionResult<{ status: 'PENDING' | 'ALREADY_EDITOR' }>> {
+  return withAction(async () => {
+    const user = await requireAuthUser();
+
+    const tree = await prisma.tree.findUnique({
+      where: { id: treeId },
+      select: { id: true },
+    });
+    if (!tree) throw Errors.notFound('Tree');
+
+    await ensureMirroredAuthUser(user);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.treeMember.findUnique({
+        where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+        select: { role: true },
+      });
+      if (!existing) {
+        await tx.treeMember.create({
+          data: { tree_id: treeId, user_id: user.id, role: 'EDITOR_PENDING' },
+        });
+        return { status: 'PENDING' as const };
+      }
+      if (existing.role === 'EDITOR' || existing.role === 'OWNER') {
+        return { status: 'ALREADY_EDITOR' as const };
+      }
+      if (existing.role === 'VIEWER') {
+        await tx.treeMember.update({
+          where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
+          data: { role: 'EDITOR_PENDING' },
+        });
+      }
+      return { status: 'PENDING' as const };
+    });
+
+    const segment = await resolveTreeRouteRevalidateSegment(treeId);
+    if (segment) {
+      revalidatePath(`/[locale]/tree/${segment}`, 'page');
+      revalidatePath(`/[locale]/tree/${segment}/manage`, 'page');
+    }
+    return result;
+  });
+}
+
+/**
  * OWNER-only: promote an EDITOR_PENDING member to EDITOR (`approve = true`)
  * or revert them back to VIEWER (`approve = false`).
  *

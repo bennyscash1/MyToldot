@@ -59,6 +59,8 @@ export interface TreePageData {
   treeName: string | null;
   personCount: number;
   membershipRole: TreeMemberRole | null;
+  /** Supabase user id of the current viewer, or null for anonymous visitors. */
+  viewerUserId: string | null;
   rootPersonId: string | null;
   linkedPersonId: string | null;
   /** Mirrors `Tree.strict_lineage_enforcement` when a tree is loaded. */
@@ -378,6 +380,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
       treeName: null,
       personCount: 0,
       membershipRole: null,
+      viewerUserId: user?.id ?? null,
       rootPersonId: null,
       linkedPersonId: null,
       strictLineageEnforcement: false,
@@ -442,6 +445,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
     treeName,
     personCount,
     membershipRole,
+    viewerUserId: user?.id ?? null,
     rootPersonId,
     linkedPersonId,
     strictLineageEnforcement,
@@ -531,6 +535,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
     treeName: tree.name,
     personCount,
     membershipRole,
+    viewerUserId: user?.id ?? null,
     rootPersonId: tree.root_person_id,
     linkedPersonId,
     strictLineageEnforcement: tree.strict_lineage_enforcement,

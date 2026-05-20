@@ -76,12 +76,15 @@ export default async function TreeShortCodePage({
         {treeRole === 'OWNER' && (
           <PendingMembersPanel treeId={treeData.treeId} />
         )}
-        {(treeRole === 'VIEWER' || treeRole === 'EDITOR_PENDING') && (
-          <RequestEditorAccessButton
-            treeId={treeData.treeId}
-            initialRole={treeRole}
-          />
-        )}
+        {treeData.viewerUserId != null &&
+          (treeRole === null ||
+            treeRole === 'VIEWER' ||
+            treeRole === 'EDITOR_PENDING') && (
+            <RequestEditorAccessButton
+              treeId={treeData.treeId}
+              initialRole={treeRole}
+            />
+          )}
         <div className="min-h-0 flex-1">
           <TreeCanvasWithModals
             treeId={treeData.treeId}

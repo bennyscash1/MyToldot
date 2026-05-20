@@ -291,8 +291,11 @@
   },
   "treePerms": {
     "viewerHint": "יש לך גישה לצפייה בלבד למשפחה זו.",
+    "guestHint": "אתם צופים בעץ זה כאורחים. הצטרפו כדי לערוך.",
     "requestAccess": "בקש הרשאת עריכה",
     "requesting": "שולח בקשה…",
+    "requestSent": "בקשתך נשלחה למנהל המשפחה. תקבל עדכון כשהבקשה תאושר.",
+    "alreadyHasAccess": "כבר יש לך הרשאת עריכה",
     "accessRequested": "בקשת ההרשאה נשלחה — ממתין לאישור",
     "pendingMembersTitle": "בקשות להרשאת עריכה",
     "noPendingRequests": "אין בקשות ממתינות.",

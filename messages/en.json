@@ -291,8 +291,11 @@
   },
   "treePerms": {
     "viewerHint": "You have read-only access to this family.",
+    "guestHint": "You're viewing this family as a guest. Request edit access to contribute.",
     "requestAccess": "Request Edit Access",
     "requesting": "Requesting…",
+    "requestSent": "Your request has been sent. You'll be notified when it's approved.",
+    "alreadyHasAccess": "You already have edit access",
     "accessRequested": "Edit access requested — awaiting approval",
     "pendingMembersTitle": "Edit access requests",
     "noPendingRequests": "No pending requests.",
