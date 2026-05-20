@@ -297,6 +297,8 @@
     "requestSent": "בקשתך נשלחה למנהל המשפחה. תקבל עדכון כשהבקשה תאושר.",
     "alreadyHasAccess": "כבר יש לך הרשאת עריכה",
     "accessRequested": "בקשת ההרשאה נשלחה — ממתין לאישור",
+    "pendingApprovalWithOwner": "בקשת ההרשאה נשלחה ל-{ownerName} למייל <emailLink>{ownerEmail}</emailLink> — ממתין לאישור",
+    "pendingApprovalWithOwnerEmailOnly": "בקשת ההרשאה נשלחה למייל <emailLink>{ownerEmail}</emailLink> — ממתין לאישור",
     "pendingMembersTitle": "בקשות להרשאת עריכה",
     "noPendingRequests": "אין בקשות ממתינות.",
     "approve": "אשר",

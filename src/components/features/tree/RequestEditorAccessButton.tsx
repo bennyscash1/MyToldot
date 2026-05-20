@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import type { TreeMemberRole } from '@prisma/client';
 
@@ -24,14 +24,20 @@ import { Button } from '@/components/ui/Button';
 // EDITOR / OWNER never see this strip — the parent page filters them out.
 // ──────────────────────────────────────────────
 
+interface OwnerContact {
+  displayName: string;
+  email: string;
+}
+
 interface Props {
   treeId: string;
   initialRole: TreeMemberRole | null;
+  ownerContact: OwnerContact | null;
 }
 
 const SUCCESS_ALERT_TIMEOUT_MS = 10_000;
 
-export function RequestEditorAccessButton({ treeId, initialRole }: Props) {
+export function RequestEditorAccessButton({ treeId, initialRole, ownerContact }: Props) {
   const t = useTranslations('treePerms');
   const [role, setRole] = useState<TreeMemberRole | null>(initialRole);
   const [error, setError] = useState<string | null>(null);
@@ -65,12 +71,40 @@ export function RequestEditorAccessButton({ treeId, initialRole }: Props) {
   }
 
   if (role === 'EDITOR_PENDING') {
+    const emailLink = (chunks: ReactNode) =>
+      ownerContact ? (
+        <a
+          href={`mailto:${ownerContact.email}`}
+          className="font-medium text-amber-900 underline hover:text-amber-950"
+        >
+          {chunks}
+        </a>
+      ) : (
+        <>{chunks}</>
+      );
+
+    let message: ReactNode;
+    if (!ownerContact) {
+      message = t('accessRequested');
+    } else if (ownerContact.displayName === ownerContact.email) {
+      message = t.rich('pendingApprovalWithOwnerEmailOnly', {
+        ownerEmail: ownerContact.email,
+        emailLink,
+      });
+    } else {
+      message = t.rich('pendingApprovalWithOwner', {
+        ownerName: ownerContact.displayName,
+        ownerEmail: ownerContact.email,
+        emailLink,
+      });
+    }
+
     return (
       <>
         <div className="shrink-0 border-b border-amber-200/60 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex flex-wrap items-center justify-center gap-1.5">
             <ClockIcon />
-            {t('accessRequested')}
+            <span>{message}</span>
           </span>
         </div>
         {justJoined && (

@@ -297,6 +297,8 @@
     "requestSent": "Your request has been sent. You'll be notified when it's approved.",
     "alreadyHasAccess": "You already have edit access",
     "accessRequested": "Edit access requested — awaiting approval",
+    "pendingApprovalWithOwner": "Your request has been sent to {ownerName} at <emailLink>{ownerEmail}</emailLink> — pending approval",
+    "pendingApprovalWithOwnerEmailOnly": "Your request has been sent to <emailLink>{ownerEmail}</emailLink> — pending approval",
     "pendingMembersTitle": "Edit access requests",
     "noPendingRequests": "No pending requests.",
     "approve": "Approve",

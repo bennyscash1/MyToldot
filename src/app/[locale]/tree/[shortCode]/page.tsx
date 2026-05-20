@@ -83,6 +83,7 @@ export default async function TreeShortCodePage({
             <RequestEditorAccessButton
               treeId={treeData.treeId}
               initialRole={treeRole}
+              ownerContact={treeData.ownerContact}
             />
           )}
         <div className="min-h-0 flex-1">

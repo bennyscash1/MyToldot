@@ -61,6 +61,8 @@ export interface TreePageData {
   membershipRole: TreeMemberRole | null;
   /** Supabase user id of the current viewer, or null for anonymous visitors. */
   viewerUserId: string | null;
+  /** Owner display name + email, gated to EDITOR_PENDING / EDITOR / OWNER viewers only. */
+  ownerContact: { displayName: string; email: string } | null;
   rootPersonId: string | null;
   linkedPersonId: string | null;
   /** Mirrors `Tree.strict_lineage_enforcement` when a tree is loaded. */
@@ -381,6 +383,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
       personCount: 0,
       membershipRole: null,
       viewerUserId: user?.id ?? null,
+      ownerContact: null,
       rootPersonId: null,
       linkedPersonId: null,
       strictLineageEnforcement: false,
@@ -446,6 +449,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
     personCount,
     membershipRole,
     viewerUserId: user?.id ?? null,
+    ownerContact: null,
     rootPersonId,
     linkedPersonId,
     strictLineageEnforcement,
@@ -479,6 +483,26 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
   // Public-by-link access rule:
   // any visitor with a valid tree slug may view tree data.
   // Editing/deletion remains protected by RBAC checks in mutation paths.
+
+  // Owner contact info — only exposed to EDITOR_PENDING / EDITOR / OWNER viewers.
+  // Fetched unconditionally (it's a tiny query) so the empty-tree branch also has it.
+  const canSeeOwnerContact =
+    membershipRole === 'EDITOR_PENDING' ||
+    membershipRole === 'EDITOR' ||
+    membershipRole === 'OWNER';
+  const ownerRow = canSeeOwnerContact
+    ? await prisma.treeMember.findFirst({
+        where: { tree_id: tree.id, role: 'OWNER' },
+        orderBy: { joined_at: 'asc' },
+        select: { user: { select: { full_name: true, email: true } } },
+      })
+    : null;
+  const ownerContact = ownerRow?.user
+    ? {
+        displayName: ownerRow.user.full_name?.trim() || ownerRow.user.email,
+        email: ownerRow.user.email,
+      }
+    : null;
 
   const personCount = tree._count.persons;
   let initialPersons: PersonRow[] = [];
@@ -536,6 +560,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
     personCount,
     membershipRole,
     viewerUserId: user?.id ?? null,
+    ownerContact,
     rootPersonId: tree.root_person_id,
     linkedPersonId,
     strictLineageEnforcement: tree.strict_lineage_enforcement,
