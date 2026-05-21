@@ -127,7 +127,7 @@
     "nameRequired": "נא להזין שם לעץ.",
     "familyTagsHeading": "תגיות משפחה",
     "familyTagsPlaceholder": "הקלידו תגית ולחצו Enter",
-    "familyTagsHint": "Enter או פסיק להוספה. Backspace על שדה ריק מסירה את התגית האחרונה.",
+    "familyTagsHint": "Enter או פסיק להוספה. לחצו ✕ על תגית כדי להסיר.",
     "removeTag": "הסר תגית",
     "noTagsYet": "עדיין אין תגיות.",
     "galleryHeading": "גלריית תמונות",

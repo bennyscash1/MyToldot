@@ -127,7 +127,7 @@
     "nameRequired": "Please enter a name for the tree.",
     "familyTagsHeading": "Family tags",
     "familyTagsPlaceholder": "Type a tag and press Enter",
-    "familyTagsHint": "Press Enter or comma to add. Backspace on an empty field removes the last tag.",
+    "familyTagsHint": "Press Enter or comma to add. Click ✕ on a tag to remove it.",
     "removeTag": "Remove tag",
     "noTagsYet": "No tags yet.",
     "galleryHeading": "Photo gallery",

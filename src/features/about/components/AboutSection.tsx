@@ -1,6 +1,11 @@
 'use client';
 
-import { useState, useTransition, type KeyboardEvent } from 'react';
+import {
+  useState,
+  useTransition,
+  type ClipboardEvent,
+  type KeyboardEvent,
+} from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
@@ -53,15 +58,27 @@ export function AboutSection({ treeId, initial, canEdit }: AboutSectionProps) {
     setErrorMessage(null);
   };
 
-  const commitSurnameInput = () => {
-    const trimmed = surnameInput.trim();
-    if (!trimmed) return;
-    const exists = draftSurnames.some(
-      (s) => s.toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
-    );
-    if (!exists) {
-      setDraftSurnames((prev) => [...prev, trimmed]);
+  const commitSurnameInput = (rawInput?: string) => {
+    const source = rawInput ?? surnameInput;
+    const segments = source
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (segments.length === 0) {
+      setSurnameInput('');
+      return;
     }
+    setDraftSurnames((prev) => {
+      const next = [...prev];
+      const seen = new Set(next.map((s) => s.toLocaleLowerCase()));
+      for (const seg of segments) {
+        const key = seg.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(seg);
+      }
+      return next;
+    });
     setSurnameInput('');
   };
 
@@ -73,24 +90,33 @@ export function AboutSection({ treeId, initial, canEdit }: AboutSectionProps) {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
       commitSurnameInput();
-    } else if (
-      event.key === 'Backspace' &&
-      surnameInput === '' &&
-      draftSurnames.length > 0
-    ) {
-      // Backspace on an empty input pops the last chip — common chip-input UX.
-      removeSurname(draftSurnames.length - 1);
     }
   };
 
+  const handleSurnamePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const pasted = event.clipboardData.getData('text');
+    if (!pasted.includes(',')) return;
+    event.preventDefault();
+    commitSurnameInput(surnameInput + pasted);
+  };
+
   const handleSave = () => {
-    // Capture the current pending surname so users don't lose typed-but-unconfirmed input.
-    const pending = surnameInput.trim();
-    const surnamesToSave = pending
-      ? draftSurnames.some((s) => s.toLocaleLowerCase() === pending.toLocaleLowerCase())
-        ? draftSurnames
-        : [...draftSurnames, pending]
-      : draftSurnames;
+    // Capture any pending input so users don't lose typed-but-unconfirmed text,
+    // splitting on comma so a typed "a, b, c" still becomes three chips on save.
+    const pendingSegments = surnameInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const surnamesToSave = [...draftSurnames];
+    if (pendingSegments.length > 0) {
+      const seen = new Set(surnamesToSave.map((s) => s.toLocaleLowerCase()));
+      for (const seg of pendingSegments) {
+        const key = seg.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        surnamesToSave.push(seg);
+      }
+    }
 
     const trimmedText = draftText.trim();
     const nextAboutText = trimmedText.length === 0 ? null : trimmedText;
@@ -138,9 +164,10 @@ export function AboutSection({ treeId, initial, canEdit }: AboutSectionProps) {
           draftSurnames={draftSurnames}
           surnameInput={surnameInput}
           onSurnameInputChange={setSurnameInput}
-          onSurnameInputCommit={commitSurnameInput}
+          onSurnameInputCommit={() => commitSurnameInput()}
           onSurnameRemove={removeSurname}
           onSurnameKeyDown={handleSurnameKeyDown}
+          onSurnamePaste={handleSurnamePaste}
           onSave={handleSave}
           onCancel={cancelEdit}
           isSaving={isSaving}

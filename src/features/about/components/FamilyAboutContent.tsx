@@ -1,6 +1,6 @@
 'use client';
 
-import { type KeyboardEvent } from 'react';
+import { type ClipboardEvent, type KeyboardEvent } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -37,6 +37,7 @@ interface FamilyAboutEditViewProps {
   onSurnameInputCommit: () => void;
   onSurnameRemove: (index: number) => void;
   onSurnameKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onSurnamePaste?: (event: ClipboardEvent<HTMLInputElement>) => void;
   onSave: () => void;
   onCancel: () => void;
   isSaving: boolean;
@@ -101,6 +102,7 @@ export function FamilyAboutEditView({
   onSurnameInputCommit,
   onSurnameRemove,
   onSurnameKeyDown,
+  onSurnamePaste,
   onSave,
   onCancel,
   isSaving,
@@ -172,6 +174,7 @@ export function FamilyAboutEditView({
           value={surnameInput}
           onChange={(e) => onSurnameInputChange(e.target.value)}
           onKeyDown={onSurnameKeyDown}
+          onPaste={onSurnamePaste}
           onBlur={onSurnameInputCommit}
           placeholder={labels.surnamesPlaceholder}
           hint={labels.surnamesHint}

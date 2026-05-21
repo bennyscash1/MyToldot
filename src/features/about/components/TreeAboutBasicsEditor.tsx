@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useTransition,
+  type ClipboardEvent as ReactClipboardEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { useRouter } from '@/i18n/routing';
@@ -63,15 +64,27 @@ export function TreeAboutBasicsEditor({
     setDraftImages(initialAboutImages);
   }, [initialName, initialDescription, initialMainSurnames, initialAboutImages]);
 
-  const commitTagInput = () => {
-    const trimmed = tagInput.trim();
-    if (!trimmed) return;
-    const exists = draftTags.some(
-      (s) => s.toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
-    );
-    if (!exists) {
-      setDraftTags((prev) => [...prev, trimmed]);
+  const commitTagInput = (rawInput?: string) => {
+    const source = rawInput ?? tagInput;
+    const segments = source
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (segments.length === 0) {
+      setTagInput('');
+      return;
     }
+    setDraftTags((prev) => {
+      const next = [...prev];
+      const seen = new Set(next.map((s) => s.toLocaleLowerCase()));
+      for (const seg of segments) {
+        const key = seg.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(seg);
+      }
+      return next;
+    });
     setTagInput('');
   };
 
@@ -83,13 +96,14 @@ export function TreeAboutBasicsEditor({
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
       commitTagInput();
-    } else if (
-      event.key === 'Backspace' &&
-      tagInput === '' &&
-      draftTags.length > 0
-    ) {
-      removeTag(draftTags.length - 1);
     }
+  };
+
+  const handleTagPaste = (event: ReactClipboardEvent<HTMLInputElement>) => {
+    const pasted = event.clipboardData.getData('text');
+    if (!pasted.includes(',')) return;
+    event.preventDefault();
+    commitTagInput(tagInput + pasted);
   };
 
   const cancelEdit = () => {
@@ -110,12 +124,20 @@ export function TreeAboutBasicsEditor({
       return;
     }
 
-    const pending = tagInput.trim();
-    const tagsToSave = pending
-      ? draftTags.some((s) => s.toLocaleLowerCase() === pending.toLocaleLowerCase())
-        ? draftTags
-        : [...draftTags, pending]
-      : draftTags;
+    const pendingSegments = tagInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const tagsToSave = [...draftTags];
+    if (pendingSegments.length > 0) {
+      const seen = new Set(tagsToSave.map((s) => s.toLocaleLowerCase()));
+      for (const seg of pendingSegments) {
+        const key = seg.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        tagsToSave.push(seg);
+      }
+    }
 
     startSaving(async () => {
       try {
@@ -275,7 +297,8 @@ export function TreeAboutBasicsEditor({
             setErrorMessage(null);
           }}
           onKeyDown={handleTagKeyDown}
-          onBlur={commitTagInput}
+          onPaste={handleTagPaste}
+          onBlur={() => commitTagInput()}
           placeholder={t('familyTagsPlaceholder')}
           hint={t('familyTagsHint')}
           disabled={isSaving}
