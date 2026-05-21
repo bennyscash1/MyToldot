@@ -69,8 +69,15 @@ export async function layoutBipartiteGraph(
       'elk.layered.spacing.nodeNodeBetweenLayers': String(ELK_LAYER_SPACING),
       'elk.spacing.nodeNode': String(NODE_GAP),
       'elk.spacing.edgeNode': String(EDGE_NODE_GAP),
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      // BRANDES_KOEPF with BALANCED alignment is the tidiest tree-ish node
+      // placement available in ELK's layered framework — it centers parents
+      // over their children when possible and produces straighter trunks.
+      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+      // Disable post-layout horizontal compaction so the spacing we (and our
+      // post-layout subtree-collision pass) compute isn't shrunk away.
+      'elk.layered.compaction.postCompaction.strategy': 'NONE',
       // Keep in-layer model ordering stable so spouse partners can stay adjacent.
       'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
       // Force ELK to respect our generational partitioning. Without this,
@@ -159,6 +166,19 @@ export async function layoutBipartiteGraph(
   // stepped connector. Centering on the union keeps a straight vertical line.
   centerLoneChildrenUnderUnions(nodeMap, graph.edges);
 
+  // ── Pass 4: subtree-collision repair ─────────────────────────────────────
+  // ELK lays each generation out independently — it can pack siblings tight
+  // even when one sibling's downstream subtree is much wider, causing those
+  // descendants to crash into a neighbor's descendants below. Walk each
+  // generation top-to-bottom; for each pair of adjacent person-bundles (a
+  // person + spouses + their entire downward subtree) on the same row, if
+  // their X extents overlap, shift the right bundle right by the deficit.
+  repairSubtreeCollisions(nodeMap, graph.edges);
+
+  // After shifting, re-center couple unions so the spouse-line pill follows
+  // the new person X positions.
+  recenterCoupleUnions(nodeMap);
+
   const nodes: PositionedNode[] = Array.from(nodeMap.values());
 
   const maxX = nodes.reduce((m, n) => Math.max(m, n.x + n.width), 0);
@@ -185,13 +205,135 @@ function centerLoneChildrenUnderUnions(
   for (const [, childEdges] of byUnion) {
     if (childEdges.length !== 1) continue;
     const union = nodeMap.get(childEdges[0]!.source);
-    if (!union || union.kind !== 'union' || union.union?.kind === 'solo') continue;
+    if (!union || union.kind !== 'union') continue;
 
     const child = nodeMap.get(childEdges[0]!.target);
     if (!child || child.kind !== 'person') continue;
 
+    // For solo unions the pill is hidden and the visible connector goes from
+    // the parent's center bottom → child. Center the child under the parent
+    // so pedigreeChildPath's straight-line branch fires (no horizontal jog).
+    if (union.union?.kind === 'solo') {
+      const parentId = union.union.parent_ids[0];
+      const parent = parentId ? nodeMap.get(parentId) : undefined;
+      if (!parent || parent.kind !== 'person') continue;
+      const parentCenterX = parent.x + parent.width / 2;
+      child.x = parentCenterX - child.width / 2;
+      continue;
+    }
+
     const unionCenterX = union.x + union.width / 2;
     child.x = unionCenterX - child.width / 2;
+  }
+}
+
+/**
+ * Per-generation collision repair. For each generation top-to-bottom, build a
+ * "down-bundle" for each person (the person + same-row spouses + all their
+ * descendant persons and union pills), sort bundles by lead X, and shift the
+ * right bundle right by any X-extent deficit against the left bundle. Only
+ * positive shifts are ever applied — bundles whose extents don't overlap are
+ * untouched, so this never spreads a layout that's already correct.
+ */
+function repairSubtreeCollisions(
+  nodeMap: Map<string, PositionedNode>,
+  edges: BipartiteEdge[],
+): void {
+  // Build helper maps.
+  const unionsOfPerson = new Map<string, string[]>();
+  const partnersInUnion = new Map<string, string[]>();
+  const childrenOfUnion = new Map<string, string[]>();
+
+  for (const n of nodeMap.values()) {
+    if (n.kind !== 'union') continue;
+    const pids = n.union?.parent_ids ?? [];
+    partnersInUnion.set(n.id, [...pids]);
+    for (const pid of pids) {
+      const arr = unionsOfPerson.get(pid) ?? [];
+      arr.push(n.id);
+      unionsOfPerson.set(pid, arr);
+    }
+  }
+  for (const e of edges) {
+    if (e.kind !== 'child') continue;
+    const arr = childrenOfUnion.get(e.source) ?? [];
+    arr.push(e.target);
+    childrenOfUnion.set(e.source, arr);
+  }
+
+  // Down-bundle: starting from `rootId`, collect self + same-row spouses
+  // + their unions + all descendant persons and union pills (recursive).
+  function downBundle(rootId: string): Set<string> {
+    const bundle = new Set<string>();
+    const stack = [rootId];
+    while (stack.length) {
+      const pid = stack.pop()!;
+      if (bundle.has(pid)) continue;
+      bundle.add(pid);
+      for (const uid of unionsOfPerson.get(pid) ?? []) {
+        if (!bundle.has(uid)) bundle.add(uid);
+        for (const partner of partnersInUnion.get(uid) ?? []) {
+          if (partner !== pid && !bundle.has(partner)) stack.push(partner);
+        }
+        for (const childId of childrenOfUnion.get(uid) ?? []) {
+          if (!bundle.has(childId)) stack.push(childId);
+        }
+      }
+    }
+    return bundle;
+  }
+
+  function extentOf(bundle: Set<string>): [number, number] {
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    for (const id of bundle) {
+      const n = nodeMap.get(id);
+      if (!n) continue;
+      if (n.x < minX) minX = n.x;
+      if (n.x + n.width > maxX) maxX = n.x + n.width;
+    }
+    return [minX, maxX];
+  }
+
+  const personsByGen = new Map<number, PositionedNode[]>();
+  for (const n of nodeMap.values()) {
+    if (n.kind !== 'person') continue;
+    const arr = personsByGen.get(n.gen) ?? [];
+    arr.push(n);
+    personsByGen.set(n.gen, arr);
+  }
+  const gens = [...personsByGen.keys()].sort((a, b) => a - b);
+
+  for (const gen of gens) {
+    const row = (personsByGen.get(gen) ?? []).slice().sort((a, b) => a.x - b.x);
+    const visited = new Set<string>();
+    const clusters: Array<{ bundle: Set<string>; leadX: number }> = [];
+
+    for (const p of row) {
+      if (visited.has(p.id)) continue;
+      const bundle = downBundle(p.id);
+      for (const id of bundle) {
+        const node = nodeMap.get(id);
+        if (node && node.kind === 'person' && node.gen === gen) {
+          visited.add(id);
+        }
+      }
+      clusters.push({ bundle, leadX: p.x });
+    }
+    clusters.sort((a, b) => a.leadX - b.leadX);
+
+    for (let i = 1; i < clusters.length; i += 1) {
+      const [, leftMaxX] = extentOf(clusters[i - 1].bundle);
+      const [rightMinX] = extentOf(clusters[i].bundle);
+      if (!Number.isFinite(leftMaxX) || !Number.isFinite(rightMinX)) continue;
+      const deficit = leftMaxX + NODE_GAP - rightMinX;
+      if (deficit > 0) {
+        for (const id of clusters[i].bundle) {
+          const n = nodeMap.get(id);
+          if (n) n.x += deficit;
+        }
+      }
+    }
   }
 }
 
