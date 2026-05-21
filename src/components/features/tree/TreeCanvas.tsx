@@ -8,6 +8,7 @@ import {
   useReactFlow,
   type NodeMouseHandler,
   type NodeTypes,
+  type EdgeTypes,
   type Edge,
   type Node,
 } from '@xyflow/react';
@@ -67,6 +68,7 @@ export interface TreeCanvasProps {
   nodes: Node[];
   edges: Edge[];
   nodeTypes: NodeTypes;
+  edgeTypes?: EdgeTypes;
   onNodeClick: NodeMouseHandler;
   /** True when there are no people — show centered “first person” affordance. */
   showEmptyAdd: boolean;
@@ -84,6 +86,7 @@ export function TreeCanvas({
   nodes,
   edges,
   nodeTypes,
+  edgeTypes,
   onNodeClick,
   showEmptyAdd,
   onAddFirstPerson,
@@ -99,6 +102,7 @@ export function TreeCanvas({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultViewport={{ x: 0, y: 0, zoom: 0.85 }}
         fitView={!showEmptyAdd}
         fitViewOptions={{ padding: 0.2, maxZoom: 1.15 }}

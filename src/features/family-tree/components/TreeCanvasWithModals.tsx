@@ -9,7 +9,11 @@ import type { PersonPhotoDTO, PersonRow, PlaceholderMeta, RelationshipRow } from
 import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
+import { getCurrentSpouseIds } from '../lib/currentSpouses';
+import { fullNameFromPerson } from '../lib/personDisplayName';
 import { AddRelativePopover } from './panels/AddRelativePopover';
+import { NoSpouseChildModal } from './panels/NoSpouseChildModal';
+import { PickCoParentModal, type CoParentOption } from './panels/PickCoParentModal';
 import { PersonSidePanel } from './panels/PersonSidePanel';
 import { TreeAboutModal } from './panels/TreeAboutModal';
 import { PersonForm } from '@/features/persons/components/PersonForm';
@@ -83,6 +87,15 @@ export function TreeCanvasWithModals({
   const [photosByPerson, setPhotosByPerson] = useState(initialPhotosByPerson);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
+  const [pickCoParentModal, setPickCoParentModal] = useState<{
+    anchorId: string;
+    personName: string;
+    spouseOptions: CoParentOption[];
+  } | null>(null);
+  const [noSpouseChildModal, setNoSpouseChildModal] = useState<{
+    anchorId: string;
+    personName: string;
+  } | null>(null);
   const firstPersonModalRef = useRef<HTMLDivElement>(null);
 
   const onSelectPerson = useCallback(
@@ -139,15 +152,33 @@ export function TreeCanvasWithModals({
     }
   }, [openAboutOnLoad, pathname, router]);
 
+  const openAddChildPopover = useCallback(
+    (
+      anchorId: string,
+      parentIds: [string] | [string, string],
+      skipSpouseAutoLink?: boolean,
+    ) => {
+      if (typeof window === 'undefined') return;
+      setPopover({
+        meta: {
+          kind: 'add-child',
+          anchor_id: anchorId,
+          parent_ids: parentIds,
+          skipSpouseAutoLink,
+        },
+        screenX: Math.round(window.innerWidth / 2),
+        screenY: Math.round(window.innerHeight / 2),
+      });
+    },
+    [],
+  );
+
   const handleOpenAddFromPanel = useCallback(
     (kind: 'add-parent' | 'add-spouse' | 'add-child') => {
       if (!sidePersonId || typeof window === 'undefined') return;
       clearError();
       clearBlocked();
-      const meta: PlaceholderMeta =
-        kind === 'add-child'
-          ? { kind, anchor_id: sidePersonId, parent_ids: [sidePersonId] as [string] }
-          : { kind, anchor_id: sidePersonId };
+      const meta: PlaceholderMeta = { kind, anchor_id: sidePersonId };
       setPopover({
         meta,
         screenX: Math.round(window.innerWidth / 2),
@@ -165,9 +196,39 @@ export function TreeCanvasWithModals({
     handleOpenAddFromPanel('add-spouse');
   }, [handleOpenAddFromPanel]);
 
-  const handleAddChildFromPanel = useCallback(async () => {
-    handleOpenAddFromPanel('add-child');
-  }, [handleOpenAddFromPanel]);
+  const handleAddChildFromPanel = useCallback(() => {
+    if (!sidePersonId || typeof window === 'undefined') return;
+    clearError();
+    clearBlocked();
+
+    const anchor = persons.find((p) => p.id === sidePersonId);
+    if (!anchor) return;
+    const personName = fullNameFromPerson(anchor) || sidePersonId;
+    const spouseIds = getCurrentSpouseIds(sidePersonId, relationships);
+
+    if (spouseIds.length === 1) {
+      openAddChildPopover(sidePersonId, [sidePersonId, spouseIds[0]]);
+      return;
+    }
+
+    if (spouseIds.length >= 2) {
+      const spouseOptions: CoParentOption[] = spouseIds.map((id) => {
+        const p = persons.find((x) => x.id === id);
+        return { id, name: p ? fullNameFromPerson(p) || id : id };
+      });
+      setPickCoParentModal({ anchorId: sidePersonId, personName, spouseOptions });
+      return;
+    }
+
+    setNoSpouseChildModal({ anchorId: sidePersonId, personName });
+  }, [
+    sidePersonId,
+    persons,
+    relationships,
+    clearError,
+    clearBlocked,
+    openAddChildPopover,
+  ]);
 
   const handleAddSubmit = useCallback(
     async (input: PersonInput) => {
@@ -186,6 +247,7 @@ export function TreeCanvasWithModals({
             parent1Id: pids[0],
             parent2Id: pids.length > 1 ? pids[1] : null,
             child: input,
+            skipSpouseAutoLink: meta.skipSpouseAutoLink,
           });
           okResult = childId !== null;
         } else if (meta.kind === 'add-sibling') {
@@ -356,6 +418,41 @@ export function TreeCanvasWithModals({
         ownerEmail={lastBlocked?.ownerEmail}
         onClose={clearBlocked}
       />
+
+      {pickCoParentModal && (
+        <PickCoParentModal
+          open
+          personName={pickCoParentModal.personName}
+          spouseOptions={pickCoParentModal.spouseOptions}
+          onCancel={() => setPickCoParentModal(null)}
+          onConfirm={(coParentId) => {
+            const { anchorId } = pickCoParentModal;
+            setPickCoParentModal(null);
+            if (coParentId) {
+              openAddChildPopover(anchorId, [anchorId, coParentId]);
+            } else {
+              openAddChildPopover(anchorId, [anchorId], true);
+            }
+          }}
+        />
+      )}
+
+      {noSpouseChildModal && (
+        <NoSpouseChildModal
+          open
+          personName={noSpouseChildModal.personName}
+          onCancel={() => setNoSpouseChildModal(null)}
+          onAddSpouseFirst={() => {
+            setNoSpouseChildModal(null);
+            handleOpenAddFromPanel('add-spouse');
+          }}
+          onSingleParent={() => {
+            const { anchorId } = noSpouseChildModal;
+            setNoSpouseChildModal(null);
+            openAddChildPopover(anchorId, [anchorId], true);
+          }}
+        />
+      )}
     </div>
   );
 }

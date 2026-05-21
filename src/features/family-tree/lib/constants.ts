@@ -26,3 +26,6 @@ export const NODE_GAP = 80;
 
 // Minimum spacing between edges and nearby nodes in ELK routing.
 export const EDGE_NODE_GAP = 40;
+
+/** Gap below the bottom of parent cards before the child sibling-bar (px). */
+export const SIBLING_BAR_CLEAR_MARGIN = 16;

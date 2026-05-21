@@ -52,6 +52,17 @@
     "alreadyMember": "You are already a member of this family",
     "treeNotFound": "Family not found. The link may be incorrect."
   },
+  "addChildFlow": {
+    "pickCoParentTitle": "Choose co-parent",
+    "pickCoParentBody": "{personName} has multiple current spouses. Who is the other parent of this child?",
+    "singleParentOnly": "Add child to {personName} only",
+    "noSpouseTitle": "Add child to {personName}",
+    "noSpouseBody": "{personName} has no current spouse in the tree. What would you like to do?",
+    "addSpouseFirst": "Add a spouse for {personName} first, then the child will belong to both",
+    "singleParentChild": "Add the child as a descendant of {personName} only",
+    "cancel": "Cancel",
+    "continue": "Continue"
+  },
   "dashboard": {
     "navbarLink": "Family View",
     "backToTree": "Back to tree",

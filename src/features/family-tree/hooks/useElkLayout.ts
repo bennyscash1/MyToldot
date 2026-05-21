@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildBipartiteGraph } from '../lib/buildBipartiteGraph';
 import { PERSON_NODE_WIDTH } from '../lib/constants';
 import { layoutBipartiteGraph, type LayoutResult } from '../lib/elkLayout';
+import { buildPedigreeChildFlowEdges } from '../lib/pedigreeChildEdges';
 import type { FlowEdge, FlowNode, PersonRow, RelationshipRow } from '../lib/types';
 
 interface UseElkLayoutArgs {
@@ -154,8 +155,9 @@ function toFlowElements(
 
   const posById = new Map(layout.nodes.map((n) => [n.id, n]));
 
-  const edges: FlowEdge[] = layout.edges.map((e) => {
-    if (e.kind === 'spouse') {
+  const spouseEdges: FlowEdge[] = layout.edges
+    .filter((e) => e.kind === 'spouse')
+    .map((e) => {
       // Straight horizontal line. Route from the person's facing handle to
       // the union's matching handle based on relative X position.
       const person = posById.get(e.source);
@@ -209,44 +211,9 @@ function toFlowElements(
             ? 'shortree-edge-divorced'
             : 'shortree-edge-spouse',
       } as FlowEdge;
-    }
+    });
 
-    // Child / descent edge — orthogonal step path.
-    //
-    // For solo unions, the union pill is invisible (UnionNode hides kind=solo),
-    // so a child edge sourced at the union appears to start in empty space —
-    // either floating from the gap between cards or making the parent card
-    // look disconnected from its child. Re-source the visible path to the
-    // parent person's bottom handle so the line drops from the actual card.
-    //
-    // The bipartite graph still emits parent → solo_union → child as two
-    // edges, both of which ELK consumes for layout — only the rendered SVG
-    // path is changed here, so layout (X positions, gen rows, manifold
-    // routing for multi-child solo parents) is unaffected.
-    let childSource = e.source;
-    let childSourceHandle: 'children' | 'bottom' = 'children';
-    const childSourceNode = posById.get(e.source);
-    if (
-      childSourceNode?.kind === 'union' &&
-      childSourceNode.union?.kind === 'solo'
-    ) {
-      const parentId = childSourceNode.union.parent_ids[0];
-      if (parentId && posById.has(parentId)) {
-        childSource = parentId;
-        childSourceHandle = 'bottom';
-      }
-    }
+  const childEdges = buildPedigreeChildFlowEdges(layout.edges, posById) as FlowEdge[];
 
-    return {
-      id: e.id,
-      source: childSource,
-      target: e.target,
-      type: 'step',
-      sourceHandle: childSourceHandle,
-      targetHandle: 'top',
-      className: 'shortree-edge-child',
-    } as FlowEdge;
-  });
-
-  return { nodes, edges };
+  return { nodes, edges: [...spouseEdges, ...childEdges] };
 }

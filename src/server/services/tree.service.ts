@@ -163,6 +163,7 @@ export const AddChildSchema = z.object({
   treeId: CuidSchema,
   parent1Id: CuidSchema,
   parent2Id: CuidSchema.optional().nullable(),
+  skipSpouseAutoLink: z.boolean().optional(),
   child: PersonInputSchema,
 });
 
@@ -830,10 +831,32 @@ export async function addParentInTree(
 export async function addChildInTree(
   input: z.infer<typeof AddChildSchema>,
 ): Promise<AddedRelativeDto> {
-  const { treeId, parent1Id, parent2Id, child } = AddChildSchema.parse(input);
+  const parsed = AddChildSchema.parse(input);
+  const { treeId, parent1Id, child, skipSpouseAutoLink } = parsed;
+  let parent2Id = parsed.parent2Id ?? null;
+
   await requireTreeRole(treeId, 'EDITOR');
   if (parent2Id && parent1Id === parent2Id) {
     throw Errors.badRequest('parent1 and parent2 must differ');
+  }
+
+  if (!parent2Id && !skipSpouseAutoLink) {
+    const spouseRels = await prisma.relationship.findMany({
+      where: {
+        tree_id: treeId,
+        relationship_type: { in: ['SPOUSE', 'ENGAGED'] },
+        OR: [{ person1_id: parent1Id }, { person2_id: parent1Id }],
+      },
+      select: { person1_id: true, person2_id: true },
+    });
+    const coParentIds = new Set<string>();
+    for (const r of spouseRels) {
+      const other = r.person1_id === parent1Id ? r.person2_id : r.person1_id;
+      coParentIds.add(other);
+    }
+    if (coParentIds.size === 1) {
+      parent2Id = [...coParentIds][0];
+    }
   }
 
   const parentIds = parent2Id ? [parent1Id, parent2Id] : [parent1Id];

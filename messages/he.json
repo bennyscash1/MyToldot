@@ -52,6 +52,17 @@
     "alreadyMember": "אתה כבר חבר במשפחה זו",
     "treeNotFound": "המשפחה לא נמצאה. ייתכן שהקישור שגוי."
   },
+  "addChildFlow": {
+    "pickCoParentTitle": "בחירת הורה נוסף",
+    "pickCoParentBody": "ל-{personName} יש יותר מבן/בת זוג אחד. מי ההורה הנוסף של הילד?",
+    "singleParentOnly": "להוסיף את הילד כצאצא של {personName} בלבד",
+    "noSpouseTitle": "הוספת בן/בת ל-{personName}",
+    "noSpouseBody": "ל-{personName} אין כרגע בן/בת זוג בעץ. מה ברצונך לעשות?",
+    "addSpouseFirst": "להוסיף קודם בן/בת זוג ל-{personName}, ואז הילד יהיה משותף לשניהם",
+    "singleParentChild": "להוסיף את הילד כצאצא של {personName} בלבד",
+    "cancel": "ביטול",
+    "continue": "המשך"
+  },
   "dashboard": {
     "navbarLink": "תצוגת משפחה",
     "backToTree": "חזור לעץ",

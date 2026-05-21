@@ -51,7 +51,12 @@ export interface UseTreeMutationsResult {
   addParent: (args: { childId: string; parent: PersonInput; adoptive?: boolean }) => Promise<boolean>;
   addSpouse: (args: { personId: string; spouse: PersonInput; marriage_date?: Date | null }) => Promise<boolean>;
   /** Returns the new child's id after a successful create (real id, not temp). */
-  addChild: (args: { parent1Id: string; parent2Id?: string | null; child: PersonInput }) => Promise<string | null>;
+  addChild: (args: {
+    parent1Id: string;
+    parent2Id?: string | null;
+    child: PersonInput;
+    skipSpouseAutoLink?: boolean;
+  }) => Promise<string | null>;
   addSibling: (args: { existingSiblingId: string; sibling: PersonInput }) => Promise<boolean>;
   updatePerson: (args: { personId: string; patch: PersonPatch }) => Promise<void>;
   deletePerson: (personId: string) => Promise<void>;
@@ -340,7 +345,7 @@ export function useTreeMutations({
 
   // ── addChild ───────────────────────────────────────────────────
   const addChild = useCallback<UseTreeMutationsResult['addChild']>(
-    async ({ parent1Id, parent2Id, child }) => {
+    async ({ parent1Id, parent2Id, child, skipSpouseAutoLink }) => {
       const newPersonId = tmpId('person');
       const parentIds = parent2Id ? [parent1Id, parent2Id] : [parent1Id];
       const tempRels: RelationshipRow[] = parentIds.map((pid) => ({
@@ -364,6 +369,7 @@ export function useTreeMutations({
                   treeId,
                   parent1Id,
                   parent2Id: parent2Id ?? null,
+                  ...(skipSpouseAutoLink ? { skipSpouseAutoLink: true } : {}),
                   child,
                 }),
               ),

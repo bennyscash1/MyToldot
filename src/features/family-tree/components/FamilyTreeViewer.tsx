@@ -1,10 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ReactFlowProvider, type NodeMouseHandler, type NodeTypes } from '@xyflow/react';
+import {
+  ReactFlowProvider,
+  type EdgeTypes,
+  type NodeMouseHandler,
+  type NodeTypes,
+} from '@xyflow/react';
 
 import { TreeCanvas } from '@/components/features/tree/TreeCanvas';
 import { useElkLayout } from '../hooks/useElkLayout';
+import { PedigreeChildEdge } from './edges/PedigreeChildEdge';
 import { PersonCardNode } from './nodes/PersonCardNode';
 import { UnionNode } from './nodes/UnionNode';
 import type {
@@ -29,6 +35,10 @@ export interface FamilyTreeViewerProps {
 const NODE_TYPES: NodeTypes = {
   person: PersonCardNode,
   union: UnionNode,
+};
+
+const EDGE_TYPES: EdgeTypes = {
+  pedigreeChild: PedigreeChildEdge,
 };
 
 function FamilyTreeViewerInner({
@@ -99,6 +109,7 @@ function FamilyTreeViewerInner({
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}
+      edgeTypes={EDGE_TYPES}
       onNodeClick={onNodeClick}
       showEmptyAdd={showEmptyAdd}
       onAddFirstPerson={onAddFirstPerson}

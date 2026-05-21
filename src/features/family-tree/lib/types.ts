@@ -90,6 +90,8 @@ export interface PlaceholderMeta {
   anchor_id: string;
   /** For add-child: the parent ids the popover should submit. */
   parent_ids?: [string] | [string, string];
+  /** For add-child: do not auto-link a spouse on the server. */
+  skipSpouseAutoLink?: boolean;
 }
 
 export interface BipartiteEdge {
