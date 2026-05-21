@@ -153,6 +153,11 @@ export async function layoutBipartiteGraph(
     person.y = union.y - UNION_Y_OFFSET;
   }
 
+  // ── Pass 3: center a lone child under its union pill ─────────────────────
+  // ELK may place the only child under one parent's column; that forces a
+  // stepped connector. Centering on the union keeps a straight vertical line.
+  centerLoneChildrenUnderUnions(nodeMap, graph.edges);
+
   const nodes: PositionedNode[] = Array.from(nodeMap.values());
 
   const maxX = nodes.reduce((m, n) => Math.max(m, n.x + n.width), 0);
@@ -163,6 +168,31 @@ export async function layoutBipartiteGraph(
 
 /** No-op — kept for any future HMR cleanup. */
 export function disposeElkWorker(): void {}
+
+function centerLoneChildrenUnderUnions(
+  nodeMap: Map<string, PositionedNode>,
+  edges: BipartiteEdge[],
+): void {
+  const byUnion = new Map<string, BipartiteEdge[]>();
+  for (const e of edges) {
+    if (e.kind !== 'child') continue;
+    const list = byUnion.get(e.source) ?? [];
+    list.push(e);
+    byUnion.set(e.source, list);
+  }
+
+  for (const [, childEdges] of byUnion) {
+    if (childEdges.length !== 1) continue;
+    const union = nodeMap.get(childEdges[0]!.source);
+    if (!union || union.kind !== 'union' || union.union?.kind === 'solo') continue;
+
+    const child = nodeMap.get(childEdges[0]!.target);
+    if (!child || child.kind !== 'person') continue;
+
+    const unionCenterX = union.x + union.width / 2;
+    child.x = unionCenterX - child.width / 2;
+  }
+}
 
 function recenterCoupleUnions(nodeMap: Map<string, PositionedNode>): void {
   for (const node of nodeMap.values()) {

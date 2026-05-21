@@ -179,12 +179,9 @@ export function pedigreeChildPath(
     return `M ${targetX} ${busY} L ${targetX} ${targetY}`;
   }
 
-  // One child: straight vertical when aligned; otherwise one bend below parent cards.
+  // One child: single vertical trunk from the union (no sibling bar / horizontal jog).
   if (data.singleChild) {
-    if (Math.abs(sourceX - targetX) < 1) {
-      return `M ${sourceX} ${sourceY} L ${sourceX} ${targetY}`;
-    }
-    return `M ${sourceX} ${sourceY} L ${sourceX} ${busY} L ${targetX} ${busY} L ${targetX} ${targetY}`;
+    return `M ${sourceX} ${sourceY} L ${sourceX} ${targetY}`;
   }
 
   const parts = [`M ${sourceX} ${sourceY}`, `L ${sourceX} ${busY}`];
