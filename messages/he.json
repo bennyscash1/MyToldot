@@ -36,6 +36,22 @@
     "aboutWithFamily": "אודות {name}",
     "backToTree": "חזרה לעץ"
   },
+  "share": {
+    "buttonLabel": "שתף",
+    "modalTitle": "שתף את משפחת {treeName}",
+    "viewLinkTitle": "קישור לצפייה",
+    "viewLinkHelp": "כל מי שלוחץ על הקישור יכול לצפות בעץ ללא הרשמה",
+    "joinLinkTitle": "קישור להצטרפות",
+    "joinLinkHelp": "מי שלוחץ על הקישור יתחבר לחשבון וישוייך אוטומטית למשפחה. עריכה דורשת אישור מנהל.",
+    "copy": "העתק",
+    "copied": "הועתק!",
+    "shareWhatsapp": "שתף בוואטסאפ"
+  },
+  "joinFlow": {
+    "welcomeBanner": "ברוך הבא למשפחת {treeName}! ניתן לבקש הרשאת עריכה בכפתור למטה.",
+    "alreadyMember": "אתה כבר חבר במשפחה זו",
+    "treeNotFound": "המשפחה לא נמצאה. ייתכן שהקישור שגוי."
+  },
   "dashboard": {
     "navbarLink": "תצוגת משפחה",
     "backToTree": "חזור לעץ",

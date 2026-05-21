@@ -3,7 +3,8 @@ import { redirect }         from 'next/navigation';
 import type { Metadata }    from 'next';
 import type { LocalePageProps } from '@/types';
 import { getAuthUser, getPreferredLocaleForUser } from '@/lib/api/auth';
-import { Link }             from '@/i18n/routing';
+import { resolveSafeNextPath } from '@/lib/safe-redirect';
+import { Link } from '@/i18n/routing';
 import { LoginForm }        from '@/components/features/auth/LoginForm';
 
 // ──────────────────────────────────────────────
@@ -21,11 +22,20 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('loginTitle') };
 }
 
-export default async function LoginPage({ params }: LocalePageProps) {
+type LoginPageProps = LocalePageProps & {
+  searchParams: Promise<{ redirect?: string }>;
+};
+
+export default async function LoginPage({ params, searchParams }: LoginPageProps) {
   await params;
+  const sp = await searchParams;
+  const safeRedirect = resolveSafeNextPath(sp.redirect);
 
   const user = await getAuthUser();
   if (user) {
+    if (safeRedirect) {
+      redirect(safeRedirect);
+    }
     const pref = await getPreferredLocaleForUser(user.id);
     redirect(`/${pref}`);
   }

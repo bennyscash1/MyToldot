@@ -9,6 +9,7 @@ import {
   parsePreferredLocale,
   parsePreferredLocaleCookie,
 } from '@/lib/locale-preference';
+import { resolveSafeNextPath } from '@/lib/safe-redirect';
 
 type AuthProvider = 'manual' | 'google' | 'both';
 
@@ -23,14 +24,6 @@ function buildLoginErrorRedirect(request: NextRequest) {
   const url = new URL('/login', request.nextUrl.origin);
   url.searchParams.set('error', 'oauth_failed');
   return NextResponse.redirect(url);
-}
-
-function resolveSafeNextPath(rawNext: string | null): string | null {
-  if (!rawNext) return null;
-  if (!rawNext.startsWith('/')) return null;
-  // Block callback loops and API jumps.
-  if (rawNext.startsWith('/api/')) return null;
-  return rawNext;
 }
 
 export async function GET(request: NextRequest) {

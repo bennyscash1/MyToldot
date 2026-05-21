@@ -3,7 +3,9 @@ import { getTranslations } from 'next-intl/server';
 
 import { Link } from '@/i18n/routing';
 import { TreeAboutOrBackLink } from '@/components/features/tree/TreeAboutOrBackLink';
+import { TreeShareButton } from '@/components/features/tree/TreeShareButton';
 import { getCurrentUserTreeRole } from '@/lib/api/auth';
+import { getSiteOrigin } from '@/lib/site-url';
 import { findTreeByRouteParam } from '@/server/services/tree.service';
 
 type TreeShortCodeLayoutProps = {
@@ -30,8 +32,10 @@ export default async function TreeShortCodeLayout({
 
   const tree = await findTreeByRouteParam(shortCode);
   const familyLabel = tree?.name ?? shortCode;
-  const isOwner =
-    tree != null && (await getCurrentUserTreeRole(tree.id)) === 'OWNER';
+  const treeRole = tree != null ? await getCurrentUserTreeRole(tree.id) : null;
+  const isOwner = treeRole === 'OWNER';
+  const canShare = treeRole === 'EDITOR' || treeRole === 'OWNER';
+  const siteOrigin = canShare ? await getSiteOrigin() : '';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -68,6 +72,14 @@ export default async function TreeShortCodeLayout({
               <SparkleIcon className="h-4 w-4 shrink-0" aria-hidden />
               <span className="hidden sm:inline">{tDashboard('navbarLink')}</span>
             </Link>
+            {canShare && tree && (
+              <TreeShareButton
+                locale={locale}
+                shortCode={shortCode}
+                treeName={familyLabel}
+                siteOrigin={siteOrigin}
+              />
+            )}
             <TreeAboutOrBackLink shortCode={shortCode} familyLabel={familyLabel} />
             {isOwner && (
               <Link

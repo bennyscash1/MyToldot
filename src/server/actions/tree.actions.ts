@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuthUser, requireTreeRole } from '@/lib/api/auth';
 import { ApiError, Errors } from '@/lib/api/errors';
 import { withAction, type ActionResult } from '@/lib/api/action-result';
+import { notifyOwnerOfEditorRequest } from '@/server/services/editor-access-notify.service';
 import { ensureMirroredAuthUser } from '@/lib/ensure-mirrored-auth-user';
 import {
   PersonInputSchema,
@@ -281,11 +282,17 @@ export async function requestEditorAccess(
       return { status: 'ALREADY_EDITOR' as const };
     }
 
-    if (membership.role !== 'EDITOR_PENDING') {
+    let didTransition = false;
+    if (membership.role === 'VIEWER') {
       await prisma.treeMember.update({
         where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
         data: { role: 'EDITOR_PENDING' },
       });
+      didTransition = true;
+    }
+
+    if (didTransition) {
+      await notifyOwnerOfEditorRequest(treeId, user.id);
     }
 
     const segment = await resolveTreeRouteRevalidateSegment(treeId);
@@ -323,26 +330,31 @@ export async function joinAndRequestEditorAccess(
         await tx.treeMember.create({
           data: { tree_id: treeId, user_id: user.id, role: 'EDITOR_PENDING' },
         });
-        return { status: 'PENDING' as const };
+        return { status: 'PENDING' as const, didTransition: true };
       }
       if (existing.role === 'EDITOR' || existing.role === 'OWNER') {
-        return { status: 'ALREADY_EDITOR' as const };
+        return { status: 'ALREADY_EDITOR' as const, didTransition: false };
       }
       if (existing.role === 'VIEWER') {
         await tx.treeMember.update({
           where: { tree_id_user_id: { tree_id: treeId, user_id: user.id } },
           data: { role: 'EDITOR_PENDING' },
         });
+        return { status: 'PENDING' as const, didTransition: true };
       }
-      return { status: 'PENDING' as const };
+      return { status: 'PENDING' as const, didTransition: false };
     });
+
+    if (result.didTransition) {
+      await notifyOwnerOfEditorRequest(treeId, user.id);
+    }
 
     const segment = await resolveTreeRouteRevalidateSegment(treeId);
     if (segment) {
       revalidatePath(`/[locale]/tree/${segment}`, 'page');
       revalidatePath(`/[locale]/tree/${segment}/manage`, 'page');
     }
-    return result;
+    return { status: result.status };
   });
 }
 

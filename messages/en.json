@@ -36,6 +36,22 @@
     "aboutWithFamily": "About {name}",
     "backToTree": "Back to tree"
   },
+  "share": {
+    "buttonLabel": "Share",
+    "modalTitle": "Share {treeName}",
+    "viewLinkTitle": "View link",
+    "viewLinkHelp": "Anyone with this link can view the tree without signing up",
+    "joinLinkTitle": "Join link",
+    "joinLinkHelp": "Anyone who opens this link will sign in and be added to the family automatically. Editing requires owner approval.",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "shareWhatsapp": "Share on WhatsApp"
+  },
+  "joinFlow": {
+    "welcomeBanner": "Welcome to {treeName}! You can request edit access using the button below.",
+    "alreadyMember": "You are already a member of this family",
+    "treeNotFound": "Family not found. The link may be incorrect."
+  },
   "dashboard": {
     "navbarLink": "Family View",
     "backToTree": "Back to tree",

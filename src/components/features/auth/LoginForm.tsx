@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/routing';
+import { buildRedirectQuery, resolveSafeNextPath } from '@/lib/safe-redirect';
 import { Input }  from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -27,6 +28,8 @@ export function LoginForm() {
   const t      = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
+  const safeRedirect = resolveSafeNextPath(searchParams.get('redirect'));
+  const redirectQuery = buildRedirectQuery(safeRedirect);
 
   const [email, setEmail]           = useState('');
   const [password, setPassword]     = useState('');
@@ -46,7 +49,7 @@ export function LoginForm() {
 
     try {
       await authService.login(email.trim(), password);
-      router.push('/');
+      router.push(safeRedirect ?? '/');
       router.refresh();
     } catch (err) {
       if (err instanceof ServiceError) {
@@ -114,7 +117,7 @@ export function LoginForm() {
       <p className="text-center text-sm text-gray-500">
         {t('noAccount')}{' '}
         <Link
-          href="/signup"
+          href={`/signup${redirectQuery}`}
           className="font-medium text-emerald-600 hover:text-emerald-700 underline-offset-2 hover:underline"
         >
           {t('signupLink')}

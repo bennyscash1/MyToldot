@@ -2,8 +2,9 @@ import { getTranslations } from 'next-intl/server';
 import { redirect }         from 'next/navigation';
 import type { Metadata }    from 'next';
 import type { LocalePageProps } from '@/types';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { Link }             from '@/i18n/routing';
+import { getAuthUser, getPreferredLocaleForUser } from '@/lib/api/auth';
+import { resolveSafeNextPath } from '@/lib/safe-redirect';
+import { Link } from '@/i18n/routing';
 import { SignupForm }       from '@/components/features/auth/SignupForm';
 
 // ──────────────────────────────────────────────
@@ -23,13 +24,23 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('signupTitle') };
 }
 
-export default async function SignupPage({ params }: LocalePageProps) {
-  await params;
+type SignupPageProps = LocalePageProps & {
+  searchParams: Promise<{ redirect?: string }>;
+};
 
-  // Guard: redirect authenticated users away.
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect('/');
+export default async function SignupPage({ params, searchParams }: SignupPageProps) {
+  await params;
+  const sp = await searchParams;
+  const safeRedirect = resolveSafeNextPath(sp.redirect);
+
+  const user = await getAuthUser();
+  if (user) {
+    if (safeRedirect) {
+      redirect(safeRedirect);
+    }
+    const pref = await getPreferredLocaleForUser(user.id);
+    redirect(`/${pref}`);
+  }
 
   const t = await getTranslations('auth');
 

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/routing';
+import { buildRedirectQuery, resolveSafeNextPath } from '@/lib/safe-redirect';
 import { Input }  from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -23,6 +25,9 @@ import { ServiceError } from '@/services/api.client';
 export function SignupForm() {
   const t      = useTranslations('auth');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const safeRedirect = resolveSafeNextPath(searchParams.get('redirect'));
+  const redirectQuery = buildRedirectQuery(safeRedirect);
 
   const [fullName, setFullName]         = useState('');
   const [email, setEmail]               = useState('');
@@ -58,7 +63,7 @@ export function SignupForm() {
 
     try {
       await authService.signup(email.trim(), password, fullName.trim());
-      router.push('/');
+      router.push(safeRedirect ?? '/');
       router.refresh();
     } catch (err) {
       if (err instanceof ServiceError) {
@@ -146,7 +151,7 @@ export function SignupForm() {
       <p className="text-center text-sm text-gray-500">
         {t('hasAccount')}{' '}
         <Link
-          href="/login"
+          href={`/login${redirectQuery}`}
           className="font-medium text-emerald-600 hover:text-emerald-700 underline-offset-2 hover:underline"
         >
           {t('loginLink')}

@@ -6,12 +6,17 @@ import { EmptyTreeState } from '@/components/features/tree/EmptyTreeState';
 import { TreeCanvasWithModals } from '@/features/family-tree/components/TreeCanvasWithModals';
 import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
 import type { TreePageData } from '@/server/services/tree.service';
+import { JoinWelcomeBanner } from '@/components/features/tree/JoinWelcomeBanner';
 import { RequestEditorAccessButton } from '@/components/features/tree/RequestEditorAccessButton';
 import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPanel';
 
 type TreeShortCodePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
-  searchParams: Promise<{ about?: string | string[]; focus?: string | string[] }>;
+  searchParams: Promise<{
+    about?: string | string[];
+    focus?: string | string[];
+    welcome?: string | string[];
+  }>;
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -54,6 +59,14 @@ export default async function TreeShortCodePage({
     openAboutRaw === 'true' ||
     (Array.isArray(openAboutRaw) &&
       (openAboutRaw[0] === '1' || openAboutRaw[0] === 'true'));
+  const welcomeRaw = sp?.welcome;
+  const showWelcomeBanner =
+    welcomeRaw === '1' ||
+    welcomeRaw === 'true' ||
+    (Array.isArray(welcomeRaw) &&
+      (welcomeRaw[0] === '1' || welcomeRaw[0] === 'true'));
+  const treeDisplayName = treeData.treeName ?? shortCode;
+
   const focusRaw = sp?.focus;
   const initialSidePersonId =
     typeof focusRaw === 'string' && focusRaw.length > 0
@@ -73,6 +86,9 @@ export default async function TreeShortCodePage({
   return (
     <TreeShell>
       <div className="flex min-h-0 flex-1 flex-col">
+        {showWelcomeBanner && (
+          <JoinWelcomeBanner treeName={treeDisplayName} />
+        )}
         {treeRole === 'OWNER' && (
           <PendingMembersPanel treeId={treeData.treeId} />
         )}
