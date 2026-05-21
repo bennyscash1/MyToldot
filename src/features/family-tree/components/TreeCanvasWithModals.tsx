@@ -288,7 +288,7 @@ export function TreeCanvasWithModals({
   );
 
   return (
-    <div className="relative flex h-[calc(100vh-5rem)] w-full flex-col">
+    <div className="relative flex h-full min-h-0 w-full flex-col">
       <FamilyTreeViewer
         treeId={treeId}
         persons={persons}

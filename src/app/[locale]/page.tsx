@@ -29,50 +29,50 @@ export default async function HomePage({ params }: LocalePageProps) {
   const user = await getAuthUser();
 
   return (
-    <section className="flex h-[calc(100dvh-4rem)] flex-col items-center justify-center gap-6 px-4 text-center">
+    <section className="mx-auto flex h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col items-center justify-center gap-3 px-4 text-center sm:gap-4">
       <Image
         src={logoSrc}
         alt={logoAlt}
         width={420}
         height={72}
-        className="h-auto w-full max-w-[260px] sm:max-w-[360px] md:max-w-[420px]"
+        className="h-auto w-full max-w-[200px] sm:max-w-[280px] md:max-w-[340px]"
         priority
       />
 
-      <h1 className="max-w-2xl text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl md:text-5xl">
+      <h1 className="max-w-2xl text-xl font-bold tracking-tight text-gray-900 sm:text-3xl md:text-4xl">
         {t('title')}
       </h1>
 
-      <p className="max-w-xl text-base text-gray-500 sm:text-lg">{t('subtitle')}</p>
+      <p className="max-w-xl text-sm text-gray-500 sm:text-base">{t('subtitle')}</p>
 
       {user ? (
         /* Logged-in: primary = create tree, secondary = view tree */
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           <Link
             href="/setup-root"
-            className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
             {t('createTree')}
           </Link>
           <Link
             href="/tree"
-            className="rounded-xl border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+            className="rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
           >
             {t('cta')}
           </Link>
         </div>
       ) : (
         /* Guest: primary = sign up, secondary = log in */
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           <Link
             href="/signup"
-            className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
             {t('getStarted')}
           </Link>
           <Link
             href="/login"
-            className="rounded-xl border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
+            className="rounded-xl border border-emerald-600 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50"
           >
             {tAuth('loginLink')}
           </Link>
@@ -80,7 +80,7 @@ export default async function HomePage({ params }: LocalePageProps) {
       )}
 
       {user && (
-        <div className="mt-6 w-full max-w-lg px-2">
+        <div className="mt-1 w-full max-w-lg px-2">
           <JoinFamilySection />
         </div>
       )}

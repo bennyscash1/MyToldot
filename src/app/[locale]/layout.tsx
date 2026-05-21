@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { Inter, Heebo } from 'next/font/google';
+import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -9,6 +10,14 @@ import { routing, isValidLocale, type Locale } from '@/i18n/routing';
 import { LOCALE_DIR } from '@/types';
 import { Navbar } from '@/components/layout/Navbar';
 import '@/app/globals.css';
+
+// Routes that should be locked to the viewport — no body scrollbar, no footer.
+// Matches:
+//   - the locale root        (/he, /en)
+//   - the family tree canvas (/he/tree/12345, /en/tree/12345)
+// Sub-routes like /about, /manage, /dashboard are intentionally excluded;
+// they have scrollable content of their own.
+const LOCKED_VIEWPORT_PATHNAME = /^\/(?:en|he)(?:\/|\/tree\/\d{5}\/?)?$/;
 
 const inter = Inter({
   subsets: ['latin'],
@@ -60,6 +69,17 @@ export default async function LocaleLayout({
   const dir        = LOCALE_DIR[safeLocale];
   const fontClass  = safeLocale === 'he' ? heebo.className : inter.className;
 
+  const hdrs = await headers();
+  const pathname = hdrs.get('x-pathname') ?? '';
+  const isLockedViewport = LOCKED_VIEWPORT_PATHNAME.test(pathname);
+
+  const bodyClass = isLockedViewport
+    ? 'flex h-screen flex-col overflow-hidden bg-white'
+    : 'flex min-h-screen flex-col overflow-x-hidden bg-white';
+  const mainClass = isLockedViewport
+    ? 'flex min-h-0 flex-1 flex-col'
+    : 'flex-1';
+
   return (
     <html lang={safeLocale} dir={dir} className={fontClass}>
       {/*
@@ -70,16 +90,15 @@ export default async function LocaleLayout({
         code. suppressHydrationWarning tells React to accept any attribute
         mismatch on this single element; children still hydrate normally.
       */}
-      <body
-        className="flex min-h-screen flex-col overflow-x-hidden bg-white"
-        suppressHydrationWarning
-      >
+      <body className={bodyClass} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <Navbar />
-          <main className="flex-1">{children}</main>
-          <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-            {tCommon('footerCopyright', { year: new Date().getFullYear() })}
-          </footer>
+          <main className={mainClass}>{children}</main>
+          {!isLockedViewport && (
+            <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
+              {tCommon('footerCopyright', { year: new Date().getFullYear() })}
+            </footer>
+          )}
         </NextIntlClientProvider>
       </body>
     </html>

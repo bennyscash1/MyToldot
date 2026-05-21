@@ -124,8 +124,11 @@ export default async function TreeShortCodePage({
 }
 
 function TreeShell({ children }: { children: React.ReactNode }) {
+  // flex-1 + min-h-0 lets this fill the leftover height inside the locked
+  // viewport (set by the locale layout for the tree canvas route) and clip
+  // overflow so only React Flow's +/- controls drive zoom — no browser scroll.
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {children}
     </div>
   );

@@ -37,11 +37,11 @@ export function JoinFamilySection() {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex w-full max-w-lg flex-col gap-3 rounded-xl border border-slate-200/80 bg-white/60 p-4 text-start shadow-sm backdrop-blur-sm sm:flex-row sm:items-end"
+      className="flex w-full max-w-lg flex-col gap-2 rounded-xl border border-slate-200/80 bg-white/60 p-3 text-start shadow-sm backdrop-blur-sm sm:flex-row sm:items-end"
       dir={locale === 'he' ? 'rtl' : 'ltr'}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <label htmlFor="join-family-code" className="text-sm font-medium text-slate-700">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <label htmlFor="join-family-code" className="text-xs font-medium text-slate-700 sm:text-sm">
           {t('joinFamilyTitle')}
         </label>
         <Input
@@ -52,12 +52,12 @@ export function JoinFamilySection() {
           placeholder={t('joinFamilyPlaceholder')}
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
-          className="text-center font-mono text-lg tracking-[0.2em]"
+          className="text-center font-mono text-base tracking-[0.2em]"
           aria-invalid={error ? true : undefined}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
-      <Button type="submit" disabled={isPending} className="shrink-0 sm:mb-0">
+      <Button type="submit" size="sm" disabled={isPending} className="shrink-0 sm:mb-0">
         {isPending ? t('joinFamilySubmitting') : t('joinFamilySubmit')}
       </Button>
     </form>
