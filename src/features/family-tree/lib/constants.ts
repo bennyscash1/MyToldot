@@ -16,13 +16,16 @@ export const UNION_NODE_HEIGHT = 12;
 // center on this same Y, otherwise spouse edges render diagonally.
 export const PERSON_SPOUSE_HANDLE_Y = 66;
 
+// Vertical gap ELK uses between layers (hint; final Y uses GEN_HEIGHT below).
+export const ELK_LAYER_SPACING = 192;
+
 // Vertical space between generations (top-of-row to top-of-next-row).
 // Must be > PERSON_NODE_HEIGHT (212) to prevent generation rows from overlapping.
-// 332 = 212 (card height) + 120 (extra vertical breathing room).
-export const GEN_HEIGHT = 332;
+export const GEN_HEIGHT = PERSON_NODE_HEIGHT + ELK_LAYER_SPACING;
 
-// Horizontal gap ELK leaves between nodes in the same layer (minimum).
-export const NODE_GAP = 80;
+// Horizontal gap ELK leaves between nodes in the same layer (siblings).
+// Spouses stay tight via adjacency ordering + narrow union pill.
+export const NODE_GAP = 128;
 
 // Minimum spacing between edges and nearby nodes in ELK routing.
 export const EDGE_NODE_GAP = 40;

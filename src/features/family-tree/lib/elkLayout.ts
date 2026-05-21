@@ -2,6 +2,7 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkNode } from 'elkjs';
 import {
   EDGE_NODE_GAP,
+  ELK_LAYER_SPACING,
   GEN_HEIGHT,
   NODE_GAP,
   PERSON_SPOUSE_HANDLE_Y,
@@ -65,7 +66,7 @@ export async function layoutBipartiteGraph(
       'elk.direction': 'DOWN',
       // Keep ELK layered distance moderate and use our own fixed generation
       // projection for final Y so rows remain stable and easy to scan.
-      'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+      'elk.layered.spacing.nodeNodeBetweenLayers': String(ELK_LAYER_SPACING),
       'elk.spacing.nodeNode': String(NODE_GAP),
       'elk.spacing.edgeNode': String(EDGE_NODE_GAP),
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
