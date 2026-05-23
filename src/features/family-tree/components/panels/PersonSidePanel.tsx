@@ -55,6 +55,8 @@ export interface PersonSidePanelProps {
   onAddChild?: () => void | Promise<void>;
   isSaving: boolean;
   errorMessage: string | null;
+  /** When set, the matching field is focused + scrolled into view on open. */
+  initialFocusField?: 'bio';
 }
 
 export function PersonSidePanel({
@@ -73,6 +75,7 @@ export function PersonSidePanel({
   onAddChild,
   isSaving,
   errorMessage,
+  initialFocusField,
 }: PersonSidePanelProps) {
   const locale = useLocale();
   const panelDir = locale === 'he' ? 'rtl' : 'ltr';
@@ -91,6 +94,17 @@ export function PersonSidePanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const aliveBtnRef = useRef<HTMLButtonElement>(null);
   const deceasedBtnRef = useRef<HTMLButtonElement>(null);
+  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (initialFocusField !== 'bio') return;
+    // Wait one frame so the drawer slide-in animation doesn't fight focus.
+    const id = requestAnimationFrame(() => {
+      bioTextareaRef.current?.focus();
+      bioTextareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [person.id, initialFocusField]);
 
   useEffect(() => {
     setFullName(fullNameFromPerson(person));
@@ -328,6 +342,7 @@ export function PersonSidePanel({
             <label className="mb-4 flex flex-col gap-1">
               <span className="text-xs font-medium text-slate-600">ביוגרפיה</span>
               <textarea
+                ref={bioTextareaRef}
                 rows={5}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}

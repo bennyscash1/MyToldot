@@ -18,6 +18,7 @@ import { PersonSidePanel } from './panels/PersonSidePanel';
 import { TreeAboutModal } from './panels/TreeAboutModal';
 import { PersonForm } from '@/features/persons/components/PersonForm';
 import { BlockedActionDialog } from '@/components/ui/BlockedActionDialog';
+import { NudgesPanelContainer } from '@/features/nudges/components/NudgesPanelContainer';
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
@@ -55,6 +56,12 @@ export function TreeCanvasWithModals({
   const tPersonForm = useTranslations('personForm');
   const headerDir = locale === 'he' ? 'rtl' : 'ltr';
 
+  const [nudgesRefetchSignal, setNudgesRefetchSignal] = useState(0);
+  const bumpNudgesRefetch = useCallback(
+    () => setNudgesRefetchSignal((v) => v + 1),
+    [],
+  );
+
   const {
     persons,
     relationships,
@@ -75,6 +82,7 @@ export function TreeCanvasWithModals({
     treeRouteCode,
     initialPersons,
     initialRelationships,
+    onMutationDone: bumpNudgesRefetch,
   });
 
   const [popover, setPopover] = useState<{
@@ -84,6 +92,8 @@ export function TreeCanvasWithModals({
   } | null>(null);
 
   const [sidePersonId, setSidePersonId] = useState<string | null>(initialSidePersonId);
+  const [sidePanelInitialFocus, setSidePanelInitialFocus] =
+    useState<'bio' | null>(null);
   const [photosByPerson, setPhotosByPerson] = useState(initialPhotosByPerson);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
@@ -103,6 +113,17 @@ export function TreeCanvasWithModals({
       clearError();
       clearBlocked();
       setSidePersonId(personId);
+      setSidePanelInitialFocus(null);
+    },
+    [clearError, clearBlocked],
+  );
+
+  const onOpenSidePanelForBio = useCallback(
+    (personId: string) => {
+      clearError();
+      clearBlocked();
+      setSidePersonId(personId);
+      setSidePanelInitialFocus('bio');
     },
     [clearError, clearBlocked],
   );
@@ -386,7 +407,11 @@ export function TreeCanvasWithModals({
             setPhotosByPerson((prev) => ({ ...prev, [sidePerson.id]: next }))
           }
           canEdit={canEdit}
-          onClose={() => setSidePersonId(null)}
+          onClose={() => {
+            setSidePersonId(null);
+            setSidePanelInitialFocus(null);
+          }}
+          initialFocusField={sidePanelInitialFocus ?? undefined}
           onSave={async (patch) => {
             await updatePerson({ personId: sidePerson.id, patch });
           }}
@@ -418,6 +443,15 @@ export function TreeCanvasWithModals({
         ownerEmail={lastBlocked?.ownerEmail}
         onClose={clearBlocked}
       />
+
+      {canEdit && (
+        <NudgesPanelContainer
+          treeId={treeId}
+          refetchSignal={nudgesRefetchSignal}
+          onOpenSidePanelForBio={onOpenSidePanelForBio}
+          onSelectPerson={onSelectPerson}
+        />
+      )}
 
       {pickCoParentModal && (
         <PickCoParentModal

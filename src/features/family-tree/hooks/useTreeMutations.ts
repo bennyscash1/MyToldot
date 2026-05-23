@@ -41,6 +41,8 @@ export interface UseTreeMutationsArgs {
   treeRouteCode: string;
   initialPersons: PersonRow[];
   initialRelationships: RelationshipRow[];
+  /** Invoked after every successful mutation. Used by the nudges panel to refetch. */
+  onMutationDone?: () => void;
 }
 
 export interface UseTreeMutationsResult {
@@ -112,6 +114,7 @@ export function useTreeMutations({
   treeRouteCode,
   initialPersons,
   initialRelationships,
+  onMutationDone,
 }: UseTreeMutationsArgs): UseTreeMutationsResult {
   const locale = useLocale();
   const treeRouteBase = `/${locale}/tree/${treeRouteCode}`;
@@ -203,6 +206,7 @@ export function useTreeMutations({
         );
         setLastError(null);
         setLastBlocked(null);
+        onMutationDone?.();
         return result.data;
       } catch (err) {
         setLastBlocked(null);
@@ -212,7 +216,7 @@ export function useTreeMutations({
         return undefined;
       }
     },
-    [],
+    [onMutationDone],
   );
 
   // ── createPerson ─────────────────────────────────────────────
@@ -536,6 +540,7 @@ export function useTreeMutations({
               setPersons((prev) => prev.map((p) => (p.id === personId ? snapshot : p)));
             } else {
               setLastError(null);
+              onMutationDone?.();
             }
           } catch (err) {
             setLastError(err instanceof Error ? err.message : 'Unknown error');
@@ -545,7 +550,7 @@ export function useTreeMutations({
         });
       });
     },
-    [treeId, persons],
+    [treeId, persons, onMutationDone],
   );
 
   // ── deletePerson ───────────────────────────────────────────────
@@ -577,6 +582,7 @@ export function useTreeMutations({
               setRelationships((prev) => [...prev, ...relSnapshot]);
             } else {
               setLastError(null);
+              onMutationDone?.();
             }
           } catch (err) {
             setLastError(err instanceof Error ? err.message : 'Unknown error');
@@ -587,7 +593,7 @@ export function useTreeMutations({
         });
       });
     },
-    [asMutationResult, treeId, treeRouteBase, persons, relationships],
+    [asMutationResult, treeId, treeRouteBase, persons, relationships, onMutationDone],
   );
 
   return {

@@ -417,5 +417,37 @@
     "contactLinkedInLabel": "לינקדין",
     "contactLinkedInUrl": "https://www.linkedin.com/in/benny-shor/",
     "contactCredit": "המערכת נבנתה ע\"י בני שור"
+  },
+  "nudges": {
+    "panelTitle": "השלמות",
+    "minimizedAriaLabel": "השלמות זמינות",
+    "minimize": "מזער",
+    "allComplete": "הכל מלא! הזיכרון של המשפחה שלך עשיר ✨",
+    "save": "שמור",
+    "skip": "דלג",
+    "saved": "נשמר",
+    "uploadPhoto": "העלה תמונה",
+    "uploading": "טוען...",
+    "writeBio": "כתוב",
+    "messages": {
+      "birthDate": [
+        "מה תאריך הלידה של {name}?",
+        "זוכר מתי נולד/ה {name}?",
+        "חסר תאריך לידה ל-{name}. אתה זוכר?"
+      ],
+      "photo": [
+        "ל{name} עוד אין תמונה. רוצה להעלות?",
+        "נחמד יהיה לראות תמונה של {name}",
+        "יש לך תמונה של {name}?"
+      ],
+      "bio": [
+        "מעניין לקרוא משהו על {name}. רוצה לכתוב?",
+        "מי היה/הייתה {name}? בוא נספר את הסיפור",
+        "הוסף קצת על החיים של {name}"
+      ],
+      "deathDate": [
+        "מתי נפטר/ה {name}?"
+      ]
+    }
   }
 }

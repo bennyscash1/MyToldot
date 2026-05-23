@@ -417,5 +417,37 @@
     "contactLinkedInLabel": "LinkedIn",
     "contactLinkedInUrl": "https://www.linkedin.com/in/benny-shor/",
     "contactCredit": "The system was built by Benny Shor"
+  },
+  "nudges": {
+    "panelTitle": "Fill in the gaps",
+    "minimizedAriaLabel": "Suggestions available",
+    "minimize": "Minimize",
+    "allComplete": "All done! Your family memory is rich ✨",
+    "save": "Save",
+    "skip": "Skip",
+    "saved": "Saved",
+    "uploadPhoto": "Upload photo",
+    "uploading": "Uploading...",
+    "writeBio": "Write",
+    "messages": {
+      "birthDate": [
+        "What is {name}'s birth date?",
+        "Do you remember when {name} was born?",
+        "{name} is missing a birth date. Do you know it?"
+      ],
+      "photo": [
+        "{name} doesn't have a photo yet. Want to upload one?",
+        "It would be nice to see a picture of {name}",
+        "Do you have a photo of {name}?"
+      ],
+      "bio": [
+        "It would be lovely to read about {name}. Want to write something?",
+        "Who was {name}? Let's tell the story",
+        "Add a little about the life of {name}"
+      ],
+      "deathDate": [
+        "When did {name} pass away?"
+      ]
+    }
   }
 }
