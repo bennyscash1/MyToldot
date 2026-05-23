@@ -33,7 +33,7 @@ export default async function TreeAboutPage({ params }: TreeAboutPageProps) {
   const initialAboutImages = parseAboutImagesFromJson(tree.about_images) ?? [];
 
   return (
-    <div className="min-h-0 flex-1 bg-[#f4f3e9]" dir={dir}>
+    <div className="min-h-screen bg-[#f4f3e9]" dir={dir}>
       <header className="border-b border-slate-200/60 bg-white/80 px-4 py-6 backdrop-blur-sm">
         <div className="mx-auto max-w-3xl">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">

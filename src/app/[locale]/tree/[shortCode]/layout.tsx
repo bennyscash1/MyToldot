@@ -21,9 +21,14 @@ export default async function TreeShortCodeLayout({
   const hdrs = await headers();
   const pathname = hdrs.get('x-pathname') ?? '';
   const isDashboard = /\/tree\/\d{5}\/dashboard(?:\/|$)/.test(pathname);
+  // The bare tree canvas (no sub-route) needs the locked-viewport flex chain
+  // so React Flow's canvas can claim full height. Sub-routes (about, manage,
+  // dashboard) need natural block layout so tall content produces a body
+  // scrollbar instead of being clipped.
+  const isCanvas = /\/tree\/\d{5}\/?$/.test(pathname);
 
   if (isDashboard) {
-    return <div className="flex min-h-0 flex-1 flex-col">{children}</div>;
+    return <div>{children}</div>;
   }
 
   const t = await getTranslations('treeNav');
@@ -38,7 +43,7 @@ export default async function TreeShortCodeLayout({
   const siteOrigin = canShare ? await getSiteOrigin() : '';
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={isCanvas ? 'flex min-h-0 flex-1 flex-col' : ''}>
       <nav
         className="shrink-0 border-b border-slate-200/60 bg-[#f4f3e9] px-4 py-2 text-sm text-slate-600"
         aria-label={t('breadcrumbLabel')}

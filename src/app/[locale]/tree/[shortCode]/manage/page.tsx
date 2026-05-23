@@ -56,7 +56,7 @@ export default async function FamilyManagePage({ params }: ManagePageProps) {
   }));
 
   return (
-    <div className="min-h-0 flex-1 bg-[#f4f3e9]" dir={locale === 'he' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#f4f3e9]" dir={locale === 'he' ? 'rtl' : 'ltr'}>
       <header className="border-b border-slate-200/60 bg-white/80 px-4 py-6 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
