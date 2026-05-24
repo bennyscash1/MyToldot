@@ -32,6 +32,7 @@ import {
   withHebrewDatesForCreate,
   withHebrewDatesForUpdate,
 } from '@/server/lib/person-dates';
+import { extractPathsFromAboutJson } from '@/lib/tree/about-images';
 
 export interface PersonDto {
   id: string;
@@ -646,6 +647,65 @@ export async function removePersonFromTree(
 
   await prisma.person.delete({ where: { id } });
   return { id };
+}
+
+/**
+ * Hard-delete an entire tree along with all its persons, relationships,
+ * memberships, person photos, and Storage objects (profile images,
+ * gallery images, about-page images).
+ *
+ * Caller MUST have already verified OWNER role for this tree — this
+ * service does not re-check (mirrors the pattern of trusting the action
+ * layer for confirm-code validation, which the service cannot evaluate).
+ *
+ * Order is critical:
+ *   1) Pre-list every storage path BEFORE any DB delete (the cascade wipes
+ *      the referencing rows, so we must collect paths first).
+ *   2) Best-effort Storage cleanup via Promise.allSettled — a single missing
+ *      object must not block the DB delete.
+ *   3) Set tree.root_person_id = null defensively (schema is already SetNull,
+ *      but this avoids any race with future schema drift).
+ *   4) prisma.tree.delete — cascades persons, relationships, tree_members,
+ *      and person_photos in one statement.
+ */
+export async function deleteTree(treeId: string): Promise<{ id: string }> {
+  const tree = await prisma.tree.findUnique({
+    where: { id: treeId },
+    select: { id: true, about_images: true },
+  });
+  if (!tree) throw Errors.notFound('Tree');
+
+  const [personRows, photoRows] = await Promise.all([
+    prisma.person.findMany({
+      where: { tree_id: treeId, profile_image: { not: null } },
+      select: { profile_image: true },
+    }),
+    prisma.personPhoto.findMany({
+      where: { tree_id: treeId },
+      select: { storage_path: true },
+    }),
+  ]);
+
+  const profilePaths = personRows
+    .map((p) => p.profile_image)
+    .filter((p): p is string => !!p);
+  const aboutPaths = extractPathsFromAboutJson(tree.about_images);
+  const galleryPaths = photoRows.map((r) => r.storage_path);
+
+  await Promise.allSettled([
+    ...profilePaths.map((p) => deleteProfileImage(p)),
+    ...aboutPaths.map((p) => deleteProfileImage(p)),
+    ...galleryPaths.map((p) => deletePersonGalleryObject(p)),
+  ]);
+
+  await prisma.tree.update({
+    where: { id: treeId },
+    data: { root_person_id: null },
+  });
+
+  await prisma.tree.delete({ where: { id: treeId } });
+
+  return { id: treeId };
 }
 
 function normalizePhotoCaption(caption: string | null | undefined): string | null {

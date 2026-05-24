@@ -1,8 +1,14 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import type { TreeMemberRole } from '@prisma/client';
-import { getTranslations } from 'next-intl/server';
-import { Link } from '@/i18n/routing';
+import { useTranslations } from 'next-intl';
+
+import { Link, useRouter } from '@/i18n/routing';
+import { TreeCardMenu } from './TreeCardMenu';
 
 export interface FamilyEntry {
+  id: string;
   shortCode: string;
   name: string;
   role: TreeMemberRole;
@@ -25,13 +31,29 @@ const ROLE_KEY: Record<
   VIEWER:         'roleViewer',
 };
 
+const SUCCESS_FLASH_MS = 5000;
+
 /**
- * Server component — renders a grid of family cards for users who belong to
+ * Client component — renders a grid of family cards for users who belong to
  * two or more trees. Each card shows the family name, the user's role, and a
- * link to enter that tree.
+ * link to enter that tree. OWNER cards include a 3‑dot menu with delete.
  */
-export async function FamilySelector({ families }: { families: FamilyEntry[] }) {
-  const t = await getTranslations('familyHub');
+export function FamilySelector({ families }: { families: FamilyEntry[] }) {
+  const t = useTranslations('familyHub');
+  const tDelete = useTranslations('treeDelete');
+  const router = useRouter();
+  const [deletedFlash, setDeletedFlash] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!deletedFlash) return;
+    const timer = window.setTimeout(() => setDeletedFlash(null), SUCCESS_FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [deletedFlash]);
+
+  const handleDeleted = (name: string) => {
+    setDeletedFlash(name);
+    router.refresh();
+  };
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-12">
@@ -55,15 +77,24 @@ export async function FamilySelector({ families }: { families: FamilyEntry[] }) 
           <p className="mt-2 text-gray-500">{t('subtitle')}</p>
         </div>
 
+        {deletedFlash && (
+          <div
+            role="status"
+            className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-800"
+          >
+            {tDelete('successAlert', { name: deletedFlash })}
+          </div>
+        )}
+
         {/* Family cards */}
         <ul className="grid gap-4 sm:grid-cols-2" role="list">
           {families.map((family) => (
-            <li key={family.shortCode}>
+            <li key={family.shortCode} className="relative">
               <Link
                 href={`/tree/${family.shortCode}`}
                 className="group flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white/70 p-5 shadow-sm backdrop-blur-sm transition-all hover:border-emerald-300 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-2 pe-8">
                   <h2 className="text-base font-semibold leading-snug text-slate-900 group-hover:text-emerald-700">
                     {family.name}
                   </h2>
@@ -80,6 +111,15 @@ export async function FamilySelector({ families }: { families: FamilyEntry[] }) 
                   {t('enterTree')} →
                 </span>
               </Link>
+
+              {family.role === 'OWNER' && (
+                <TreeCardMenu
+                  treeId={family.id}
+                  treeShortCode={family.shortCode}
+                  treeName={family.name}
+                  onDeleted={handleDeleted}
+                />
+              )}
             </li>
           ))}
         </ul>

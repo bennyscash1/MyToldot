@@ -16,7 +16,8 @@ export type ApiErrorCode =
   | 'UNPROCESSABLE_ENTITY'
   | 'INTERNAL_SERVER_ERROR'
   | 'BRANCHING_NOT_ALLOWED'
-  | 'MAX_PHOTOS_REACHED';
+  | 'MAX_PHOTOS_REACHED'
+  | 'INVALID_CONFIRM_CODE';
 
 /** Structured error thrown inside API route handlers. */
 export class ApiError extends Error {
@@ -65,4 +66,7 @@ export const Errors = {
 
   maxPhotosReached: (msg = 'Maximum number of photos per person reached') =>
     new ApiError('MAX_PHOTOS_REACHED', msg, 409),
+
+  invalidConfirmCode: (msg = 'Confirmation code does not match') =>
+    new ApiError('INVALID_CONFIRM_CODE', msg, 400),
 } as const;

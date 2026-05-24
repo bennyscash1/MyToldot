@@ -418,6 +418,29 @@
     "contactLinkedInUrl": "https://www.linkedin.com/in/benny-shor/",
     "contactCredit": "The system was built by Benny Shor"
   },
+  "treeDelete": {
+    "menuTrigger": "Options",
+    "menuItem": "Delete family",
+    "dangerZoneTitle": "Danger zone",
+    "dangerZoneBody": "Deletion is irreversible — the tree cannot be recovered once deleted.",
+    "dangerZoneButton": "Delete family",
+    "dialogTitle": "Delete the {name} family?",
+    "dialogWarning": "This action cannot be undone.",
+    "dialogBullets": {
+      "persons": "All persons in this tree will be deleted",
+      "relationships": "All relationships between persons",
+      "images": "All photos and media",
+      "members": "Member access to this tree"
+    },
+    "typeToConfirm": "Type {code} to confirm",
+    "typeToConfirmInput": "00000",
+    "confirmButton": "Delete permanently",
+    "deleting": "Deleting…",
+    "cancel": "Cancel",
+    "successAlert": "The {name} family has been deleted.",
+    "errorMismatch": "The code you typed does not match.",
+    "errorGeneric": "Failed to delete the family. Please try again."
+  },
   "nudges": {
     "panelTitle": "Fill in the gaps",
     "minimizedAriaLabel": "Suggestions available",

@@ -15,7 +15,10 @@ import {
   CuidSchema,
 } from '@/features/family-tree/schemas/person.schema';
 import { generateUniqueTreeSlug, generateUniqueTreeShortCode } from '@/lib/tree/slug';
-import { resolveTreeRouteRevalidateSegment } from '@/server/services/tree.service';
+import {
+  deleteTree,
+  resolveTreeRouteRevalidateSegment,
+} from '@/server/services/tree.service';
 
 // ────────────────────────────────────────────────────────────────
 // Schemas
@@ -391,5 +394,43 @@ export async function manageAccessRequest(
     const segment = await resolveTreeRouteRevalidateSegment(member.tree_id);
     if (segment) revalidatePath(`/[locale]/tree/${segment}`, 'page');
     return { memberId, role: newRole };
+  });
+}
+
+/**
+ * OWNER-only hard delete of a tree, gated by typing the 5-digit shortCode.
+ * Cascades persons, relationships, tree_members, and person_photos via the
+ * Prisma schema. Storage objects are best-effort cleaned up by deleteTree.
+ *
+ * Any OWNER can delete a tree unilaterally (same model as GitHub repo owners).
+ */
+const DeleteTreeSchema = z.object({
+  treeId: CuidSchema,
+  confirmCode: z.string().trim().length(5),
+});
+
+export async function deleteTreeAction(
+  treeId: string,
+  confirmCode: string,
+): Promise<ActionResult<{ id: string }>> {
+  return withAction(async () => {
+    const parsed = DeleteTreeSchema.parse({ treeId, confirmCode });
+    await requireAuthUser();
+    await requireTreeRole(parsed.treeId, 'OWNER');
+
+    const tree = await prisma.tree.findUnique({
+      where: { id: parsed.treeId },
+      select: { shortCode: true },
+    });
+    if (!tree) throw Errors.notFound('Tree');
+    if (tree.shortCode !== parsed.confirmCode) {
+      throw Errors.invalidConfirmCode();
+    }
+
+    const result = await deleteTree(parsed.treeId);
+
+    revalidatePath('/[locale]/tree', 'page');
+    revalidatePath('/[locale]', 'layout');
+    return result;
   });
 }

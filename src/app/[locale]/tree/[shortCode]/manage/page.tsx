@@ -10,6 +10,7 @@ import {
   type FamilyMemberRow,
 } from '@/components/features/tree/FamilyManageMembersTable';
 import { AllowBranchingToggle } from '@/components/features/tree/AllowBranchingToggle';
+import { DeleteTreeDangerZone } from '@/components/features/tree/DeleteTreeDangerZone';
 
 type ManagePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
@@ -72,6 +73,11 @@ export default async function FamilyManagePage({ params }: ManagePageProps) {
         treeRouteSegment={shortCode}
         locale={locale}
         members={members}
+      />
+      <DeleteTreeDangerZone
+        treeId={tree.id}
+        treeShortCode={shortCode}
+        treeName={tree.name}
       />
     </div>
   );

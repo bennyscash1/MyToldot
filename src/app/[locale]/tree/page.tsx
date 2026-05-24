@@ -22,7 +22,7 @@ export default async function TreePage({ params }: LocalePageProps) {
       orderBy: { joined_at: 'asc' },
       select: {
         role: true,
-        tree: { select: { shortCode: true, slug: true, name: true } },
+        tree: { select: { id: true, shortCode: true, slug: true, name: true } },
       },
     });
 
@@ -35,6 +35,7 @@ export default async function TreePage({ params }: LocalePageProps) {
     // ── 2+ families: show the selector ─────────────────────────────────────
     if (memberships.length >= 2) {
       const families = memberships.map((m) => ({
+        id: m.tree.id,
         shortCode: m.tree.shortCode,
         name: m.tree.name,
         role: m.role,

@@ -418,6 +418,29 @@
     "contactLinkedInUrl": "https://www.linkedin.com/in/benny-shor/",
     "contactCredit": "המערכת נבנתה ע\"י בני שור"
   },
+  "treeDelete": {
+    "menuTrigger": "אפשרויות",
+    "menuItem": "מחק משפחה",
+    "dangerZoneTitle": "אזור סכנה",
+    "dangerZoneBody": "מחיקה היא פעולה בלתי הפיכה — לא ניתן לשחזר את העץ לאחר מחיקה.",
+    "dangerZoneButton": "מחק משפחה",
+    "dialogTitle": "למחוק את המשפחה {name}?",
+    "dialogWarning": "פעולה זו אינה הפיכה.",
+    "dialogBullets": {
+      "persons": "כל האנשים בעץ זה יימחקו",
+      "relationships": "כל הקשרים בין האנשים",
+      "images": "כל התמונות והמדיה",
+      "members": "הגישה של חברי המשפחה לעץ זה"
+    },
+    "typeToConfirm": "הקלידו {code} כדי לאשר",
+    "typeToConfirmInput": "00000",
+    "confirmButton": "מחק לצמיתות",
+    "deleting": "מוחק…",
+    "cancel": "ביטול",
+    "successAlert": "המשפחה {name} נמחקה.",
+    "errorMismatch": "הקוד שהוקלד אינו תואם.",
+    "errorGeneric": "מחיקת המשפחה נכשלה. נסו שוב."
+  },
   "nudges": {
     "panelTitle": "השלמות",
     "minimizedAriaLabel": "השלמות זמינות",
