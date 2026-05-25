@@ -26,14 +26,8 @@ export default async function TreePage({ params }: LocalePageProps) {
       },
     });
 
-    // ── Exactly 1 family: go straight to it ────────────────────────────────
-    if (memberships.length === 1) {
-      const code = memberships[0].tree.shortCode ?? memberships[0].tree.slug;
-      if (code) redirect(`/${locale}/tree/${code}`);
-    }
-
-    // ── 2+ families: show the selector ─────────────────────────────────────
-    if (memberships.length >= 2) {
+    // ── 1+ families: show the selector ─────────────────────────────────────
+    if (memberships.length >= 1) {
       const families = memberships.map((m) => ({
         id: m.tree.id,
         shortCode: m.tree.shortCode,

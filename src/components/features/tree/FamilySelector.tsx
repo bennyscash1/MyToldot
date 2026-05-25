@@ -5,6 +5,7 @@ import type { TreeMemberRole } from '@prisma/client';
 import { useTranslations } from 'next-intl';
 
 import { Link, useRouter } from '@/i18n/routing';
+import { JoinFamilySection } from './JoinFamilySection';
 import { TreeCardMenu } from './TreeCardMenu';
 
 export interface FamilyEntry {
@@ -40,6 +41,7 @@ const SUCCESS_FLASH_MS = 5000;
  */
 export function FamilySelector({ families }: { families: FamilyEntry[] }) {
   const t = useTranslations('familyHub');
+  const tHome = useTranslations('home');
   const tDelete = useTranslations('treeDelete');
   const router = useRouter();
   const [deletedFlash, setDeletedFlash] = useState<string | null>(null);
@@ -75,6 +77,18 @@ export function FamilySelector({ families }: { families: FamilyEntry[] }) {
             {t('title')}
           </h1>
           <p className="mt-2 text-gray-500">{t('subtitle')}</p>
+        </div>
+
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <Link
+            href="/setup-root"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            {tHome('createTree')}
+          </Link>
+          <div className="w-full max-w-lg">
+            <JoinFamilySection />
+          </div>
         </div>
 
         {deletedFlash && (
