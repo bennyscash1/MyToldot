@@ -316,6 +316,26 @@
     "createTree": "Create Your Tree",
     "joinWithCode": "Or join an existing family with a code:"
   },
+  "blog": {
+    "title": "Toldotay Blog",
+    "description": "Family stories, genealogy guides, and thoughtful notes about preserving heritage.",
+    "readMore": "Read more",
+    "readingTime": "{minutes} min read",
+    "noPostsYet": "Stories coming soon",
+    "backToBlog": "Back to blog",
+    "goToTree": "Start your family tree now",
+    "byAuthor": "By {author}",
+    "categories": {
+      "guide": "Guide",
+      "story": "Story",
+      "tech": "Tech"
+    },
+    "lightbox": {
+      "close": "Close",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
   "treePerms": {
     "viewerHint": "You have read-only access to this family.",
     "guestHint": "You're viewing this family as a guest. Request edit access to contribute.",
