@@ -1,0 +1,196 @@
+---
+title: "AI With Deep Search for Recovering Lineages — Without Hallucinations"
+description: "How an AI with deep search reconstructs lineages from real, verifiable sources only — no hallucinations."
+date: "2026-05-24"
+author: "Toldotay Team"
+category: "story"
+readingTime: "12"
+coverImage: "/blog/ai-agent-for-toldotay/1.jpg"
+---
+
+How an AI with deep search reconstructs lineages from real, verifiable sources only — no hallucinations.
+
+When I first built Toldotay, I was convinced I would never let artificial intelligence anywhere near it.
+
+The reason was simple. A family tree is a place of truth. If my grandmother's grandfather was a rabbi in a small town in Poland in 1890, I do not want a machine inventing things about him. I do not want it to claim he was a student of Rabbi Chaim of Brisk if he was nothing of the sort. I do not want my children, looking at this tree thirty years from now, to read a biography that nobody bothered to fact‑check.
+
+AI inventions — what the tech world calls "hallucinations" — are an annoying problem when you are chatting with a generic chatbot. In a family tree, they are catastrophic.
+
+<FadeUp>
+  And yet, we decided to add AI to the system anyway. And not just any AI — specifically Google's advanced Gemini model, with its special ability to perform live, real‑time Google searches. In this post I'll explain why it became possible, how it works, and why it fits Jewish rabbinic lineages almost uncannily well.
+</FadeUp>
+
+<BlogImage
+  src="/blog/ai-agent-for-toldotay/1.jpg"
+  alt="Illustration of an AI researching a family lineage"
+  caption="When AI meets ancestry, you need new rules."
+/>
+
+## How does AI "invent" things in the first place?
+
+If you are not from the field, it is worth understanding for a moment what an AI like ChatGPT or Gemini actually is.
+
+These models are essentially systems that have learned to guess the next word in a text, based on huge amounts of text they have seen during their training process. They do not "know" things in the sense we understand. They have seen trillions of words and learned patterns from them. When you ask "Who was Rabbi Yosef Shlomo Kahaneman?", they try to produce a sentence that sounds reasonable based on everything they have seen.
+
+The problem is this. If the model saw enough material about Rabbi Kahaneman (the founder of the Ponevezh Yeshiva) during training, you will get a correct and accurate answer. But if it saw little — you will get an answer that sounds correct, yet isn't. The difference between the two is exactly what we call a "hallucination".
+
+For genealogy work, this is especially problematic for several reasons:
+
+- **Rare names.** Someone's great‑grandfather, from a small town in Lithuania, who does not appear in any Wikipedia or anywhere else. The model simply has not seen anything about him and will have to invent.
+- **Ambiguous names.** "David Cohen" — which David Cohen? There were thousands. The model picks one at random, and won't always say it isn't sure.
+- **Dates.** When an AI model is unsure of a date, it tends to pick something "reasonable" — something matching the era it thinks is relevant. But "reasonable" is not "correct".
+- **Family relationships.** "He was the son of…" — a line like that can be completely fabricated, even when the model doesn't actually know who that person's father was. It just generates something grammatically plausible.
+
+Now imagine you are building a family tree, you enter your great‑grandfather's name, and you receive an entire paragraph describing his life. The paragraph reads fluently, sounds professional, contains dates, places, and the names of his students. Your children will see it twenty years from now and think it is the truth. That cannot be allowed to happen.
+
+## The solution: search before you answer
+
+The idea behind the new approach is simple and brilliant. Instead of letting the model produce answers from memory, we force it to look up real information on the internet before it answers.
+
+When you use this capability in Gemini, the model does something that feels almost unfair in how good it is. Before it formulates an answer, it performs a real Google search. It reads the results. It understands them. Only after all of that does it phrase the answer — grounded in what it actually saw, not in what it remembered.
+
+This is the difference between "make something up about this rabbi" and "search for this rabbi, and based on what you find, draft a biography."
+
+The model searches intelligently. If I ask about Rabbi Yosef Kahaneman, it searches the name, reads several results, processes them, and returns an answer that is grounded. If I ask about "Yaakov Goldberg, a kabbalist in Poland around 1850" — it searches the phrase, sees that there is little specific information about this person, and answers accordingly. Instead of inventing, it will say "not enough information was found."
+
+This distinction — between a model that guesses and one that searches — is the difference between a tool you can rely on and a toy that can do harm.
+
+## Why specifically in Hebrew?
+
+This is the part where the cultural decision meets the technical one.
+
+The instructions we send to Gemini — what the technical world calls a "prompt" — are written entirely in Hebrew. All of them. The explanation of who it should be (a genealogy researcher), the request itself, and the list of sources it should check. This is not an aesthetic choice. It is a calculated technical decision.
+
+The reason is simple. Jewish names, Eastern European town names, rabbinic books, and Hasidic movements — all of these are better documented in Hebrew sources. The Hebrew Wikipedia is rich with entries about rabbis who have no English entry. The HebrewBooks site has scanned tens of thousands of religious books. Hasidic community websites in Hebrew document lineages with great precision. Chabad archives, digital beit midrash sites, databases of community rabbis in Israel — all of these are in Hebrew.
+
+If we sent the prompt in English, Gemini would tend to search English sources. It would find the English Wikipedia page about Ponevezh, which is something, but it would miss the fifteen Hebrew books that document Rabbi Kahaneman's life day by day, meeting by meeting.
+
+The prompt itself tells Gemini roughly: "Bring back everything you can find about this person. He is the son of so‑and‑so. Born in such‑and‑such a place. Search Wikipedia, Jewish genealogy sites, community websites, and books about rabbis. Return a short biography in Hebrew, four to six sentences long. Include dates, place, role, prominent relatives, and books he wrote. If you did not find reliable information — write explicitly that nothing was found. Do not invent."
+
+And above all, we tell the model what its role is: "You are a senior genealogy researcher specializing in Jewish rabbinic lineages, with deep knowledge of Ashkenazi and Sephardic communities, Hasidism, and beit midrash traditions."
+
+This is not decoration. When you tell an AI model what its role is, it adjusts its style, its terminology, and even its level of caution. A "senior genealogy researcher" will prefer to say "not enough information was found" rather than invent — exactly like a real researcher. This is a well‑documented phenomenon in the AI world and an important way to control model behavior.
+
+## A real example: what happens in practice
+
+Take a real example from the system. A user built a family tree and reached a distant relative — Rabbi Shlomo Zalman Auerbach, the son of Rabbi Chaim Yehuda Leib Auerbach. He clicked "Write a biography" on that person's card.
+
+Gemini, after performing a Hebrew search across several sites, returned the following text (translated and abridged):
+
+> "Rabbi Shlomo Zalman Auerbach (1910—1995) was one of the foremost halachic authorities of the last generation in Jerusalem. The son of Rabbi Chaim Yehuda Leib Auerbach, founder of the kabbalists' yeshiva 'Sha'ar HaShamayim', he was born and raised in the Sha'arei Chesed neighborhood of Jerusalem. He served as the head of Yeshivat 'Kol Torah' for decades and influenced thousands of students. His work 'Minchat Shlomo' is a landmark in modern halachic rulings on matters of science and technology. He was considered a leading halachic authority on medicine and Jewish law in the 20th century."
+
+This biography could not have been produced without a real search. There is no way a guessing‑model "knew" that his work was specifically called "Minchat Shlomo", that he served specifically at "Kol Torah", or that his father founded specifically "Sha'ar HaShamayim". This is specific, documented information linked to real sources.
+
+Moreover, Gemini's response also includes a list of URLs the model visited during the search. Wikipedia. The Kol Torah yeshiva site. A family memorial site. Every claim in the biography is linked to at least one source. If a user wants to verify, they can click and see where each detail came from.
+
+<BlogImage
+  src="/blog/ai-agent-for-toldotay/2.jpg"
+  alt="Screenshot of a Gemini‑generated biography with cited sources"
+  caption="Every claim in the biography is linked to a real source you can open and check."
+/>
+
+## But let's talk about the limits
+
+Here is what AI **will not** do for you. And this has to be said loudly, because otherwise someone will be disappointed for good reason.
+
+**First, names without context produce weak results.** "David Cohen" alone — how many David Cohens do you want to bump into? If you give only a name, with no parent name, no place, no date — Gemini will search and come back with an answer like "many results found. The intended person cannot be precisely identified." That is the correct answer.
+
+That's why every time Toldotay sends a request to Gemini, it attaches context automatically. When you click "Write a biography" on a person, we also send the parent's name, the birth year (if recorded), and the birthplace (if recorded). Every detail narrows the search space and helps Gemini home in on the right person.
+
+**Second, private grandparents — there are no sources.** If my grandmother's grandfather was a tailor in Odessa in 1880, and Wikipedia has never heard of him, and JewishGen does not list him either, then there is nothing to be done. Gemini will return "no sufficient information found", and that is the only correct answer.
+
+This is very important to understand: AI does not invent your family. It helps find those who have already been documented. For your private grandparents — the ones who were not public figures, not rabbis, not known personalities — you write the biography yourself. What grandma remembers, what you heard at Shabbat dinners, what you found in an old album. AI is a tool, not a substitute for living family memory.
+
+**Third, ambiguous names get cautious answers.** The most interesting problem is names that have many possible matches. "Rabbi Yaakov B. Goldberg." Was he a Polish rabbi, Lithuanian, Hasidic, Mitnaged? Did he live in the 19th century or the early 20th? Where exactly?
+
+In such cases, Gemini does something clever. It returns what it found, but with caveats. The biography will begin with "this may be referring to…" and cite the source. If the user sees the biography and is not sure it's the same person — they can delete the response and try again, this time with an extra detail to help identify. For example, adding the mother's name, or the year of death.
+
+**Fourth — and perhaps most important — AI does not decide. It suggests.** We never leave a biography in an unverified state. The AI proposes text that appears in an editable field. The user reads it, edits it, approves it. Without the user's final click, the biography is not saved to the tree.
+
+This is not just a UI choice. It is a philosophy: AI is not an authority on truth. It is a draft for review.
+
+## Why rabbinic lineages work so well
+
+There is something unique about the Jewish community that makes this approach — AI grounded in search — work surprisingly well.
+
+Judaism is a religion of documentation. As far back as the Mishnah and Gemara, there was supreme value in distinguishing "Rabbi Ploni said in the name of Rabbi Almoni" from "this is what I heard" — a meticulously documented chain of transmission. That philosophy permeated the Jewish community for centuries. Rabbis were documented carefully. Books of luminaries were written about nearly every great Torah scholar. Towns in Eastern Europe published "memorial books" after the Holocaust, in which every surviving family — and every family that did not survive — was documented.
+
+The practical consequence is that there is a critical mass of high‑quality Hebrew text about rabbinic lineages on the internet. The Hebrew Wikipedia is especially rich with rabbi entries. The HebrewBooks site has scanned tens of thousands of holy books that also include introductions with biographical details. Hasidic community sites document lineages with admirable precision. JewishGen has compiled databases of whole towns.
+
+An AI model that searches Google in Hebrew for "Rabbi Aharon of Stashelik" will receive real, specific, accurate results. For a 17th‑century Italian family, or a rural English family, the success rate will be lower. But for identifying and verifying figures from Eastern European Jewry — especially from the 18th century onward — this approach is almost perfect.
+
+<FadeUp>
+  It is almost as if 200 years of Jewish affection for documentation prepared the ground for this moment — when technology could read all that was written, and return it to families that had lost the memory.
+</FadeUp>
+
+<BlogImage
+  src="/blog/ai-agent-for-toldotay/3.jpg"
+  alt="Open Jewish books, lineage records"
+  caption="Two hundred years of Jewish documentation — fertile ground for source‑grounded AI."
+/>
+
+## When even this fails: the story of the wrong man
+
+Another important piece of transparency. Let me tell you about a case that happened.
+
+A user built a family tree and entered an Ashkenazi rabbi named "Rabbi Yaakov Shimshon of Kosov." He clicked "Write a biography". Gemini returned a long, detailed biography — who he was, when he lived, whom he taught, in which Hasidic court he served. Everything looked great. Until the user sent me a message: "This man was not a rabbi. He was a leather merchant. You confused him with a different rabbi who had a similar name."
+
+What happened there? Gemini found a rabbi with a similar name and pulled his biography. It even cited the source. But the source was about an entirely different man who happened to bear a similar name.
+
+What did we learn from this?
+
+First, AI can be wrong even when relying on real sources — if it does not understand it is not the same person. It has no way of knowing the man in the user's tree was a leather merchant. It saw a rabbi with the same name and attributed his biography.
+
+Second, the extra input we give it — parent name, place, date, and profession — is much more critical than we thought. Had the user entered "leather merchant" as the profession in advance, we would have attached that information to the request, and the AI should have recognized it was a different person.
+
+And third, the user must approve. And here it worked — he saw the biography, knew it was wrong, and deleted it. The system functioned. The falsehood never entered the tree.
+
+Following this case we added a new line to the prompt: "If the input includes a profession or role that does not match the result you found — do not return the result. State that no matching information was found." That is an example of how AI systems improve slowly — not at the press of a button, but from real cases of usage.
+
+<BlogImage
+  src="/blog/ai-agent-for-toldotay/4.jpg"
+  alt="A 'Write biography' button on a family tree person card"
+  caption="The biography appears as a draft. The user reads, edits, and approves — or deletes."
+/>
+
+## So what does this mean in practice
+
+What Gemini enables for us in Toldotay is not "automatic biographies". It is something more delicate and meaningful.
+
+It dramatically lowers the bar for meaningful family documentation. Instead of the user having to research for hours in archives, instead of needing to know themselves which rabbis have been written about and where, instead of having to know the world of rabbinic books — they click a button and receive a draft. They edit it, approve it, add what they personally remember, and save it.
+
+In other words: AI did 80% of the technical work of gathering information. The user does the 20% of confirming the certainty and adding the personality.
+
+This is not a substitute for living family memory. It is a faster path to the collective memory that has already been documented somewhere on the internet. For a family tree — especially one with traditional Jewish roots — this is the difference between a user who manages to document three generations back and one who manages to document eight.
+
+## One last word of caution
+
+And for all the enthusiasm about this tool — we have to end on a sober note.
+
+AI can still get things wrong. Even with Google search, even with a well‑crafted prompt, even with explicit cautionary instructions — it is not perfect. You saw the story of the leather merchant who received a rabbi's biography. Things like this happen, and will happen again. That is the nature of this technology at this moment in its history.
+
+There are therefore two golden rules that anyone using AI in Toldotay should internalize.
+
+**Rule one: give it as much data as possible.** The more context you provide the AI — full name in Hebrew and Latin script, parent's name, year of birth, year of death, place of residence, profession, grandfather's name, Hasidic court if relevant — the higher the chance it will identify the right person. The difference between "Yaakov Cohen" and "Yaakov Cohen, son of Avraham, born in Lodz in 1875, was a rabbi in the merchants' community" is the difference between a guess and a grounded answer. Do not be lazy. Every small detail you add to the person card before clicking "Write a biography" is worth its weight in gold.
+
+**Rule two, and the more important one: do not believe without checking.** The biography the AI returns is a draft, not the truth. Read it slowly. Ask yourself — is this really my grandmother's grandfather? Do the dates line up? Does the place make sense? Do the names of the spouses and children appearing in the text match what you know from the family? If something doesn't add up — it probably isn't the right person. Delete, add another detail, and try again. If you don't know — ask relatives. Send the text to the elderly aunt on WhatsApp and ask "does this sound like your grandfather?" She will know. Sometimes verification is not in internet sources — it is in the memory of those who still remember.
+
+The message is simple: treat AI like a smart research assistant — not like a senior professor. It will bring you materials, suggest phrasings, save you hours. But the authority to decide what enters the family tree is yours alone. You are the editor. You are the proofreader. You are responsible for what your children will read thirty years from now.
+
+Good technology does not free us from responsibility. It only allows us to fulfill it better.
+
+<FadeUp>
+  And don't forget one important thing. The real source of your family tree is not Google. It is your grandmother. The AI will find the rabbis, the books, the dates, the places. The stories around them — the "this is how he used to laugh" and "she loved to cook kugel on Shabbat" and "he always told grandma 'you are the sunshine of my life'" — only she can give you that. And this is the moment to take it and write.
+</FadeUp>
+
+The AI is the tool. Grandmother is the source. You are the documenter. And that — no technology in the world will do for you.
+
+## Want to see how it works?
+
+Build your family tree at toldotay.vercel.app. Add a rabbi from your family's lineage — even one you aren't quite sure who exactly he was — and click "Write a biography". You will be surprised by what Gemini finds, and even more by what it doesn't. Both matter. One will show you the wealth that has already been documented. The other will remind you — of what you must document yourself, before it is too late.
+
+<BlogImage
+  src="/blog/ai-agent-for-toldotay/5.jpg"
+  alt="A digital family tree in Toldotay with an open biography"
+  caption="The tool is ready. Your roots — in your hands."
+/>
