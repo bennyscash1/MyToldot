@@ -41,11 +41,7 @@ export async function LandingScenario({ locale }: { locale: Locale }) {
           </ol>
         </div>
 
-        <LandingTvMockup
-          // TODO: replace with sample-tree data once the TV loop is backed by demo content.
-          name={t('tv.name')}
-          date={t('tv.date')}
-        />
+        <LandingTvMockup />
       </div>
     </section>
   );
