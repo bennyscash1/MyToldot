@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/routing';
 import type { NavItem } from '@/types';
 import { prisma } from '@/lib/prisma';
+import { BrandMark } from '@/components/brand/BrandMark';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { NavbarActions } from './NavbarActions';
 
@@ -31,6 +32,8 @@ interface TreeNavContext {
   shortCode: string;
   showDashboardLink: boolean;
 }
+
+const LANDING_ROOT_PATHNAME = /^\/(?:en|he)\/?$/;
 
 /**
  * Reads the current pathname from the middleware-injected 'x-pathname' header,
@@ -69,12 +72,62 @@ export async function Navbar() {
   const locale = await getLocale();
   const t = await getTranslations('nav');
   const tCommon = await getTranslations('common');
+  const tLanding = await getTranslations({ locale, namespace: 'landing.navbar' });
   const isHebrew = locale === 'he';
   const logoSrc = isHebrew ? '/images/LOGO-he.png' : '/images/LOGO-en.png';
   const logoAlt = isHebrew ? 'תולדותיי' : 'Toldotay';
+  const hdrs = await headers();
+  const pathname = hdrs.get('x-pathname') ?? '';
+  const isLandingRoot = LANDING_ROOT_PATHNAME.test(pathname);
 
   const treeContext = await getCurrentTreeContext();
   const tDashboard = await getTranslations('dashboard');
+
+  if (isLandingRoot) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b border-paper-line bg-cream/90 backdrop-blur-[14px]">
+        <nav
+          className="mx-auto flex min-h-16 max-w-[1320px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8"
+          aria-label={t('mainNavigationAria')}
+        >
+          <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85" aria-label="Toldotay">
+            <BrandMark className="size-9" />
+            <div className="text-start">
+              <div className="font-serif text-[1.375rem] font-extrabold leading-none tracking-[-0.03em] text-brand-green-deep">
+                TOLDOTAY
+              </div>
+              <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.3em] text-ink-muted">
+                {tLanding('tagline')}
+              </div>
+            </div>
+          </Link>
+
+          <div className="hidden items-center gap-8 lg:flex">
+            <a href="#blog" className="landing-nav-link text-sm font-medium text-ink-soft">{tLanding('blog')}</a>
+            <a href="#features" className="landing-nav-link text-sm font-medium text-ink-soft">{tLanding('features')}</a>
+            <a href="#scenario" className="landing-nav-link text-sm font-medium text-ink-soft">{tLanding('livingRoom')}</a>
+            <Link href="/about" className="landing-nav-link text-sm font-medium text-ink-soft">{tLanding('about')}</Link>
+          </div>
+
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <LanguageSwitcher variant="landing" />
+            <Link
+              href="/login"
+              className="hidden px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:text-brand-green-deep sm:inline-flex"
+            >
+              {tLanding('login')}
+            </Link>
+            <Link
+              href="/signup"
+              className="inline-flex rounded-md border border-brand-green bg-brand-green px-4 py-2 text-sm font-semibold text-cream transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-green-deep"
+            >
+              {tLanding('createTree')}
+            </Link>
+          </div>
+        </nav>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-[#f4f3e9]/95 backdrop-blur-sm">

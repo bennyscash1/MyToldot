@@ -492,5 +492,154 @@
         "When did {name} pass away?"
       ]
     }
+  },
+  "landing": {
+    "meta": {
+      "title": "Toldotay | Writing the Future",
+      "description": "A digital family tree for names, memories, photos, and AI biographies, built for Hebrew-first families and designed to reach the living-room screen."
+    },
+    "navbar": {
+      "tagline": "Writing the Future",
+      "blog": "Blog",
+      "features": "Features",
+      "livingRoom": "Living Room",
+      "about": "About",
+      "login": "Log in",
+      "createTree": "Create tree - free"
+    },
+    "hero": {
+      "decorativeWord": "Toldot",
+      "eyebrow": "Beta - 2026",
+      "title": "Every family is a <accent>story</accent>.<br></br>Now it has a home.",
+      "subtitle": "<strong>Toldotay</strong> is a digital family tree that builds your story - names, photos, memories, AI-based biographies - and brings it to grandma and grandpa's living-room screen. <strong>One gift. Whole generations.</strong>",
+      "primaryCta": "Start your tree",
+      "secondaryCta": "See a live demo",
+      "metaOne": "Free to start",
+      "metaTwo": "No credit card required",
+      "metaThree": "Hebrew-first with RTL support",
+      "treeCard": {
+        "title": "The Cohen Family - Jerusalem",
+        "tag": "4 generations",
+        "footer": "12 people - updated 3 days ago",
+        "people": {
+          "grandpa": {
+            "name": "Moshe Cohen",
+            "years": "1935 - 2012"
+          },
+          "grandma": {
+            "name": "Leah Cohen",
+            "years": "1937 -"
+          },
+          "childOne": {
+            "name": "Rachel",
+            "years": "1968 -"
+          },
+          "focal": {
+            "name": "David - me",
+            "years": "1971 -"
+          },
+          "childThree": {
+            "name": "Miri",
+            "years": "1975 -"
+          },
+          "grandchildOne": {
+            "name": "Jonathan",
+            "years": "2005 -"
+          },
+          "grandchildTwo": {
+            "name": "Tamar",
+            "years": "2010 -"
+          }
+        }
+      }
+    },
+    "blogBanner": {
+      "eyebrow": "New on the blog",
+      "title": "Stories worth <accent>reading</accent>.",
+      "subtitle": "On roots, on AI, and on how names tucked away in a drawer become living family memory. The latest posts from the Toldotay blog.",
+      "allPosts": "All posts",
+      "readPost": "Read post",
+      "readTime": "{minutes} read",
+      "illustrations": {
+        "sources": "Sources, not guesses",
+        "digital-family": "A digital family - in the living room",
+        "gift": "The gift worth more than all the rest"
+      },
+      "tags": {
+        "guide": "Guide",
+        "story": "Story",
+        "tech": "Tech"
+      }
+    },
+    "features": {
+      "eyebrow": "Why Toldotay",
+      "title": "Not just a tree. <accent>A living story.</accent>",
+      "subtitle": "Built especially for Hebrew-speaking families - with Hebrew names, Hebrew dates, and AI biographies grounded in real sources.",
+      "bilingual": {
+        "title": "Bilingual in Hebrew and English",
+        "description": "Every person can be stored in Hebrew and English, with Gregorian and Hebrew dates. Children abroad can read it, while grandparents still see the names they remember."
+      },
+      "ai": {
+        "title": "AI biographies from real sources",
+        "description": "Add a grandparent's name and Toldotay can look through Wikipedia, MyHeritage, and rabbinic genealogy books, then draft a personal biography in Hebrew with cited sources."
+      },
+      "family": {
+        "title": "The whole family joins in",
+        "description": "Invite aunts, cousins, and siblings so each person can add their piece. Built-in permissions decide who edits, who only views, and what guests can see."
+      }
+    },
+    "scenario": {
+      "eyebrow": "Living-room mode - coming soon",
+      "title": "In the end, it is <accent>on grandpa and grandma's TV</accent>.",
+      "description": "Toldotay is not meant to live only on a phone. It is built for the biggest screen in the house - a slow loop of faces, names, stories, and Hebrew birthdays, so visiting kids can see themselves on the wall.",
+      "stepOne": {
+        "text": "<strong>You build the tree</strong> - from your phone, in 5 minutes. Names, photos, and who belongs to whom."
+      },
+      "stepTwo": {
+        "text": "<strong>The family adds more</strong> - an aunt in the US uploads an old photo. A cousin writes a story."
+      },
+      "stepThree": {
+        "text": "<strong>Grandma and grandpa watch</strong> - the living-room screen loops through the family, all the time."
+      },
+      "tv": {
+        "name": "Grandpa Moshe Cohen",
+        "date": "Adar 5, 5695 - Tammuz 12, 5772"
+      }
+    },
+    "stats": {
+      "rotatingDisplay": "Rotating family display",
+      "registeredFamilies": "Registered families",
+      "privacy": "Privacy for every family",
+      "aiResearch": "AI for research and biographies"
+    },
+    "finalCta": {
+      "title": "Your story<br></br>starts <accent>today</accent>.",
+      "subtitle": "Free to start. No credit card. Your first family tree can be up in under 5 minutes, even from a phone.",
+      "cta": "Create a family tree - free"
+    },
+    "footer": {
+      "tagline": "Writing the Future",
+      "description": "A digital family tree built for Hebrew-speaking families who want to preserve the story - not only the names.",
+      "product": {
+        "title": "Product",
+        "home": "Home",
+        "blog": "Blog",
+        "about": "About"
+      },
+      "features": {
+        "title": "Features",
+        "demoTree": "Tree demo",
+        "aiBiographies": "AI biographies",
+        "livingRoom": "Living-room mode"
+      },
+      "account": {
+        "title": "Account",
+        "login": "Log in",
+        "signup": "Sign up",
+        "myTrees": "My trees"
+      },
+      "copyright": "© {year} Toldotay. All rights reserved.",
+      "domain": "toldotay.com"
+    }
   }
 }

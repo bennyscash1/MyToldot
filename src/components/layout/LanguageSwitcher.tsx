@@ -36,7 +36,11 @@ function persistGuestLocaleCookie(nextLocale: Locale) {
   document.cookie = `${PREFERRED_LOCALE_COOKIE}=${nextLocale}; path=/; max-age=${PREFERRED_LOCALE_MAX_AGE_SECONDS}; samesite=lax`;
 }
 
-export function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+  variant?: 'default' | 'landing';
+}
+
+export function LanguageSwitcher({ variant = 'default' }: LanguageSwitcherProps) {
   const t = useTranslations('languageSwitcher');
   const locale = useRouteLocale();
   const router = useRouter();
@@ -60,7 +64,12 @@ export function LanguageSwitcher() {
     <div
       role="group"
       aria-label={t('label')}
-      className="flex max-w-full shrink-0 items-center rounded-full border border-gray-200 bg-gray-50 p-0.5"
+      className={cn(
+        'flex max-w-full shrink-0 items-center rounded-full p-0.5',
+        variant === 'landing'
+          ? 'border border-paper-line bg-cream-deep'
+          : 'border border-gray-200 bg-gray-50',
+      )}
     >
       {LOCALES.map(({ value, labelKey }) => {
         const isActive = value === locale;
@@ -69,12 +78,17 @@ export function LanguageSwitcher() {
             key={value}
             type="button"
             onClick={() => void handleSwitch(value)}
+            aria-label={value === 'he' ? 'עברית' : 'English'}
             aria-pressed={isActive}
             className={cn(
               'min-h-10 min-w-[2.75rem] rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 sm:min-h-8 sm:py-1',
-              isActive
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-400 hover:text-gray-600',
+              variant === 'landing'
+                ? (isActive
+                    ? 'bg-paper text-ink shadow-soft'
+                    : 'text-ink-muted hover:text-brand-green-deep')
+                : (isActive
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'),
             )}
           >
             {t(labelKey)}

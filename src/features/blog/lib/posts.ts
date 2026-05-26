@@ -10,6 +10,7 @@ const BLOG_LOCALES = ['en', 'he'] as const;
 
 export type BlogLocale = (typeof BLOG_LOCALES)[number];
 export type BlogCategory = 'guide' | 'story' | 'tech';
+export type BlogCoverIllustration = 'sources' | 'digital-family' | 'gift';
 
 const blogFrontmatterSchema = z.object({
   title: z.string().min(1),
@@ -32,6 +33,17 @@ export interface BlogPost extends BlogPostMeta {
   content: string;
 }
 
+export interface RecentBlogPost {
+  slug: string;
+  title: string;
+  excerpt: string;
+  tag: BlogCategory;
+  publishedAt: string;
+  readMinutes: string;
+  coverImage?: string;
+  coverIllustration: BlogCoverIllustration;
+}
+
 function isBlogLocale(locale: Locale | string): locale is BlogLocale {
   return BLOG_LOCALES.includes(locale as BlogLocale);
 }
@@ -42,6 +54,24 @@ function getLocaleDir(locale: BlogLocale) {
 
 function comparePostsDesc(a: BlogPostMeta, b: BlogPostMeta) {
   return a.date < b.date ? 1 : -1;
+}
+
+function getCoverIllustration(
+  slug: string,
+  category: BlogCategory,
+  index: number,
+): BlogCoverIllustration {
+  if (slug.includes('gift') || slug.includes('gifts')) return 'gift';
+  if (slug.includes('digital-family-tree')) return 'digital-family';
+  if (slug.includes('ai') || slug.includes('deep-search')) return 'sources';
+
+  const categoryDefault: Record<BlogCategory, BlogCoverIllustration> = {
+    guide: 'digital-family',
+    story: 'gift',
+    tech: 'sources',
+  };
+
+  return categoryDefault[category] ?? (['sources', 'digital-family', 'gift'][index % 3] as BlogCoverIllustration);
 }
 
 async function readLocaleEntries(locale: BlogLocale) {
@@ -135,4 +165,22 @@ export function formatBlogDate(date: string, locale: BlogLocale) {
     dateStyle: 'long',
     timeZone: 'UTC',
   }).format(new Date(`${date}T12:00:00.000Z`));
+}
+
+export async function getRecentBlogPosts(
+  locale: BlogLocale,
+  limit = 3,
+): Promise<RecentBlogPost[]> {
+  const posts = await getBlogPosts(locale);
+
+  return posts.slice(0, limit).map((post, index) => ({
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.description,
+    tag: post.category,
+    publishedAt: formatBlogDate(post.date, locale),
+    readMinutes: post.readingTime,
+    coverImage: post.coverImage,
+    coverIllustration: getCoverIllustration(post.slug, post.category, index),
+  }));
 }
