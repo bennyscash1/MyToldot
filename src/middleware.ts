@@ -201,21 +201,6 @@ export async function middleware(request: NextRequest) {
         mergeSupabaseCookies(redirectResponse, supabaseResponse);
         return redirectResponse;
       }
-
-      const localeMatch = pathname.match(/^\/(en|he)(?=\/|$)/);
-      if (localeMatch) {
-        const urlLocale = localeMatch[1] as PreferredLocale;
-        if (urlLocale !== preferredFromCookie) {
-          const newPath =
-            pathname.replace(/^\/(en|he)/, `/${preferredFromCookie}`) ||
-            `/${preferredFromCookie}`;
-          const url = request.nextUrl.clone();
-          url.pathname = newPath;
-          const redirectResponse = NextResponse.redirect(url);
-          mergeSupabaseCookies(redirectResponse, supabaseResponse);
-          return redirectResponse;
-        }
-      }
     }
   }
 
