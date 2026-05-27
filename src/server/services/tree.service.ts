@@ -1085,3 +1085,216 @@ export async function addSiblingInTree(
     return { person: newPerson, relationship_ids };
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI tree builder — empty-state-only batch creator.
+//
+// `createPersonsAndRelationshipsInTree` ingests a normalized plan (already
+// reconciled upstream) and creates every Person + Relationship in a single
+// transaction. Used exclusively by `buildTreeFromAiPlanAction` for trees that
+// currently have zero persons.
+//
+// The `permissive` flag relaxes the spouse gender check via the internal
+// `assertSpouseGenderPair` helper. Default is `false`, matching the spirit of
+// `oppositeBinaryGender` used by `addSpouseInTree`. The AI builder passes
+// `true` so same-gender or UNKNOWN-gender pairs from user free text can land
+// without being rejected — no other call site should pass `true`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AiBatchGender = 'MALE' | 'FEMALE' | 'UNKNOWN';
+
+export interface AiBatchPersonInput {
+  local_id: string;
+  first_name: string;
+  last_name: string | null;
+  first_name_he: string;
+  last_name_he: string;
+  gender: AiBatchGender;
+  birth_year?: number | null;
+  death_year?: number | null;
+  is_deceased?: boolean;
+  bio?: string | null;
+}
+
+export interface AiBatchRelationshipInput {
+  type: 'SPOUSE' | 'PARENT_CHILD' | 'SIBLING';
+  from_local_id: string;
+  to_local_id: string;
+}
+
+export interface AiBatchResult {
+  personCount: number;
+  relationshipCount: number;
+  rootPersonId: string | null;
+}
+
+/**
+ * Pair-gender validator for SPOUSE rows created in batch. Mirrors the spirit
+ * of the existing `oppositeBinaryGender` check used by `addSpouseInTree`, but
+ * runs over an already-existing pair instead of overriding one side's gender.
+ *
+ * `permissive` default = false preserves current behavior at every call site;
+ * only the AI tree builder passes true.
+ */
+function assertSpouseGenderPair(
+  g1: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN',
+  g2: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN',
+  permissive: boolean = false,
+): void {
+  if (permissive) return;
+  if ((g1 === 'MALE' && g2 === 'FEMALE') || (g1 === 'FEMALE' && g2 === 'MALE')) return;
+  throw Errors.badRequest('Spouse pair must be opposite binary genders (MALE + FEMALE)');
+}
+
+function yearToJanFirst(year: number | null | undefined): Date | null {
+  if (year == null || !Number.isFinite(year)) return null;
+  // Use UTC Jan 1 so subsequent Hebrew-date conversion lands in the right Gregorian year.
+  return new Date(Date.UTC(year, 0, 1));
+}
+
+export async function createPersonsAndRelationshipsInTree(args: {
+  treeId: string;
+  persons: AiBatchPersonInput[];
+  relationships: AiBatchRelationshipInput[];
+  rootLocalId: string;
+  /** When true, skips `assertSpouseGenderPair`. Default false. */
+  permissive?: boolean;
+}): Promise<AiBatchResult> {
+  const { treeId, persons, relationships, rootLocalId } = args;
+  const permissive = args.permissive ?? false;
+
+  await requireTreeRole(treeId, 'EDITOR');
+
+  if (persons.length === 0) {
+    throw Errors.badRequest('Plan must contain at least one person');
+  }
+
+  // Empty-state-only guard: refuse to merge an AI plan into a populated tree.
+  const existingCount = await prisma.person.count({ where: { tree_id: treeId } });
+  if (existingCount > 0) {
+    throw Errors.conflict('AI tree builder only supports empty trees');
+  }
+
+  // Branching gate: confirm the caller is allowed to create the root.
+  const branching = await isPersonAllowed(treeId, { kind: 'standalone' });
+  if (!branching.allowed) {
+    throw Errors.branchingNotAllowed(branching.ownerEmail);
+  }
+
+  // Validate spouse-pair genders up-front using the input plan, before we
+  // open the transaction — failing fast on a bad plan beats partial inserts.
+  const genderByLocal = new Map<string, AiBatchGender>();
+  for (const p of persons) genderByLocal.set(p.local_id, p.gender);
+  for (const r of relationships) {
+    if (r.type !== 'SPOUSE') continue;
+    const g1 = genderByLocal.get(r.from_local_id);
+    const g2 = genderByLocal.get(r.to_local_id);
+    if (!g1 || !g2) {
+      throw Errors.badRequest(`SPOUSE references unknown local_id (${r.from_local_id} / ${r.to_local_id})`);
+    }
+    assertSpouseGenderPair(g1, g2, permissive);
+  }
+
+  // Cap biological parents at 2 per child (matches `addParentInTree`'s rule).
+  const parentsByChild = new Map<string, Set<string>>();
+  for (const r of relationships) {
+    if (r.type !== 'PARENT_CHILD') continue;
+    const set = parentsByChild.get(r.to_local_id) ?? new Set<string>();
+    set.add(r.from_local_id);
+    parentsByChild.set(r.to_local_id, set);
+  }
+  for (const [child, parents] of parentsByChild) {
+    if (parents.size > 2) {
+      throw Errors.conflict(`Person ${child} has more than two parents in the plan`);
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const localToDbId = new Map<string, string>();
+
+    for (const p of persons) {
+      const birth_date = yearToJanFirst(p.birth_year);
+      const death_date = yearToJanFirst(p.death_year);
+      const is_deceased = p.is_deceased ?? (death_date !== null);
+
+      const createInput = withHebrewDatesForCreate({
+        first_name: p.first_name && p.first_name.length > 0 ? p.first_name : p.first_name_he,
+        last_name: p.last_name && p.last_name.length > 0 ? p.last_name : null,
+        first_name_he: p.first_name_he,
+        last_name_he: p.last_name_he,
+        gender: p.gender,
+        birth_date,
+        death_date,
+        is_deceased,
+        birth_place: null,
+        bio: p.bio ?? null,
+        profile_image: null,
+        maiden_name: null,
+      });
+
+      const created = await tx.person.create({
+        data: { ...createInput, tree_id: treeId },
+        select: { id: true },
+      });
+      localToDbId.set(p.local_id, created.id);
+    }
+
+    let relationshipCount = 0;
+    for (const r of relationships) {
+      const fromId = localToDbId.get(r.from_local_id);
+      const toId = localToDbId.get(r.to_local_id);
+      if (!fromId || !toId || fromId === toId) continue;
+
+      let person1_id: string;
+      let person2_id: string;
+      const relType: RelationshipType = r.type;
+
+      if (relType === 'PARENT_CHILD') {
+        // Directional: from = parent, to = child.
+        person1_id = fromId;
+        person2_id = toId;
+      } else {
+        // Symmetric — normalize so unique constraint is hit deterministically.
+        const [a, b] = normalizeSymmetric(fromId, toId, relType);
+        person1_id = a;
+        person2_id = b;
+      }
+
+      try {
+        await tx.relationship.create({
+          data: {
+            tree_id: treeId,
+            relationship_type: relType,
+            person1_id,
+            person2_id,
+          },
+          select: { id: true },
+        });
+        relationshipCount += 1;
+      } catch (err) {
+        // Swallow unique-constraint duplicates so a noisy plan doesn't fail
+        // the whole tree creation. Re-throw anything else.
+        const isPrismaUniqueViolation =
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code?: string }).code === 'P2002';
+        if (!isPrismaUniqueViolation) throw err;
+      }
+    }
+
+    const rootPersonId = localToDbId.get(rootLocalId) ?? null;
+    if (rootPersonId) {
+      await tx.tree.update({
+        where: { id: treeId },
+        data: { root_person_id: rootPersonId },
+      });
+    }
+
+    return {
+      personCount: localToDbId.size,
+      relationshipCount,
+      rootPersonId,
+    };
+  });
+}

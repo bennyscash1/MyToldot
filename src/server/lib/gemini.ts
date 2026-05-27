@@ -475,3 +475,85 @@ export async function generateGroundedHebrewBio(
 
   return { narrative, structured, raw: data };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateStructuredJson — independent sibling of generateGroundedHebrewBio.
+//
+// Used by the AI tree builder (src/server/lib/ai-tree-builder/*). Crucially:
+//   - No `google_search` tool — the model must stay faithful to user-supplied
+//     free text, not enrich from the web.
+//   - responseMimeType: "application/json" forces the model into JSON mode,
+//     eliminating fence-stripping in the happy path.
+//   - temperature: 0.2 — same family extracted from the same text twice should
+//     produce the same plan.
+//   - Multi-turn `contents` array support so the caller can layer refinement
+//     turns onto a prior response without re-sending the system prompt.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GeminiContent {
+  role: 'user' | 'model';
+  parts: Array<{ text: string }>;
+}
+
+export interface StructuredJsonOpts {
+  systemInstruction: string;
+  contents: GeminiContent[];
+  apiKey?: string;
+  signal?: AbortSignal;
+  /** Override max output tokens; defaults to 12288 (matches the grounded retry budget). */
+  maxOutputTokens?: number;
+}
+
+export interface StructuredJsonResult {
+  /** Parsed JSON object on success; null when the model returned non-JSON. */
+  parsed: unknown;
+  /** Raw `text` part(s) joined, before JSON parsing. */
+  text: string;
+  /** Full Gemini response envelope, for debugging. */
+  raw: unknown;
+}
+
+export async function generateStructuredJson(
+  opts: StructuredJsonOpts,
+): Promise<StructuredJsonResult> {
+  const apiKey = opts.apiKey ?? process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw Errors.internal('GEMINI_API_KEY is not configured');
+  }
+
+  const body = {
+    contents: opts.contents,
+    systemInstruction: { parts: [{ text: opts.systemInstruction }] },
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: 'application/json',
+      maxOutputTokens: opts.maxOutputTokens ?? 12288,
+    },
+  };
+
+  if (process.env.TOLDOTAY_DEBUG_AI === '1') {
+    // eslint-disable-next-line no-console
+    console.log('[gemini:structured] request body:', JSON.stringify(body, null, 2));
+  }
+
+  const response = await fetch(
+    `${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw Errors.internal(`Gemini structured request failed (${response.status})`);
+  }
+
+  const data = (await response.json()) as GeminiResponse;
+  const candidate = data.candidates?.[0];
+  const text = extractCandidateText(candidate);
+  const parsed = parseModelJson(text);
+
+  return { parsed, text, raw: data };
+}

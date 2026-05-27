@@ -303,6 +303,28 @@
     "comingSoon": "ויזואליזציה אינטראקטיבית של עץ המשפחה תגיע בשלב הבא.",
     "firstRootModalTitle": "הוספת תחילת השושלת"
   },
+  "aiTreeBuilder": {
+    "openButton": "בנייה עם בינה מלאכותית",
+    "openButtonHint": "תארו את המשפחה שלכם במילים שלכם",
+    "modalTitle": "בנו את העץ מתוך טקסט",
+    "modalSubtitle": "תארו את המשפחה שלכם בטקסט חופשי. הבינה המלאכותית תציע עץ שתוכלו לבדוק לפני יישום.",
+    "inputPlaceholder": "דוגמה: לסבא שלי אברהם כהן שלושה ילדים — דוד, שרה ויוסי. דוד נשוי לרבקה ויש להם שני בנים, איתי ונועם.",
+    "generateButton": "צור",
+    "generatingButton": "יוצר…",
+    "refineLabel": "תיקון",
+    "refinePlaceholder": "מה צריך לתקן? למשל \"איתי הוא בעצם בחורה ושמה תמר\".",
+    "refineButton": "עדכן",
+    "summaryHeading": "סיכום הבינה המלאכותית",
+    "statsLabel": "{persons} אנשים · {relationships} קשרים",
+    "applyButton": "החל על העץ שלי",
+    "applyingButton": "מחיל…",
+    "cancelButton": "סגור",
+    "resetButton": "התחל מחדש",
+    "errorGeneric": "משהו השתבש. נסו שוב.",
+    "errorEmptyInput": "אנא כתבו לפחות מספר מילים על המשפחה שלכם.",
+    "successTitle": "העץ נוצר",
+    "successDescription": "נוצרו {persons} אנשים ו-{relationships} קשרים."
+  },
   "familyHub": {
     "title": "עצי המשפחה שלך",
     "subtitle": "בחר משפחה להיכנס אליה",

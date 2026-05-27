@@ -303,6 +303,28 @@
     "comingSoon": "Interactive tree visualization coming in the next phase.",
     "firstRootModalTitle": "Add the start of your lineage"
   },
+  "aiTreeBuilder": {
+    "openButton": "Build with AI",
+    "openButtonHint": "Describe your family in your own words",
+    "modalTitle": "Build your tree from text",
+    "modalSubtitle": "Describe your family in free text. The AI will suggest a tree you can review before applying.",
+    "inputPlaceholder": "Example: My grandfather Avraham Cohen had three children — David, Sarah, and Yossi. David married Rivka and they have two sons, Itai and Noam.",
+    "generateButton": "Generate",
+    "generatingButton": "Generating…",
+    "refineLabel": "Refinement",
+    "refinePlaceholder": "What should I fix? E.g. 'Itai is actually a girl named Tamar.'",
+    "refineButton": "Update",
+    "summaryHeading": "AI summary",
+    "statsLabel": "{persons} people · {relationships} connections",
+    "applyButton": "Apply to my tree",
+    "applyingButton": "Applying…",
+    "cancelButton": "Close",
+    "resetButton": "Start over",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "errorEmptyInput": "Please write at least a few words about your family.",
+    "successTitle": "Tree created",
+    "successDescription": "Created {persons} people and {relationships} connections."
+  },
   "familyHub": {
     "title": "Your Family Trees",
     "subtitle": "Select a family to enter",
