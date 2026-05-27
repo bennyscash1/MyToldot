@@ -20,6 +20,7 @@ import { PersonForm } from '@/features/persons/components/PersonForm';
 import { BlockedActionDialog } from '@/components/ui/BlockedActionDialog';
 import { NudgesPanelContainer } from '@/features/nudges/components/NudgesPanelContainer';
 import { AiTreeBuilderModal } from './panels/AiTreeBuilderModal';
+import { LoadingOverlay, type LoadingVariant } from '@/components/ui/LoadingOverlay';
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
@@ -100,6 +101,17 @@ export function TreeCanvasWithModals({
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAiBuilder, setShowAiBuilder] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
+  // ── First-person creation lock ──────────────────────────────────
+  // Spans the whole empty→populated window (submit click → canvas shows the
+  // person), so the "+" / AI buttons can never be re-triggered mid-creation.
+  const [isCreatingFirstPerson, setIsCreatingFirstPerson] = useState(false);
+  const [firstPersonVariant, setFirstPersonVariant] = useState<LoadingVariant>('saving');
+  const [firstPersonError, setFirstPersonError] = useState<string | null>(null);
+  // Synchronous guard: state updates are async, so a fast double-click would
+  // see a stale `isCreatingFirstPerson`. A ref flips synchronously and blocks
+  // the second submit before it can fire a second mutation.
+  const creatingLockRef = useRef(false);
+  const firstPersonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pickCoParentModal, setPickCoParentModal] = useState<{
     anchorId: string;
     personName: string;
@@ -153,10 +165,67 @@ export function TreeCanvasWithModals({
     setShowAiBuilder(false);
   }, []);
 
+  const clearFirstPersonLock = useCallback(() => {
+    creatingLockRef.current = false;
+    setIsCreatingFirstPerson(false);
+    if (firstPersonTimerRef.current) {
+      clearTimeout(firstPersonTimerRef.current);
+      firstPersonTimerRef.current = null;
+    }
+  }, []);
+
+  // Engage the lock. Returns false if a creation is already in flight — the
+  // synchronous ref guard that blocks a fast double-submit before it can fire
+  // a second mutation.
+  const beginFirstPersonCreation = useCallback(
+    (variant: LoadingVariant): boolean => {
+      if (creatingLockRef.current) return false;
+      creatingLockRef.current = true;
+      setFirstPersonError(null);
+      setFirstPersonVariant(variant);
+      setIsCreatingFirstPerson(true);
+      if (firstPersonTimerRef.current) clearTimeout(firstPersonTimerRef.current);
+      firstPersonTimerRef.current = setTimeout(() => {
+        // Upstream hung — free the user rather than trapping them, and surface
+        // an actionable, localized message.
+        creatingLockRef.current = false;
+        firstPersonTimerRef.current = null;
+        setIsCreatingFirstPerson(false);
+        setFirstPersonError(
+          locale === 'he'
+            ? 'היצירה ארכה יותר מהצפוי. רענן את הדף וודא שהאדם נוצר — אם לא, נסה שוב.'
+            : 'Creation took longer than expected. Refresh the page to check if the person was created — if not, try again.',
+        );
+      }, 30_000);
+      return true;
+    },
+    [locale],
+  );
+
   const onAiPlanApplied = useCallback(() => {
+    // Engage the lock BEFORE closing the modal so coverage is continuous: the
+    // modal's own overlay covered the build; this lock covers the gap until the
+    // re-seeded canvas shows the people.
+    beginFirstPersonCreation('creating-tree');
     setShowAiBuilder(false);
     router.refresh();
-  }, [router]);
+  }, [beginFirstPersonCreation, router]);
+
+  // Release the lock the instant the canvas actually has the person (manual:
+  // optimistic insert; AI: re-seed after router.refresh()). That is the moment
+  // the empty-state UI is truly gone, so it's safe to drop the overlay.
+  useEffect(() => {
+    if (isCreatingFirstPerson && persons.length > 0) {
+      clearFirstPersonLock();
+    }
+  }, [isCreatingFirstPerson, persons.length, clearFirstPersonLock]);
+
+  // Clear the safety timer on unmount so leaving mid-creation never leaks it.
+  useEffect(() => {
+    return () => {
+      if (firstPersonTimerRef.current) clearTimeout(firstPersonTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!showFirstPersonForm) return;
@@ -302,13 +371,21 @@ export function TreeCanvasWithModals({
 
   const handleFirstRootSubmit = useCallback(
     async (input: PersonInput) => {
+      // Double-submit guard: a second (fast) click finds the lock engaged and
+      // bails before issuing another create.
+      if (!beginFirstPersonCreation('saving')) return;
       const id = await createPerson(input);
       if (id) {
         closeFirstPersonForm();
         router.refresh();
+        // Lock stays engaged until the release watcher sees persons.length > 0.
+      } else {
+        // Failed — release the lock so the user can retry; the form stays open
+        // and surfaces lastError.
+        clearFirstPersonLock();
       }
     },
-    [createPerson, closeFirstPersonForm, router],
+    [beginFirstPersonCreation, createPerson, closeFirstPersonForm, router, clearFirstPersonLock],
   );
 
   const sidePerson = sidePersonId ? persons.find((p) => p.id === sidePersonId) : null;
@@ -328,17 +405,23 @@ export function TreeCanvasWithModals({
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <FamilyTreeViewer
-        treeId={treeId}
-        persons={persons}
-        relationships={relationships}
-        initialFocalId={initialFocalId}
-        canEdit={canEdit}
-        onSelectPerson={onSelectPerson}
-        onAddFirstPerson={canEdit ? onAddFirstPerson : undefined}
-      />
+      <LoadingOverlay
+        isPending={isCreatingFirstPerson}
+        variant={firstPersonVariant}
+        className="flex min-h-0 w-full flex-1 flex-col"
+      >
+        <FamilyTreeViewer
+          treeId={treeId}
+          persons={persons}
+          relationships={relationships}
+          initialFocalId={initialFocalId}
+          canEdit={canEdit}
+          onSelectPerson={onSelectPerson}
+          onAddFirstPerson={canEdit && !isCreatingFirstPerson ? onAddFirstPerson : undefined}
+        />
+      </LoadingOverlay>
 
-      {canEdit && persons.length === 0 && (
+      {canEdit && persons.length === 0 && !isCreatingFirstPerson && (
         <div
           className="pointer-events-none absolute inset-x-0 top-4 z-30 flex justify-center px-4"
           dir={headerDir}
@@ -364,6 +447,25 @@ export function TreeCanvasWithModals({
               {tAi('openButtonHint')}
             </span>
           </button>
+        </div>
+      )}
+
+      {firstPersonError && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-4 z-40 flex justify-center px-4"
+          dir={headerDir}
+        >
+          <div className="pointer-events-auto flex max-w-sm items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-800 shadow-md">
+            <span>{firstPersonError}</span>
+            <button
+              type="button"
+              onClick={() => setFirstPersonError(null)}
+              className="shrink-0 text-rose-500 transition hover:text-rose-700"
+              aria-label={locale === 'he' ? 'סגור' : 'Dismiss'}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

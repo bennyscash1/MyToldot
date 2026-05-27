@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useLocale } from 'next-intl';
 
 import type { AddedRelativeDto } from '@/server/services/tree.service';
@@ -123,6 +123,17 @@ export function useTreeMutations({
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastBlocked, setLastBlocked] = useState<{ ownerEmail?: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // One-way re-seed: when the tree transitions from empty to populated
+  // (via router.refresh() after creating the first person), pull the new
+  // initial data into hook state. Safe because no optimistic edits exist
+  // on an empty tree, so there's nothing to clobber. Does NOT fire on
+  // subsequent updates — the hook remains the single writer for populated trees.
+  useEffect(() => {
+    if (initialPersons.length === 0) return;
+    setPersons((prev) => (prev.length === 0 ? initialPersons : prev));
+    setRelationships((prev) => (prev.length === 0 ? initialRelationships : prev));
+  }, [initialPersons, initialRelationships]);
 
   const asMutationResult = useCallback(
     async <T,>(run: () => Promise<T>) => {
