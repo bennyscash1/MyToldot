@@ -23,6 +23,7 @@ const SYSTEM_INSTRUCTION = `אתה חוקר גנאולוגיה בכיר במער
 8. גם כשלא נמצא תיעוד ישיר — תעד ב-sources או ב-notes את המאגרים שבדקת ואת התוצאות הקרובות שדחית.
 9. תאריכים: החזר תמיד בפורמט גרגוריאני לועזי (YYYY-MM-DD או YYYY). תאריכים עבריים בקלט — המר. אל תחזיר 'ה'תש"ד' או 'י"ד סיוון' בפלט.
 10. קרבנות שואה: חפש תמיד ב-Yad Vashem Names Database. גם אם לא מוצא רשומה מדויקת, ציין כמה רשומות דומות נמצאו.
+11. תאריכי לידה ופטירה: אם נמצאו, שלב אותם גם בגוף ה-narrative (לא רק ב-structured) — בשורות נפרדות בתחילת הטקסט: 'נולד/ה ב-<תאריך לועזי>' ו'נפטר/ה ב-<תאריך לועזי>'. אל תמציא תאריך; אם לא נמצא — דלג על השורה.
 
 מאגרים:
 גנאולוגיה: FamilySearch.org, Geni.com, MyHeritage.com, JewishGen.org, JRI-Poland.org, geshergalicia.org, LitvakSIG.org, Wikitree.com, Ancestry.com
@@ -250,7 +251,7 @@ export function buildUserPrompt(subject: BioSubject): string {
   const schemaBlock = `## פורמט תשובה — תאריכים לועזיים בלבד
 החזר JSON תקין במבנה הבא (בלי code fences, בלי טקסט מסביב):
 {
-  "narrative": "סיכום ביוגרפי קצר בעברית, 4-8 משפטים",
+  "narrative": "ביוגרפיה בעברית. שורה ראשונה: משפט פתיחה קצר (שם + תחום עיסוק). מיד אחריו, אם נמצא תאריך לידה הוסף שורה 'נולד/ה ב-<תאריך לועזי>', ואם נמצא תאריך פטירה הוסף שורה 'נפטר/ה ב-<תאריך לועזי>'. אחר כך 3-7 משפטי ביוגרפיה. אל תמציא תאריכים; אם לא נמצא תאריך — דלג על השורה. אל תוסיף כתובות URL בתוך הטקסט.",
   "structured": {
     "birthDate":  { "value": "YYYY-MM-DD או YYYY", "confidence": "high|medium|low" },
     "deathDate":  { "value": "YYYY-MM-DD או YYYY", "confidence": "high|medium|low" },

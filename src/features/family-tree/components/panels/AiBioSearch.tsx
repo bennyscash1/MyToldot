@@ -5,9 +5,16 @@ import { useState } from 'react';
 import { fetchAiBiographyAction } from '@/server/actions/person.actions';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 
+export interface AiBioResult {
+  narrative: string;
+  /** Gregorian "YYYY-MM-DD" or "YYYY" when the search found one. */
+  birthDate?: string;
+  deathDate?: string;
+}
+
 interface AiBioSearchProps {
   personId: string;
-  onApply: (text: string) => void;
+  onApply: (result: AiBioResult) => void;
 }
 
 export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
@@ -32,7 +39,11 @@ export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
         return;
       }
 
-      onApply(narrative);
+      onApply({
+        narrative,
+        birthDate: result.data.structured.birthDate?.value,
+        deathDate: result.data.structured.deathDate?.value,
+      });
     } catch {
       setError('לא נמצא מידע. נסה שוב.');
     } finally {

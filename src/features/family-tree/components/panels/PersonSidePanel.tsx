@@ -16,9 +16,9 @@ import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
 import { DateInput } from '@/components/ui/DateInput';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
-import { coerceGregorianDate } from '@/lib/dates/gregorian';
+import { coerceGregorianDate, parseGregorianDate } from '@/lib/dates/gregorian';
 import { cn } from '@/lib/utils';
-import { AiBioSearch } from './AiBioSearch';
+import { AiBioSearch, type AiBioResult } from './AiBioSearch';
 import { PersonGalleryEditor } from './PersonGalleryEditor';
 import type { PersonPhotoDTO } from '@/features/family-tree/lib/types';
 
@@ -125,6 +125,25 @@ export function PersonSidePanel({
   };
   const selectDeceased = () => {
     setIsDeceased(true);
+  };
+
+  // Apply an AI biography result: fill the bio text and, when the search found
+  // dates, pre-fill the birth/death fields too. A death date also flips the
+  // life-status toggle to "deceased". Year-only values resolve to Jan 1 of that
+  // year (the picker has no year-only mode); the prose carries the precise text.
+  const handleApplyAiBio = (result: AiBioResult) => {
+    setBio(result.narrative);
+    if (result.birthDate) {
+      const parsed = parseGregorianDate(result.birthDate);
+      if (parsed) setBirthDate(parsed);
+    }
+    if (result.deathDate) {
+      const parsed = parseGregorianDate(result.deathDate);
+      if (parsed) {
+        setIsDeceased(true);
+        setDeathDate(parsed);
+      }
+    }
   };
   const onRadioKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -352,7 +371,7 @@ export function PersonSidePanel({
               />
             </label>
 
-            <AiBioSearch personId={person.id} onApply={setBio} />
+            <AiBioSearch personId={person.id} onApply={handleApplyAiBio} />
 
             {(onAddParent || onAddSpouse || onAddChild) && (
               <div className="mb-4 flex flex-col gap-2">
