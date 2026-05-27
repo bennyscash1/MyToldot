@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/routing';
 import type { NavItem } from '@/types';
+import { getAuthUser } from '@/lib/api/auth';
 import { prisma } from '@/lib/prisma';
 import { BrandMark } from '@/components/brand/BrandMark';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -80,10 +81,17 @@ export async function Navbar() {
   const pathname = hdrs.get('x-pathname') ?? '';
   const isLandingRoot = LANDING_ROOT_PATHNAME.test(pathname);
 
+  // The branded marketing navbar is for GUESTS on the landing root only.
+  // Authenticated visitors on the landing root fall through to the standard
+  // app navbar below (avatar + nav links) — the same one the blog and every
+  // other page render. Auth is resolved in the RSC via getAuthUser(),
+  // consistent with the rest of the app, and only queried on the landing root.
+  const showLandingGuestNav = isLandingRoot ? !(await getAuthUser()) : false;
+
   const treeContext = await getCurrentTreeContext();
   const tDashboard = await getTranslations('dashboard');
 
-  if (isLandingRoot) {
+  if (showLandingGuestNav) {
     return (
       <header className="sticky top-0 z-50 w-full border-b border-paper-line bg-cream/90 backdrop-blur-[14px]">
         <nav

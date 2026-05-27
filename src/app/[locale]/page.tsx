@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { redirect } from 'next/navigation';
 
 import type { LocalePageProps } from '@/types';
-import { getAuthUser } from '@/lib/api/auth';
 import { assertBlogLocale, getRecentBlogPosts } from '@/features/blog/lib/posts';
 import { LandingBlogBanner } from '@/components/features/landing/LandingBlogBanner';
 import { LandingFeatures } from '@/components/features/landing/LandingFeatures';
@@ -25,12 +23,10 @@ export async function generateMetadata({ params }: LocalePageProps): Promise<Met
 
 export default async function HomePage({ params }: LocalePageProps) {
   const { locale } = await params;
-  const user = await getAuthUser();
 
-  if (user) {
-    redirect(`/${locale}/tree`);
-  }
-
+  // The landing page renders for everyone — guests and authenticated users
+  // alike (so signed-in users can read it, share the link, reach the blog…).
+  // The navbar adapts to auth state inside the shared <Navbar /> component.
   const posts = await getRecentBlogPosts(assertBlogLocale(locale));
   const tStats = await getTranslations({ locale, namespace: 'landing.stats' });
 
