@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { useLocale } from 'next-intl';
 
 import { DateInput } from '@/components/ui/DateInput';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { gregorianToHebrewText } from '../lib/hebrewDate';
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
@@ -120,6 +121,7 @@ export function PersonForm({
   };
 
   return (
+    <LoadingOverlay isPending={isSubmitting} variant="saving">
     <form onSubmit={handleSubmit} className="flex flex-col gap-3" dir={formDir}>
       {/* Name fields */}
       <div className="grid grid-cols-2 gap-2">
@@ -264,6 +266,7 @@ export function PersonForm({
         </button>
       </div>
     </form>
+    </LoadingOverlay>
   );
 }
 

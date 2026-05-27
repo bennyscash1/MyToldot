@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { fetchAiBiographyAction } from '@/server/actions/person.actions';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 
 interface AiBioSearchProps {
   personId: string;
@@ -40,21 +41,23 @@ export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
   };
 
   return (
-    <div className="mb-4 flex flex-col gap-2">
-      <button
-        type="button"
-        disabled={isLoading}
-        onClick={() => void handleSearch()}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200/60 bg-[#fcdcd8] px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-[#fbc8c2] disabled:opacity-50"
-      >
-        {isLoading ? 'מחפש…' : 'חפש מידע'}
-      </button>
+    <LoadingOverlay isPending={isLoading} variant="ai-biography" className="mb-4">
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={() => void handleSearch()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200/60 bg-[#fcdcd8] px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-[#fbc8c2] disabled:opacity-50"
+        >
+          {isLoading ? 'מחפש…' : 'חפש מידע'}
+        </button>
 
-      <p className="text-center text-xs leading-snug text-slate-500">
-        לתוצאות אמינות יותר, מלא תאריכים, הורים ואחים במידת האפשר.
-      </p>
+        <p className="text-center text-xs leading-snug text-slate-500">
+          לתוצאות אמינות יותר, מלא תאריכים, הורים ואחים במידת האפשר.
+        </p>
 
-      {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</div>}
-    </div>
+        {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</div>}
+      </div>
+    </LoadingOverlay>
   );
 }

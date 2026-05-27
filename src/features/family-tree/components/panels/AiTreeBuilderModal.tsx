@@ -9,6 +9,7 @@ import {
 } from '@/server/actions/ai-tree.actions';
 import type { GeminiContent } from '@/server/lib/gemini';
 import type { AiTreePlan } from '@/server/lib/ai-tree-builder/schema';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 
 // NOTE: imports from `@/server/lib/*` above are TYPE-ONLY (verified by
 // `import type`). They are stripped at build time so no server-only runtime
@@ -154,6 +155,15 @@ export function AiTreeBuilderModal({
       })
     : '';
 
+  // Initial parse (phase 'input') and the build action use creating-tree;
+  // a refinement turn (isGenerating while previewing) uses refining-tree.
+  const overlayPending = isGenerating || isApplying;
+  const overlayVariant = isApplying
+    ? 'creating-tree'
+    : phase === 'preview'
+      ? 'refining-tree'
+      : 'creating-tree';
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -187,7 +197,12 @@ export function AiTreeBuilderModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <LoadingOverlay
+          isPending={overlayPending}
+          variant={overlayVariant}
+          className="flex-1 min-h-0"
+        >
+        <div className="h-full overflow-y-auto px-5 py-4">
           {phase === 'input' && (
             <div className="flex flex-col gap-3">
               <textarea
@@ -255,6 +270,7 @@ export function AiTreeBuilderModal({
             </div>
           )}
         </div>
+        </LoadingOverlay>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
           {phase === 'input' && (

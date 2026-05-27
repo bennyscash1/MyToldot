@@ -509,10 +509,60 @@ export interface StructuredJsonResult {
   parsed: unknown;
   /** Raw `text` part(s) joined, before JSON parsing. */
   text: string;
+  /** Gemini finish reason (STOP, MAX_TOKENS, SAFETY, …) when available. */
+  finishReason?: string;
   /** Full Gemini response envelope, for debugging. */
   raw: unknown;
 }
 
+// gemini-2.5-pro with a large multi-turn conversation can take a while; 90s is
+// generous but bounded so a hung connection becomes a clean timeout rather than
+// an unbounded await that the caller surfaces as a generic crash.
+const STRUCTURED_TIMEOUT_MS = 90_000;
+// Headroom for large families: a ~24-person tree serializes to ~3k JSON tokens,
+// plus the model's hidden thinking pass. 16384 keeps full regeneration on a
+// refinement turn from truncating.
+const STRUCTURED_DEFAULT_MAX_TOKENS = 16384;
+
+function isTransientHttpStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+/**
+ * Wraps the caller signal (if any) with a timeout via a manual AbortController
+ * — avoids relying on AbortSignal.any/timeout which need newer Node. Returns
+ * the combined signal plus a cleanup fn the caller MUST invoke.
+ */
+function withTimeoutSignal(
+  callerSignal: AbortSignal | undefined,
+  ms: number,
+): { signal: AbortSignal; cleanup: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException('Request timed out', 'TimeoutError'));
+  }, ms);
+  const onAbort = () => controller.abort(callerSignal?.reason);
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort(callerSignal.reason);
+    else callerSignal.addEventListener('abort', onAbort, { once: true });
+  }
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener('abort', onAbort);
+    },
+  };
+}
+
+/**
+ * Generate structured JSON from a multi-turn conversation. Independent of
+ * generateGroundedHebrewBio. Hardened so transient infrastructure failures
+ * (network reset, timeout, 5xx, non-JSON body) surface as clean ApiErrors with
+ * actionable messages instead of raw exceptions — and are retried once before
+ * giving up. Does NOT throw on MAX_TOKENS/empty output; it returns
+ * `{ parsed: null, finishReason }` so the caller can craft a precise message.
+ */
 export async function generateStructuredJson(
   opts: StructuredJsonOpts,
 ): Promise<StructuredJsonResult> {
@@ -527,7 +577,7 @@ export async function generateStructuredJson(
     generationConfig: {
       temperature: 0.2,
       responseMimeType: 'application/json',
-      maxOutputTokens: opts.maxOutputTokens ?? 12288,
+      maxOutputTokens: opts.maxOutputTokens ?? STRUCTURED_DEFAULT_MAX_TOKENS,
     },
   };
 
@@ -536,24 +586,75 @@ export async function generateStructuredJson(
     console.log('[gemini:structured] request body:', JSON.stringify(body, null, 2));
   }
 
-  const response = await fetch(
-    `${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: opts.signal,
-    },
-  );
+  const url = `${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`;
+  const MAX_ATTEMPTS = 2;
+  let lastTransient = 'unknown';
 
-  if (!response.ok) {
-    throw Errors.internal(`Gemini structured request failed (${response.status})`);
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    // Caller cancelled between attempts — stop without another network call.
+    if (opts.signal?.aborted) {
+      throw Errors.internal('AI request was cancelled.');
+    }
+
+    const { signal, cleanup } = withTimeoutSignal(opts.signal, STRUCTURED_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (err) {
+      cleanup();
+      const name = (err as { name?: string })?.name;
+      const isTimeout = name === 'TimeoutError';
+      const isCallerAbort = opts.signal?.aborted === true;
+      if (isCallerAbort) {
+        throw Errors.internal('AI request was cancelled.');
+      }
+      lastTransient = isTimeout ? 'timeout' : 'network';
+      // eslint-disable-next-line no-console
+      console.error(`[gemini:structured] fetch failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${lastTransient}`, err);
+      if (attempt < MAX_ATTEMPTS) continue;
+      throw Errors.internal(
+        isTimeout
+          ? 'The AI service took too long to respond. Please try again.'
+          : 'Could not reach the AI service. Please check your connection and try again.',
+      );
+    }
+
+    if (!response.ok) {
+      cleanup();
+      if (isTransientHttpStatus(response.status) && attempt < MAX_ATTEMPTS) {
+        lastTransient = `http ${response.status}`;
+        // eslint-disable-next-line no-console
+        console.error(`[gemini:structured] HTTP ${response.status} (attempt ${attempt}/${MAX_ATTEMPTS}); retrying`);
+        continue;
+      }
+      throw Errors.internal(`The AI service returned an error (HTTP ${response.status}). Please try again.`);
+    }
+
+    let data: GeminiResponse;
+    try {
+      data = (await response.json()) as GeminiResponse;
+    } catch {
+      cleanup();
+      if (attempt < MAX_ATTEMPTS) {
+        lastTransient = 'invalid-body';
+        continue;
+      }
+      throw Errors.internal('The AI service returned an unreadable response. Please try again.');
+    }
+    cleanup();
+
+    const candidate = data.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const text = extractCandidateText(candidate);
+    const parsed = parseModelJson(text);
+    return { parsed, text, finishReason, raw: data };
   }
 
-  const data = (await response.json()) as GeminiResponse;
-  const candidate = data.candidates?.[0];
-  const text = extractCandidateText(candidate);
-  const parsed = parseModelJson(text);
-
-  return { parsed, text, raw: data };
+  // Loop always returns or throws above; this satisfies the type checker.
+  throw Errors.internal(`AI request failed (${lastTransient}). Please try again.`);
 }

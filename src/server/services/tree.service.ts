@@ -1162,6 +1162,10 @@ export async function createPersonsAndRelationshipsInTree(args: {
 }): Promise<AiBatchResult> {
   const { treeId, persons, relationships, rootLocalId } = args;
   const permissive = args.permissive ?? false;
+  const tEnter = Date.now();
+  console.log(
+    `[ai-tree:svc] enter treeId=${treeId} persons=${persons.length} rels=${relationships.length} permissive=${permissive}`,
+  );
 
   await requireTreeRole(treeId, 'EDITOR');
 
@@ -1192,6 +1196,9 @@ export async function createPersonsAndRelationshipsInTree(args: {
     if (!g1 || !g2) {
       throw Errors.badRequest(`SPOUSE references unknown local_id (${r.from_local_id} / ${r.to_local_id})`);
     }
+    console.log(
+      `[ai-tree:svc] SPOUSE ${r.from_local_id}(${g1}) <-> ${r.to_local_id}(${g2}) permissive=${permissive}`,
+    );
     assertSpouseGenderPair(g1, g2, permissive);
   }
 
@@ -1209,15 +1216,17 @@ export async function createPersonsAndRelationshipsInTree(args: {
     }
   }
 
-  return prisma.$transaction(async (tx) => {
-    const localToDbId = new Map<string, string>();
-
-    for (const p of persons) {
-      const birth_date = yearToJanFirst(p.birth_year);
-      const death_date = yearToJanFirst(p.death_year);
-      const is_deceased = p.is_deceased ?? (death_date !== null);
-
-      const createInput = withHebrewDatesForCreate({
+  // Build every person row in memory first (CPU only — Hebrew date derivation),
+  // so the transaction is just a few bulk round-trips rather than ~2N. The old
+  // per-row loop (N persons + M relationships = N+M sequential awaits) blew past
+  // Prisma's default 5s interactive-transaction timeout for large trees (P2028),
+  // which surfaced as the opaque "An unexpected error occurred".
+  const personsData: Prisma.PersonCreateManyInput[] = persons.map((p) => {
+    const birth_date = yearToJanFirst(p.birth_year);
+    const death_date = yearToJanFirst(p.death_year);
+    const is_deceased = p.is_deceased ?? (death_date !== null);
+    return {
+      ...withHebrewDatesForCreate({
         first_name: p.first_name && p.first_name.length > 0 ? p.first_name : p.first_name_he,
         last_name: p.last_name && p.last_name.length > 0 ? p.last_name : null,
         first_name_he: p.first_name_he,
@@ -1230,71 +1239,78 @@ export async function createPersonsAndRelationshipsInTree(args: {
         bio: p.bio ?? null,
         profile_image: null,
         maiden_name: null,
-      });
-
-      const created = await tx.person.create({
-        data: { ...createInput, tree_id: treeId },
-        select: { id: true },
-      });
-      localToDbId.set(p.local_id, created.id);
-    }
-
-    let relationshipCount = 0;
-    for (const r of relationships) {
-      const fromId = localToDbId.get(r.from_local_id);
-      const toId = localToDbId.get(r.to_local_id);
-      if (!fromId || !toId || fromId === toId) continue;
-
-      let person1_id: string;
-      let person2_id: string;
-      const relType: RelationshipType = r.type;
-
-      if (relType === 'PARENT_CHILD') {
-        // Directional: from = parent, to = child.
-        person1_id = fromId;
-        person2_id = toId;
-      } else {
-        // Symmetric — normalize so unique constraint is hit deterministically.
-        const [a, b] = normalizeSymmetric(fromId, toId, relType);
-        person1_id = a;
-        person2_id = b;
-      }
-
-      try {
-        await tx.relationship.create({
-          data: {
-            tree_id: treeId,
-            relationship_type: relType,
-            person1_id,
-            person2_id,
-          },
-          select: { id: true },
-        });
-        relationshipCount += 1;
-      } catch (err) {
-        // Swallow unique-constraint duplicates so a noisy plan doesn't fail
-        // the whole tree creation. Re-throw anything else.
-        const isPrismaUniqueViolation =
-          typeof err === 'object' &&
-          err !== null &&
-          'code' in err &&
-          (err as { code?: string }).code === 'P2002';
-        if (!isPrismaUniqueViolation) throw err;
-      }
-    }
-
-    const rootPersonId = localToDbId.get(rootLocalId) ?? null;
-    if (rootPersonId) {
-      await tx.tree.update({
-        where: { id: treeId },
-        data: { root_person_id: rootPersonId },
-      });
-    }
-
-    return {
-      personCount: localToDbId.size,
-      relationshipCount,
-      rootPersonId,
+      }),
+      tree_id: treeId,
     };
   });
+
+  console.log(
+    `[ai-tree:svc] pre-checks done (+${Date.now() - tEnter}ms); opening $transaction (batched, timeout=20000ms)`,
+  );
+  const txStart = Date.now();
+  return prisma.$transaction(
+    async (tx) => {
+      // 1) Bulk-insert persons. createManyAndReturn issues a single
+      //    INSERT ... RETURNING on Postgres, so rows come back in input order —
+      //    we map local_id → db id by index. Length assert guards against any
+      //    partial/misordered result.
+      const createdPersons = await tx.person.createManyAndReturn({
+        data: personsData,
+        select: { id: true },
+      });
+      if (createdPersons.length !== persons.length) {
+        throw Errors.internal('Person bulk insert returned an unexpected row count');
+      }
+      const localToDbId = new Map<string, string>();
+      persons.forEach((p, i) => localToDbId.set(p.local_id, createdPersons[i].id));
+      console.log(`[ai-tree:svc] bulk-created ${createdPersons.length} persons (+${Date.now() - txStart}ms)`);
+
+      // 2) Build + bulk-insert relationships. skipDuplicates absorbs any
+      //    symmetric/normalized collisions without per-row try/catch.
+      const relsData: Prisma.RelationshipCreateManyInput[] = [];
+      for (const r of relationships) {
+        const fromId = localToDbId.get(r.from_local_id);
+        const toId = localToDbId.get(r.to_local_id);
+        if (!fromId || !toId || fromId === toId) continue;
+
+        const relType: RelationshipType = r.type;
+        let person1_id: string;
+        let person2_id: string;
+        if (relType === 'PARENT_CHILD') {
+          // Directional: from = parent, to = child.
+          person1_id = fromId;
+          person2_id = toId;
+        } else {
+          // Symmetric — normalize so the unique constraint collapses (A,B)/(B,A).
+          const [a, b] = normalizeSymmetric(fromId, toId, relType);
+          person1_id = a;
+          person2_id = b;
+        }
+        relsData.push({ tree_id: treeId, relationship_type: relType, person1_id, person2_id });
+      }
+
+      const relResult =
+        relsData.length > 0
+          ? await tx.relationship.createMany({ data: relsData, skipDuplicates: true })
+          : { count: 0 };
+      console.log(`[ai-tree:svc] bulk-created ${relResult.count} relationships (+${Date.now() - txStart}ms)`);
+
+      // 3) Seed the tree root.
+      const rootPersonId = localToDbId.get(rootLocalId) ?? null;
+      if (rootPersonId) {
+        await tx.tree.update({
+          where: { id: treeId },
+          data: { root_person_id: rootPersonId },
+        });
+      }
+      console.log(`[ai-tree:svc] tx body complete root=${rootPersonId} (+${Date.now() - txStart}ms)`);
+
+      return {
+        personCount: localToDbId.size,
+        relationshipCount: relResult.count,
+        rootPersonId,
+      };
+    },
+    { timeout: 20000, maxWait: 10000 },
+  );
 }

@@ -15,6 +15,7 @@ import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { storageService } from '@/services/storage.service';
 import { DateInput } from '@/components/ui/DateInput';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { cn } from '@/lib/utils';
 import { AiBioSearch } from './AiBioSearch';
@@ -201,6 +202,7 @@ export function PersonSidePanel({
           <h2 className="text-lg font-semibold text-slate-900">עריכת פרטים</h2>
         </div>
 
+        <LoadingOverlay isPending={isSaving} variant="saving" className="flex min-h-0 flex-1 flex-col">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
             <div className="mb-4 flex flex-col items-center">
@@ -442,6 +444,7 @@ export function PersonSidePanel({
             </button>
           </div>
         </form>
+        </LoadingOverlay>
       </aside>
     </>
   );
