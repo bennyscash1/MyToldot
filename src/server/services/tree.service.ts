@@ -509,7 +509,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
   const personCount = tree._count.persons;
   let initialPersons: PersonRow[] = [];
   let initialRelationships: RelationshipRow[] = [];
-  let photosByPerson: Record<string, PersonPhotoDTO[]> = {};
+  const photosByPerson: Record<string, PersonPhotoDTO[]> = {};
 
   if (personCount > 0) {
     const [personRows, relRows] = await Promise.all([

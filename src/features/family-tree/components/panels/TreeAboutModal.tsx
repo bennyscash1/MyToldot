@@ -216,7 +216,6 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
       </>
     );
   }, [
-    canEdit,
     cancelEdit,
     commitSurnameInput,
     data,
