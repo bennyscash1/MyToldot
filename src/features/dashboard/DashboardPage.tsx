@@ -46,7 +46,6 @@ function DashboardPageInner({ data, initialPersonId }: DashboardPageProps) {
     data.persons,
     data.tree.id,
     initialPersonId,
-    isLivingRoomMode,
   );
   const metrics = useAutoFit(
     rootRef,

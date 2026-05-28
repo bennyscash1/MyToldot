@@ -6,7 +6,6 @@ import { usePathname } from '@/i18n/routing';
 
 import type { DashboardPerson } from '../types';
 
-const PERSON_DURATION_MS = 60_000;
 const PERSON_DURATION_SECONDS = 60;
 const TICK_MS = 1000;
 const MANUAL_NEXT_DEBOUNCE_MS = 500;
@@ -51,7 +50,6 @@ export function usePersonRotation(
   persons: DashboardPerson[],
   treeId: string,
   initialPersonId?: string | null,
-  autoAdvance = true,
 ): UsePersonRotationResult {
   const pathname = usePathname();
   const order = useMemo(() => shuffle(persons), [persons]);
@@ -73,96 +71,45 @@ export function usePersonRotation(
   const [isNextDebounced, setIsNextDebounced] = useState(false);
 
   const orderRef = useRef(order);
-  const lastAdvanceAtRef = useRef(Date.now());
-  const autoAdvanceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
   const manualNextLockRef = useRef(false);
 
   orderRef.current = order;
 
-  const syncSecondsFromClock = useCallback(() => {
-    const elapsed = Date.now() - lastAdvanceAtRef.current;
-    const remaining = Math.max(
-      0,
-      Math.ceil((PERSON_DURATION_MS - elapsed) / 1000),
-    );
-    setSecondsRemaining(remaining);
+  const resetCountdown = useCallback(() => {
+    setSecondsRemaining(PERSON_DURATION_SECONDS);
   }, []);
 
   const advanceToNextPerson = useCallback(() => {
     const len = orderRef.current.length;
     if (len === 0) return;
     setIndex((i) => (i + 1) % len);
-    lastAdvanceAtRef.current = Date.now();
-    setSecondsRemaining(PERSON_DURATION_SECONDS);
-  }, []);
+    resetCountdown();
+  }, [resetCountdown]);
 
   const advanceToPrevPerson = useCallback(() => {
     const len = orderRef.current.length;
     if (len === 0) return;
     setIndex((i) => (i - 1 + len) % len);
-    lastAdvanceAtRef.current = Date.now();
-    setSecondsRemaining(PERSON_DURATION_SECONDS);
-  }, []);
+    resetCountdown();
+  }, [resetCountdown]);
 
-  const bumpRotationClock = useCallback(() => {
-    lastAdvanceAtRef.current = Date.now();
-    setSecondsRemaining(PERSON_DURATION_SECONDS);
-  }, []);
-
-  const clearAutoAdvanceTimer = useCallback(() => {
-    if (autoAdvanceTimerRef.current !== null) {
-      clearInterval(autoAdvanceTimerRef.current);
-      autoAdvanceTimerRef.current = null;
-    }
-  }, []);
-
-  const clearCountdownTimer = useCallback(() => {
-    if (countdownTimerRef.current !== null) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-  }, []);
-
-  const restartAutoAdvanceTimer = useCallback(() => {
-    clearAutoAdvanceTimer();
-    if (!autoAdvance || paused || orderRef.current.length <= 1) return;
-
-    autoAdvanceTimerRef.current = setInterval(() => {
-      advanceToNextPerson();
-    }, PERSON_DURATION_MS);
-  }, [advanceToNextPerson, autoAdvance, clearAutoAdvanceTimer, paused]);
-
-  const restartCountdownTimer = useCallback(() => {
-    clearCountdownTimer();
-    if (!autoAdvance || paused) return;
-
-    syncSecondsFromClock();
-    countdownTimerRef.current = setInterval(() => {
-      syncSecondsFromClock();
-    }, TICK_MS);
-  }, [autoAdvance, clearCountdownTimer, paused, syncSecondsFromClock]);
-
+  // Single 1s tick: countdown display + auto-advance at 0. Depends only on paused
+  // and order length — never on index/person id (avoids stacked intervals).
   useEffect(() => {
-    restartAutoAdvanceTimer();
-    restartCountdownTimer();
-    return () => {
-      clearAutoAdvanceTimer();
-      clearCountdownTimer();
-    };
-  }, [
-    autoAdvance,
-    paused,
-    order.length,
-    restartAutoAdvanceTimer,
-    restartCountdownTimer,
-    clearAutoAdvanceTimer,
-    clearCountdownTimer,
-  ]);
+    if (paused || order.length <= 1) return;
+
+    const tick = window.setInterval(() => {
+      setSecondsRemaining((current) => {
+        if (current <= 1) {
+          setIndex((i) => (i + 1) % orderRef.current.length);
+          return PERSON_DURATION_SECONDS;
+        }
+        return current - 1;
+      });
+    }, TICK_MS);
+
+    return () => window.clearInterval(tick);
+  }, [paused, order.length]);
 
   useEffect(() => {
     if (order.length === 0) return;
@@ -180,9 +127,6 @@ export function usePersonRotation(
 
     params.set('personId', person.id);
     const nextUrl = `${pathname}?${params.toString()}`;
-
-    // Use replaceState only — router.replace was re-triggering RSC navigation
-    // and stacking rotation timers on each person change.
     window.history.replaceState(window.history.state, '', nextUrl);
   }, [index, storageKey, order, pathname]);
 
@@ -193,56 +137,26 @@ export function usePersonRotation(
     setIsNextDebounced(true);
 
     advanceToNextPerson();
-    restartAutoAdvanceTimer();
-    if (autoAdvance && !paused) {
-      restartCountdownTimer();
-    }
 
     window.setTimeout(() => {
       manualNextLockRef.current = false;
       setIsNextDebounced(false);
     }, MANUAL_NEXT_DEBOUNCE_MS);
-  }, [
-    advanceToNextPerson,
-    autoAdvance,
-    paused,
-    restartAutoAdvanceTimer,
-    restartCountdownTimer,
-  ]);
+  }, [advanceToNextPerson]);
 
   const prev = useCallback(() => {
     if (orderRef.current.length === 0) return;
     advanceToPrevPerson();
-    restartAutoAdvanceTimer();
-    if (autoAdvance && !paused) {
-      restartCountdownTimer();
-    }
-  }, [
-    advanceToPrevPerson,
-    autoAdvance,
-    paused,
-    restartAutoAdvanceTimer,
-    restartCountdownTimer,
-  ]);
+  }, [advanceToPrevPerson]);
 
   const setFocalPersonId = useCallback(
     (id: string) => {
       const idx = orderRef.current.findIndex((p) => p.id === id);
       if (idx < 0) return;
       setIndex(idx);
-      bumpRotationClock();
-      restartAutoAdvanceTimer();
-      if (autoAdvance && !paused) {
-        restartCountdownTimer();
-      }
+      resetCountdown();
     },
-    [
-      autoAdvance,
-      bumpRotationClock,
-      paused,
-      restartAutoAdvanceTimer,
-      restartCountdownTimer,
-    ],
+    [resetCountdown],
   );
 
   const togglePause = useCallback(() => {
