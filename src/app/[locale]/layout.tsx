@@ -9,10 +9,12 @@ import { notFound } from 'next/navigation';
 import { routing, isValidLocale, type Locale } from '@/i18n/routing';
 import { LOCALE_DIR } from '@/types';
 import { Navbar } from '@/components/layout/Navbar';
+import { ViewportModeSync } from '@/components/layout/ViewportModeSync';
+import {
+  isLandingRootPathname,
+  isTreeCanvasPathname,
+} from '@/lib/routing/viewport';
 import '@/app/globals.css';
-
-const LANDING_ROOT_PATHNAME = /^\/(?:en|he)\/?$/;
-const LOCKED_VIEWPORT_PATHNAME = /^\/(?:en|he)\/tree\/\d{5}\/?$/;
 
 const inter = Inter({
   subsets: ['latin'],
@@ -79,8 +81,8 @@ export default async function LocaleLayout({
 
   const hdrs = await headers();
   const pathname = hdrs.get('x-pathname') ?? '';
-  const isLockedViewport = LOCKED_VIEWPORT_PATHNAME.test(pathname);
-  const isLandingRoot = LANDING_ROOT_PATHNAME.test(pathname);
+  const isLockedViewport = isTreeCanvasPathname(pathname);
+  const isLandingRoot = isLandingRootPathname(pathname);
 
   const bodyClass = isLockedViewport
     ? 'flex h-screen flex-col overflow-hidden bg-white'
@@ -101,13 +103,18 @@ export default async function LocaleLayout({
       */}
       <body className={bodyClass} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
+          <ViewportModeSync />
           <Navbar />
-          <main className={mainClass}>{children}</main>
-          {!isLockedViewport && !isLandingRoot && (
-            <footer className="border-t border-gray-100 py-6 text-center text-sm text-gray-400">
-              {tCommon('footerCopyright', { year: new Date().getFullYear() })}
-            </footer>
-          )}
+          <main id="app-main" className={mainClass}>
+            {children}
+          </main>
+          <footer
+            id="app-footer"
+            hidden={isLockedViewport || isLandingRoot}
+            className="border-t border-gray-100 py-6 text-center text-sm text-gray-400"
+          >
+            {tCommon('footerCopyright', { year: new Date().getFullYear() })}
+          </footer>
         </NextIntlClientProvider>
       </body>
     </html>
