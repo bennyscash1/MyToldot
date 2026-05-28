@@ -50,7 +50,7 @@ export function PersonNowCard({
     : 'text-[clamp(1.375rem,2.5vw,calc(1.75rem*var(--dash-scale,1)))]';
 
   return (
-    <article className="relative flex h-full min-h-0 flex-col rounded-xl border border-slate-200/70 bg-white p-4 shadow-md">
+    <article className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/70 bg-white p-4 shadow-md">
       {showNav && onNext && onPrev && (
         <>
           <NavArrow side="prev" isRtl={isRtl} onClick={onPrev} label={t('previous')} />
@@ -76,8 +76,8 @@ export function PersonNowCard({
         </span>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(0,38%)_1fr]">
-        <div className="flex min-h-0 flex-col items-center">
+      <div className="grid min-h-0 flex-1 gap-3 overflow-hidden md:grid-cols-[minmax(0,38%)_1fr]">
+        <div className="flex shrink-0 flex-col items-center">
           <div className="relative w-full max-w-[220px] shrink-0">
             {carousel.current ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -106,22 +106,28 @@ export function PersonNowCard({
           )}
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-col">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-700">
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <p className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
             {t('featuredEyebrow')}
           </p>
-          <h1 className={`mt-0.5 font-semibold text-slate-900 ${nameClass}`}>
+          <h1
+            className={`mt-0.5 shrink-0 font-semibold text-slate-900 ${nameClass}`}
+          >
             {person.displayName}
           </h1>
           {parentsLine && (
-            <p className="mt-0.5 text-xs text-slate-600">{parentsLine}</p>
+            <p className="mt-0.5 shrink-0 text-xs text-slate-600">{parentsLine}</p>
           )}
-          <DatesRow person={person} compact={!tv} />
-          <BiographyCard person={person} lineClamp={bioLineClamp} tv={tv} />
+          <div className="shrink-0">
+            <DatesRow person={person} compact={!tv} />
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <BiographyCard person={person} lineClamp={bioLineClamp} tv={tv} />
+          </div>
         </div>
       </div>
 
-      <div className="mt-2 min-h-[100px] shrink-0 flex-1">
+      <div className="mt-3 shrink-0 border-t border-slate-100 pt-3">
         <MiniFamilyTree person={person} onSelectPerson={onSelectPerson} />
       </div>
     </article>

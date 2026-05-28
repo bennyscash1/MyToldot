@@ -17,13 +17,13 @@ export function MiniFamilyTree({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   return (
-    <div className="min-h-[120px] w-full min-h-0 flex-1">
+    <div className="h-[120px] w-full overflow-hidden sm:h-[130px]">
       <svg
         width="100%"
         height="100%"
         viewBox={layout.viewBox}
         preserveAspectRatio="xMidYMid meet"
-        className="block h-full w-full"
+        className="block h-full max-h-full w-full"
         role="img"
         aria-label={person.displayName}
       >
