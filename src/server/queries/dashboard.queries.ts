@@ -7,8 +7,11 @@ import {
   type RelationshipLike,
 } from '@/features/dashboard/lib/relationship-counts';
 import {
+  EVENT_WINDOW_FUTURE_DAYS,
+  EVENT_WINDOW_PAST_DAYS,
   getUpcomingBirthdays,
   getUpcomingYahrzeits,
+  sortDashboardEvents,
   todayHebrew,
 } from '@/features/dashboard/lib/hebcal-events';
 import type {
@@ -23,7 +26,6 @@ import type {
 const MIN_BIO_CHARS = 20;
 const RECENT_BIOS_LIMIT = 5;
 const RECENT_PHOTOS_LIMIT = 6;
-const EVENT_WINDOW_DAYS = 7;
 
 export async function getDashboardData(treeId: string): Promise<DashboardData | null> {
   const tree = await prisma.tree.findUnique({
@@ -174,10 +176,20 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     isDeceased: p.is_deceased,
   }));
 
-  const upcomingEvents: UpcomingEvent[] = [
-    ...getUpcomingBirthdays(personsForEvents, now, EVENT_WINDOW_DAYS),
-    ...getUpcomingYahrzeits(personsForEvents, now, EVENT_WINDOW_DAYS),
-  ].sort((a, b) => a.daysUntil - b.daysUntil);
+  const upcomingEvents = sortDashboardEvents([
+    ...getUpcomingBirthdays(
+      personsForEvents,
+      now,
+      EVENT_WINDOW_FUTURE_DAYS,
+      EVENT_WINDOW_PAST_DAYS,
+    ),
+    ...getUpcomingYahrzeits(
+      personsForEvents,
+      now,
+      EVENT_WINDOW_FUTURE_DAYS,
+      EVENT_WINDOW_PAST_DAYS,
+    ),
+  ]);
 
   const recentBios: RecentBio[] = personRows
     .filter((p) => (p.bio?.trim().length ?? 0) >= MIN_BIO_CHARS)

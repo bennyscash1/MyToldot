@@ -1,7 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
+import { sortDashboardEvents } from '../lib/hebcal-events';
 import type { UpcomingEvent } from '../types';
 
 interface UpcomingEventsPanelProps {
@@ -16,15 +18,16 @@ export function UpcomingEventsPanel({
   todayGregorianIso,
 }: UpcomingEventsPanelProps) {
   const t = useTranslations('dashboard.panels');
-  const birthdays = events.filter((e) => e.type === 'birthday');
-  const yahrzeits = events.filter((e) => e.type === 'yahrzeit');
+  const sorted = useMemo(() => sortDashboardEvents(events), [events]);
+  const birthdays = sorted.filter((e) => e.type === 'birthday');
+  const yahrzeits = sorted.filter((e) => e.type === 'yahrzeit');
   const todayDate = new Date(todayGregorianIso);
   const todayLabel = `${String(todayDate.getDate()).padStart(2, '0')}.${String(todayDate.getMonth() + 1).padStart(2, '0')}.${todayDate.getFullYear()}`;
 
   return (
     <section className="rounded-lg border border-slate-200/70 bg-white p-4 shadow-sm">
       <header className="mb-3 flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-800">{t('weekTitle')}</h2>
+        <h2 className="text-sm font-semibold text-slate-800">{t('monthTitle')}</h2>
       </header>
       <p className="mb-3 text-xs text-slate-500">
         {todayHebrew} · {todayLabel}
@@ -32,7 +35,7 @@ export function UpcomingEventsPanel({
 
       {events.length === 0 && (
         <p className="rounded-md bg-slate-50 px-3 py-4 text-center text-sm text-slate-500">
-          {t('weekEmpty')}
+          {t('monthEmpty')}
         </p>
       )}
 
@@ -44,7 +47,7 @@ export function UpcomingEventsPanel({
           </h3>
           <ul className="flex flex-col gap-2">
             {birthdays.map((e) => (
-              <EventRow key={`bd-${e.personId}`} event={e} />
+              <EventRow key={`bd-${e.personId}-${e.date}`} event={e} />
             ))}
           </ul>
         </div>
@@ -58,7 +61,7 @@ export function UpcomingEventsPanel({
           </h3>
           <ul className="flex flex-col gap-2">
             {yahrzeits.map((e) => (
-              <EventRow key={`yz-${e.personId}`} event={e} />
+              <EventRow key={`yz-${e.personId}-${e.date}`} event={e} />
             ))}
           </ul>
         </div>
@@ -69,28 +72,52 @@ export function UpcomingEventsPanel({
 
 function EventRow({ event }: { event: UpcomingEvent }) {
   const t = useTranslations('dashboard.panels');
-  const dayLabel =
-    event.daysUntil === 0
-      ? t('today')
-      : event.daysUntil === 1
-        ? t('tomorrow')
-        : t('inDays', { n: event.daysUntil });
+  const isPast = event.daysUntil < 0;
+  const dayLabel = relativeDayLabel(event.daysUntil, t);
   const ageLabel =
     event.type === 'birthday'
       ? t('turning', { age: event.ageOrYears })
       : t('yearsSince', { n: event.ageOrYears });
+
   return (
-    <li className="flex items-start justify-between gap-2 text-sm">
+    <li
+      className={
+        'flex items-start justify-between gap-2 text-sm transition-opacity ' +
+        (isPast ? 'opacity-55' : 'opacity-100')
+      }
+    >
       <div className="min-w-0">
-        <p className="truncate font-medium text-slate-800">{event.personName}</p>
+        <p
+          className={
+            'truncate font-medium ' + (isPast ? 'text-slate-600' : 'text-slate-800')
+          }
+        >
+          {event.personName}
+        </p>
         <p className="text-xs text-slate-500">{event.dateHebrew}</p>
       </div>
       <div className="shrink-0 text-end">
-        <p className="text-xs font-medium text-slate-700">{dayLabel}</p>
+        <p
+          className={
+            'text-xs font-medium ' + (isPast ? 'text-slate-500' : 'text-slate-700')
+          }
+        >
+          {dayLabel}
+        </p>
         <p className="text-[11px] text-slate-500">{ageLabel}</p>
       </div>
     </li>
   );
+}
+
+type PanelT = ReturnType<typeof useTranslations<'dashboard.panels'>>;
+
+function relativeDayLabel(daysUntil: number, t: PanelT): string {
+  if (daysUntil === 0) return t('today');
+  if (daysUntil === 1) return t('tomorrow');
+  if (daysUntil === -1) return t('yesterday');
+  if (daysUntil > 1) return t('inDays', { n: daysUntil });
+  return t('daysAgo', { n: Math.abs(daysUntil) });
 }
 
 function CakeIcon({ className }: { className?: string }) {
