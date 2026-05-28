@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { profileImagePublicUrl, personGalleryPublicUrl } from '@/lib/supabase/public-url';
 import {
   buildRelationsMap,
+  computeGenerationCount,
   type RelationshipLike,
 } from '@/features/dashboard/lib/relationship-counts';
 import {
@@ -17,10 +18,10 @@ import {
 import type {
   DashboardData,
   DashboardPerson,
+  MiniTreePerson,
   PersonRef,
   RecentBio,
   RecentPhoto,
-  UpcomingEvent,
 } from '@/features/dashboard/types';
 
 const MIN_BIO_CHARS = 20;
@@ -51,6 +52,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
         is_deceased: true,
         bio: true,
         profile_image: true,
+        gender: true,
         updated_at: true,
       },
       orderBy: { created_at: 'asc' },
@@ -106,6 +108,35 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     };
   };
 
+  const miniTreeOf = (
+    id: string,
+    opts?: { isAdoptive?: boolean; isDivorcedSpouse?: boolean },
+  ): MiniTreePerson | null => {
+    const p = personIndex.get(id);
+    if (!p) return null;
+    return {
+      id: p.id,
+      displayName: displayNameFor(p),
+      profileImageUrl: profileImagePublicUrl(p.profile_image),
+      gender: p.gender,
+      isAdoptive: opts?.isAdoptive,
+      isDivorcedSpouse: opts?.isDivorcedSpouse,
+      birthDate: p.birth_date ? p.birth_date.toISOString() : null,
+    };
+  };
+
+  const sortByBirthDate = (ids: string[]): string[] => {
+    return [...ids].sort((a, b) => {
+      const da = personIndex.get(a)?.birth_date?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const db = personIndex.get(b)?.birth_date?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return da - db;
+    });
+  };
+
+  function dedupeIds(ids: string[]): string[] {
+    return Array.from(new Set(ids));
+  }
+
   const persons: DashboardPerson[] = [];
 
   for (const p of personRows) {
@@ -116,15 +147,31 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     if (!eligible) continue;
 
     const rel = relationsMap.get(p.id);
+    const adoptiveSet = new Set(rel?.adoptiveParentIds ?? []);
     const parentRefs = (rel?.parentIds ?? [])
-      .map((id) => refOf(id))
-      .filter((r): r is PersonRef => r !== null);
+      .map((id) => miniTreeOf(id, { isAdoptive: adoptiveSet.has(id) }))
+      .filter((r): r is MiniTreePerson => r !== null);
     const siblingRefs = (rel?.siblingIds ?? [])
       .map((id) => refOf(id))
       .filter((r): r is PersonRef => r !== null);
-    const spouseRefs = (rel?.spouseIds ?? [])
-      .map((id) => refOf(id))
-      .filter((r): r is PersonRef => r !== null);
+    const spouseRefs = dedupeIds([...(rel?.spouseIds ?? []), ...(rel?.divorcedSpouseIds ?? [])])
+      .map((id) =>
+        miniTreeOf(id, {
+          isDivorcedSpouse: !(rel?.spouseIds ?? []).includes(id),
+        }),
+      )
+      .filter((r): r is MiniTreePerson => r !== null);
+
+    const sortedChildIds = sortByBirthDate(rel?.childIds ?? []);
+    const childRefs = sortedChildIds
+      .map((id) => miniTreeOf(id))
+      .filter((r): r is MiniTreePerson => r !== null);
+    const childrenOverflow = Math.max(0, childRefs.length - 3);
+    const displayedChildren = childRefs.slice(0, 3);
+
+    const activeSpouseCount = dedupeIds(rel?.spouseIds ?? []).length;
+    const divorcedCount = dedupeIds(rel?.divorcedSpouseIds ?? []).length;
+    const extraSpouseCount = Math.max(0, activeSpouseCount + divorcedCount - 1);
 
     const galleryUrls = photos
       .map((photo) => {
@@ -163,9 +210,26 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
         parents: parentRefs,
         siblings: siblingRefs,
         spouses: spouseRefs,
+        children: displayedChildren,
+        childrenOverflow,
+        extraSpouseCount,
       },
     });
   }
+
+  const marriageCount = relationshipRows.filter(
+    (r) => r.relationship_type === 'SPOUSE',
+  ).length;
+
+  const treeStats = {
+    memberCount: personRows.length,
+    generationCount: computeGenerationCount(
+      personRows.map((p) => p.id),
+      relationsMap,
+    ),
+    marriageCount,
+    photoCount: photoRows.length,
+  };
 
   const now = new Date();
   const personsForEvents = personRows.map((p) => ({
@@ -230,6 +294,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     recentBios,
     recentPhotos,
     totalPhotoCount: photoRows.length,
+    treeStats,
     todayHebrewDate: todayHebrew(now),
     todayGregorianDate: now.toISOString(),
   };

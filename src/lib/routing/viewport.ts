@@ -7,11 +7,19 @@
 const TREE_CANVAS_PATH_RE =
   /^\/(?:en|he)\/tree\/\d{5}\/?$|^\/tree\/\d{5}\/?$/;
 
+/** Family dashboard: `/tree/12345/dashboard` or localized variant. */
+const DASHBOARD_PATH_RE =
+  /^\/(?:en|he)\/tree\/\d{5}\/dashboard\/?$|^\/tree\/\d{5}\/dashboard\/?$/;
+
 /** Marketing landing root: `/`, `/en`, `/he`. */
 const LANDING_ROOT_PATH_RE = /^\/(?:en|he)?\/?$/;
 
 export function isTreeCanvasPathname(pathname: string): boolean {
   return TREE_CANVAS_PATH_RE.test(pathname);
+}
+
+export function isDashboardPathname(pathname: string): boolean {
+  return DASHBOARD_PATH_RE.test(pathname);
 }
 
 export function isLandingRootPathname(pathname: string): boolean {

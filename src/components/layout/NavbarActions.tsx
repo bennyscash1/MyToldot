@@ -12,6 +12,7 @@ import {
   PREFERRED_LOCALE_COOKIE,
   PREFERRED_LOCALE_MAX_AGE_SECONDS,
 } from '@/lib/locale-preference';
+import { LivingRoomModeToggle } from '@/features/dashboard/components/LivingRoomModeToggle';
 
 // ──────────────────────────────────────────────
 // NavbarActions — Client Component
@@ -237,6 +238,7 @@ export function NavbarActions() {
 
   return (
     <div className="flex items-center gap-2">
+      <LivingRoomModeToggle variant="enter" />
       <UserMenu
         email={profile?.email}
         initials={initials}

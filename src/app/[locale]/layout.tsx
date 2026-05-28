@@ -11,6 +11,7 @@ import { LOCALE_DIR } from '@/types';
 import { Navbar } from '@/components/layout/Navbar';
 import { ViewportModeSync } from '@/components/layout/ViewportModeSync';
 import {
+  isDashboardPathname,
   isLandingRootPathname,
   isTreeCanvasPathname,
 } from '@/lib/routing/viewport';
@@ -81,7 +82,8 @@ export default async function LocaleLayout({
 
   const hdrs = await headers();
   const pathname = hdrs.get('x-pathname') ?? '';
-  const isLockedViewport = isTreeCanvasPathname(pathname);
+  const isLockedViewport =
+    isTreeCanvasPathname(pathname) || isDashboardPathname(pathname);
   const isLandingRoot = isLandingRootPathname(pathname);
 
   const bodyClass = isLockedViewport

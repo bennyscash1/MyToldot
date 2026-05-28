@@ -12,8 +12,10 @@ export interface RelationshipLike {
 
 export interface PersonRelations {
   spouseIds: string[];
+  divorcedSpouseIds: string[];
   childIds: string[];
   parentIds: string[];
+  adoptiveParentIds: string[];
   siblingIds: string[];
   grandchildIds: string[];
   counts: {
@@ -32,8 +34,10 @@ export function buildRelationsMap(
     if (!r) {
       r = {
         spouseIds: [],
+        divorcedSpouseIds: [],
         childIds: [],
         parentIds: [],
+        adoptiveParentIds: [],
         siblingIds: [],
         grandchildIds: [],
         counts: { spouses: 0, children: 0, grandchildren: 0 },
@@ -45,12 +49,19 @@ export function buildRelationsMap(
 
   for (const rel of relationships) {
     const { relationship_type, person1_id, person2_id } = rel;
-    if (relationship_type === 'PARENT_CHILD' || relationship_type === 'ADOPTED_PARENT') {
+    if (relationship_type === 'PARENT_CHILD') {
       ensure(person1_id).childIds.push(person2_id);
       ensure(person2_id).parentIds.push(person1_id);
+    } else if (relationship_type === 'ADOPTED_PARENT') {
+      ensure(person1_id).childIds.push(person2_id);
+      ensure(person2_id).parentIds.push(person1_id);
+      ensure(person2_id).adoptiveParentIds.push(person1_id);
     } else if (relationship_type === 'SPOUSE' || relationship_type === 'ENGAGED') {
       ensure(person1_id).spouseIds.push(person2_id);
       ensure(person2_id).spouseIds.push(person1_id);
+    } else if (relationship_type === 'DIVORCED') {
+      ensure(person1_id).divorcedSpouseIds.push(person2_id);
+      ensure(person2_id).divorcedSpouseIds.push(person1_id);
     } else if (relationship_type === 'SIBLING') {
       ensure(person1_id).siblingIds.push(person2_id);
       ensure(person2_id).siblingIds.push(person1_id);
@@ -73,6 +84,53 @@ export function buildRelationsMap(
   }
 
   return map;
+}
+
+/** Max parent-child depth across the tree (generation span). */
+export function computeGenerationCount(
+  personIds: string[],
+  relationsMap: Map<string, PersonRelations>,
+): number {
+  if (personIds.length === 0) return 0;
+
+  const idSet = new Set(personIds);
+  const roots = personIds.filter((id) => {
+    const parents = relationsMap.get(id)?.parentIds ?? [];
+    return parents.length === 0 || !parents.some((p) => idSet.has(p));
+  });
+
+  const startIds = roots.length > 0 ? roots : personIds;
+  let maxDepth = 0;
+
+  for (const rootId of startIds) {
+    const depth = bfsDepth(rootId, relationsMap, idSet);
+    if (depth > maxDepth) maxDepth = depth;
+  }
+
+  return Math.max(1, maxDepth);
+}
+
+function bfsDepth(
+  rootId: string,
+  relationsMap: Map<string, PersonRelations>,
+  idSet: Set<string>,
+): number {
+  const queue: { id: string; depth: number }[] = [{ id: rootId, depth: 1 }];
+  const visited = new Set<string>([rootId]);
+  let maxDepth = 1;
+
+  while (queue.length > 0) {
+    const { id, depth } = queue.shift()!;
+    maxDepth = Math.max(maxDepth, depth);
+    const children = relationsMap.get(id)?.childIds ?? [];
+    for (const childId of children) {
+      if (!idSet.has(childId) || visited.has(childId)) continue;
+      visited.add(childId);
+      queue.push({ id: childId, depth: depth + 1 });
+    }
+  }
+
+  return maxDepth;
 }
 
 function dedupe(arr: string[]): string[] {

@@ -23,7 +23,11 @@ export default async function TreeShortCodeLayout({
   const isDashboard = /\/tree\/\d{5}\/dashboard(?:\/|$)/.test(pathname);
 
   if (isDashboard) {
-    return <div>{children}</div>;
+    return (
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </div>
+    );
   }
 
   const t = await getTranslations('treeNav');

@@ -4,6 +4,13 @@ export interface PersonRef {
   profileImageUrl: string | null;
 }
 
+export interface MiniTreePerson extends PersonRef {
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN' | null;
+  isAdoptive?: boolean;
+  isDivorcedSpouse?: boolean;
+  birthDate?: string | null;
+}
+
 export interface DashboardPerson {
   id: string;
   firstNameHe: string | null;
@@ -24,9 +31,14 @@ export interface DashboardPerson {
   parentNames: string[];
   counts: { spouses: number; children: number; grandchildren: number };
   relatives: {
-    parents: PersonRef[];
+    parents: MiniTreePerson[];
     siblings: PersonRef[];
-    spouses: PersonRef[];
+    spouses: MiniTreePerson[];
+    children: MiniTreePerson[];
+    /** Total children when more than shown in mini-tree */
+    childrenOverflow: number;
+    /** Extra spouses beyond the one shown in mini-tree */
+    extraSpouseCount: number;
   };
 }
 
@@ -58,6 +70,13 @@ export interface RecentPhoto {
   storagePath: string;
 }
 
+export interface DashboardTreeStats {
+  memberCount: number;
+  generationCount: number;
+  marriageCount: number;
+  photoCount: number;
+}
+
 export interface DashboardData {
   tree: { id: string; shortCode: string; name: string };
   persons: DashboardPerson[];
@@ -65,6 +84,7 @@ export interface DashboardData {
   recentBios: RecentBio[];
   recentPhotos: RecentPhoto[];
   totalPhotoCount: number;
+  treeStats: DashboardTreeStats;
   todayHebrewDate: string;
   todayGregorianDate: string;
 }

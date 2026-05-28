@@ -4,10 +4,11 @@ import type { Metadata } from 'next';
 
 import { findTreeByRouteParam } from '@/server/services/tree.service';
 import { getDashboardData } from '@/server/queries/dashboard.queries';
-import { DashboardClient } from '@/features/dashboard/components/DashboardClient';
+import { DashboardPage } from '@/features/dashboard/DashboardPage';
 
 type DashboardPageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
+  searchParams: Promise<{ personId?: string }>;
 };
 
 export async function generateMetadata({
@@ -21,13 +22,17 @@ export async function generateMetadata({
   };
 }
 
-export default async function DashboardPage({ params }: DashboardPageProps) {
+export default async function TreeDashboardRoute({
+  params,
+  searchParams,
+}: DashboardPageProps) {
   const { shortCode } = await params;
+  const { personId } = await searchParams;
   const tree = await findTreeByRouteParam(shortCode);
   if (!tree) notFound();
 
   const data = await getDashboardData(tree.id);
   if (!data) notFound();
 
-  return <DashboardClient data={data} />;
+  return <DashboardPage data={data} initialPersonId={personId ?? null} />;
 }

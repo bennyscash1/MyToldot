@@ -4,6 +4,7 @@ import { useLayoutEffect } from 'react';
 
 import { usePathname } from '@/i18n/routing';
 import {
+  isDashboardPathname,
   isLandingRootPathname,
   isTreeCanvasPathname,
 } from '@/lib/routing/viewport';
@@ -17,7 +18,8 @@ import {
  */
 export function ViewportModeSync() {
   const pathname = usePathname() ?? '';
-  const locked = isTreeCanvasPathname(pathname);
+  const locked =
+    isTreeCanvasPathname(pathname) || isDashboardPathname(pathname);
   const hideFooter =
     locked || isLandingRootPathname(pathname);
 
