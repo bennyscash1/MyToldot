@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-const PHOTO_INTERVAL_MS = 5000;
+/** Time each photo is shown when a person has more than one image. */
+const PHOTO_INTERVAL_MS = 10_000;
 
 export interface PhotoSlide {
   url: string;
