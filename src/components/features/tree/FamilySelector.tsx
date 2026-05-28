@@ -106,6 +106,8 @@ export function FamilySelector({ families }: { families: FamilyEntry[] }) {
             <li key={family.shortCode} className="relative">
               <Link
                 href={`/tree/${family.shortCode}`}
+                prefetch
+                onMouseEnter={() => router.prefetch(`/tree/${family.shortCode}`)}
                 className="group flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white/70 p-5 shadow-sm backdrop-blur-sm transition-all hover:border-emerald-300 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-2 pe-8">

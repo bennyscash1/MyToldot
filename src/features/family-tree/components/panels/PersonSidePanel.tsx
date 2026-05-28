@@ -44,6 +44,7 @@ export interface PersonSidePanelProps {
   treeRouteCode: string;
   person: PersonRow;
   photos: PersonPhotoDTO[];
+  photosLoading?: boolean;
   onPhotosChange: (next: PersonPhotoDTO[]) => void;
   canEdit: boolean;
   onClose: () => void;
@@ -65,6 +66,7 @@ export function PersonSidePanel({
   treeRouteCode,
   person,
   photos,
+  photosLoading = false,
   onPhotosChange,
   canEdit,
   onClose,
@@ -258,6 +260,7 @@ export function PersonSidePanel({
               personId={person.id}
               treeRouteCode={treeRouteCode}
               photos={photos}
+              photosLoading={photosLoading}
               onPhotosChange={onPhotosChange}
               canEdit={canEdit}
             />

@@ -14,6 +14,7 @@ import { storageService } from '@/services/storage.service';
 import { ServiceError } from '@/services/api.client';
 import type { PersonPhotoDTO } from '@/features/family-tree/lib/types';
 
+import { Spinner } from '@/components/ui/Spinner';
 import { PhotoLightbox } from './PhotoLightbox';
 
 export interface PersonGalleryEditorProps {
@@ -21,6 +22,7 @@ export interface PersonGalleryEditorProps {
   personId: string;
   treeRouteCode: string;
   photos: PersonPhotoDTO[];
+  photosLoading?: boolean;
   onPhotosChange: (next: PersonPhotoDTO[]) => void;
   canEdit: boolean;
 }
@@ -48,6 +50,7 @@ export function PersonGalleryEditor({
   personId,
   treeRouteCode,
   photos,
+  photosLoading = false,
   onPhotosChange,
   canEdit,
 }: PersonGalleryEditorProps) {
@@ -153,14 +156,18 @@ export function PersonGalleryEditor({
       >
         <PhotoIcon className="h-5 w-5 shrink-0 text-emerald-600" />
         <span className="flex-1 text-start font-medium">{t('title')}</span>
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-xs font-semibold',
-            count > 0 ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600',
-          )}
-        >
-          {count}
-        </span>
+        {photosLoading ? (
+          <Spinner size={20} />
+        ) : (
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-semibold',
+              count > 0 ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600',
+            )}
+          >
+            {count}
+          </span>
+        )}
         <span
           className={cn(
             'text-gray-400 transition-transform',

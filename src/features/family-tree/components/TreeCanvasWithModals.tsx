@@ -21,6 +21,7 @@ import { BlockedActionDialog } from '@/components/ui/BlockedActionDialog';
 import { NudgesPanelContainer } from '@/features/nudges/components/NudgesPanelContainer';
 import { AiTreeBuilderModal } from './panels/AiTreeBuilderModal';
 import { LoadingOverlay, type LoadingVariant } from '@/components/ui/LoadingOverlay';
+import { apiClient } from '@/services/api.client';
 
 export interface TreeCanvasWithModalsProps {
   treeId: string;
@@ -28,7 +29,6 @@ export interface TreeCanvasWithModalsProps {
   initialPersons: PersonRow[];
   initialRelationships: RelationshipRow[];
   initialFocalId: string | null;
-  initialPhotosByPerson: Record<string, PersonPhotoDTO[]>;
   canEdit: boolean;
   canDeletePerson: boolean;
   strictMode?: boolean;
@@ -43,7 +43,6 @@ export function TreeCanvasWithModals({
   initialPersons,
   initialRelationships,
   initialFocalId,
-  initialPhotosByPerson,
   canEdit,
   canDeletePerson,
   strictMode = false,
@@ -97,7 +96,11 @@ export function TreeCanvasWithModals({
   const [sidePersonId, setSidePersonId] = useState<string | null>(initialSidePersonId);
   const [sidePanelInitialFocus, setSidePanelInitialFocus] =
     useState<'bio' | null>(null);
-  const [photosByPerson, setPhotosByPerson] = useState(initialPhotosByPerson);
+  const [photosByPerson, setPhotosByPerson] = useState<
+    Record<string, PersonPhotoDTO[]>
+  >({});
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const photosFetchStartedRef = useRef(false);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAiBuilder, setShowAiBuilder] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
@@ -122,6 +125,30 @@ export function TreeCanvasWithModals({
     personName: string;
   } | null>(null);
   const firstPersonModalRef = useRef<HTMLDivElement>(null);
+
+  const treeRouteBase = `/${locale}/tree/${treeRouteCode}`;
+
+  // Load gallery photos once when the side panel is first opened (not on canvas load).
+  useEffect(() => {
+    if (!sidePersonId || photosFetchStartedRef.current) return;
+    photosFetchStartedRef.current = true;
+    let cancelled = false;
+    setPhotosLoading(true);
+    void apiClient
+      .get<Record<string, PersonPhotoDTO[]>>(`${treeRouteBase}/photos`)
+      .then((data) => {
+        if (!cancelled) setPhotosByPerson(data);
+      })
+      .catch(() => {
+        if (!cancelled) photosFetchStartedRef.current = false;
+      })
+      .finally(() => {
+        if (!cancelled) setPhotosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sidePersonId, treeRouteBase]);
 
   const onSelectPerson = useCallback(
     (personId: string) => {
@@ -559,6 +586,7 @@ export function TreeCanvasWithModals({
           treeRouteCode={treeRouteCode}
           person={sidePerson}
           photos={photosByPerson[sidePerson.id] ?? []}
+          photosLoading={photosLoading}
           onPhotosChange={(next) =>
             setPhotosByPerson((prev) => ({ ...prev, [sidePerson.id]: next }))
           }

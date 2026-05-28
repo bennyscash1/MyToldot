@@ -9,6 +9,7 @@ import {
 import { JoinWelcomeBanner } from '@/components/features/tree/JoinWelcomeBanner';
 import { RequestEditorAccessButton } from '@/components/features/tree/RequestEditorAccessButton';
 import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPanel';
+import { TreeCanvasShell } from './TreeCanvasShell';
 
 type TreeShortCodePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
@@ -37,14 +38,14 @@ export default async function TreeShortCodePage({
   } catch {
     const t = await getTranslations('treePage');
     return (
-      <TreeShell>
+      <TreeCanvasShell>
         <div
           className="flex flex-1 items-center justify-center px-4 py-20 text-center text-slate-500"
           dir={dir}
         >
           {t('loadError')}
         </div>
-      </TreeShell>
+      </TreeCanvasShell>
     );
   }
 
@@ -77,14 +78,14 @@ export default async function TreeShortCodePage({
 
   if (!treeData.treeId) {
     return (
-      <TreeShell>
+      <TreeCanvasShell>
         <EmptyTreeState mode="noTree" />
-      </TreeShell>
+      </TreeCanvasShell>
     );
   }
 
   return (
-    <TreeShell>
+    <TreeCanvasShell>
       <div className="flex min-h-0 flex-1 flex-col">
         {showWelcomeBanner && (
           <JoinWelcomeBanner treeName={treeDisplayName} />
@@ -110,7 +111,6 @@ export default async function TreeShortCodePage({
             initialPersons={treeData.initialPersons}
             initialRelationships={treeData.initialRelationships}
             initialFocalId={treeData.initialFocalId}
-            initialPhotosByPerson={treeData.photosByPerson}
             canEdit={canEditTree}
             canDeletePerson={canDeletePerson}
             strictMode={treeData.strictLineageEnforcement}
@@ -120,17 +120,6 @@ export default async function TreeShortCodePage({
           />
         </div>
       </div>
-    </TreeShell>
-  );
-}
-
-function TreeShell({ children }: { children: React.ReactNode }) {
-  // flex-1 + min-h-0 lets this fill the leftover height inside the locked
-  // viewport (set by the locale layout for the tree canvas route) and clip
-  // overflow so only React Flow's +/- controls drive zoom — no browser scroll.
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {children}
-    </div>
+    </TreeCanvasShell>
   );
 }

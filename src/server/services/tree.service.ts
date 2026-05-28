@@ -512,7 +512,7 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
   let photosByPerson: Record<string, PersonPhotoDTO[]> = {};
 
   if (personCount > 0) {
-    const [personRows, relRows, photoRows] = await Promise.all([
+    const [personRows, relRows] = await Promise.all([
       prisma.person.findMany({
         where: { tree_id: tree.id },
         select: PERSON_LIST_SELECT,
@@ -529,19 +529,6 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
           end_date: true,
         },
       }),
-      prisma.personPhoto.findMany({
-        where: { tree_id: tree.id },
-        orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
-        select: {
-          id: true,
-          person_id: true,
-          tree_id: true,
-          storage_path: true,
-          caption: true,
-          sort_order: true,
-          created_at: true,
-        },
-      }),
     ]);
 
     initialPersons = personRows.map((p) => ({ ...p, bio: p.bio ?? null }));
@@ -553,7 +540,6 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
       start_date: r.start_date,
       end_date: r.end_date,
     }));
-    photosByPerson = groupPhotosByPerson(photoRows);
   }
 
   return {
@@ -571,6 +557,33 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
     initialFocalId: linkedPersonId ?? tree.root_person_id ?? initialPersons[0]?.id ?? null,
     photosByPerson,
   };
+}
+
+const PERSON_PHOTO_SELECT = {
+  id: true,
+  person_id: true,
+  tree_id: true,
+  storage_path: true,
+  caption: true,
+  sort_order: true,
+  created_at: true,
+} as const;
+
+/** Gallery photos for a tree — loaded on demand when the side panel opens. */
+export async function resolveTreePhotosBySlug(
+  routeParam: string,
+): Promise<Record<string, PersonPhotoDTO[]>> {
+  const tree = await findTreeByRouteParam(routeParam);
+  if (!tree) throw Errors.notFound('Tree');
+  if (tree._count.persons === 0) return {};
+
+  const photoRows = await prisma.personPhoto.findMany({
+    where: { tree_id: tree.id },
+    orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+    select: PERSON_PHOTO_SELECT,
+  });
+
+  return groupPhotosByPerson(photoRows);
 }
 
 export async function createPersonInTree(

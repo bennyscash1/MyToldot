@@ -18,6 +18,8 @@ interface UseElkLayoutResult {
   nodes: FlowNode[];
   edges: FlowEdge[];
   isLoading: boolean;
+  /** True only on the first layout (no prior positions) — show canvas spinner. */
+  isInitialLayouting: boolean;
   error: Error | null;
 }
 
@@ -100,7 +102,10 @@ export function useElkLayout({
     [layout, focalId],
   );
 
-  return { nodes, edges, isLoading, error };
+  const isInitialLayouting =
+    isLoading && layout === null && persons.length > 0;
+
+  return { nodes, edges, isLoading, isInitialLayouting, error };
 }
 
 // ────────────────────────────────────────────────────────────────

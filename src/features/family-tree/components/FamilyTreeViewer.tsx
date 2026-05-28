@@ -83,7 +83,7 @@ function FamilyTreeViewerInner({
     [persons.length, focalId],
   );
 
-  const { nodes, edges, isLoading, error } = useElkLayout({
+  const { nodes, edges, isInitialLayouting, error } = useElkLayout({
     persons,
     relationships,
     focalId: layoutFocalId,
@@ -113,7 +113,7 @@ function FamilyTreeViewerInner({
       onNodeClick={onNodeClick}
       showEmptyAdd={showEmptyAdd}
       onAddFirstPerson={onAddFirstPerson}
-      isLayoutLoading={isLoading}
+      isInitialLayouting={isInitialLayouting}
       layoutError={error}
     />
   );
