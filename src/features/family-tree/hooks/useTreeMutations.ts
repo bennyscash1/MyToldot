@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useLocale } from 'next-intl';
 
 import type { AddedRelativeDto } from '@/server/services/tree.service';
@@ -123,6 +123,18 @@ export function useTreeMutations({
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastBlocked, setLastBlocked] = useState<{ ownerEmail?: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const routeCodeRef = useRef(treeRouteCode);
+
+  // Switching families (client nav) must replace hook state — useState only
+  // reads initial* on first mount.
+  useEffect(() => {
+    if (routeCodeRef.current === treeRouteCode) return;
+    routeCodeRef.current = treeRouteCode;
+    setPersons(initialPersons);
+    setRelationships(initialRelationships);
+    setLastError(null);
+    setLastBlocked(null);
+  }, [treeRouteCode, initialPersons, initialRelationships]);
 
   // One-way re-seed: when the tree transitions from empty to populated
   // (via router.refresh() after creating the first person), pull the new

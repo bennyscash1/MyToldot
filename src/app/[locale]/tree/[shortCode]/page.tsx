@@ -1,11 +1,11 @@
 import { getTranslations } from 'next-intl/server';
-import { headers } from 'next/headers';
 import type { Metadata } from 'next';
-import type { ApiEnvelope } from '@/types/api';
 import { EmptyTreeState } from '@/components/features/tree/EmptyTreeState';
 import { TreeCanvasWithModals } from '@/features/family-tree/components/TreeCanvasWithModals';
-import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
-import type { TreePageData } from '@/server/services/tree.service';
+import {
+  resolveTreePageDataBySlug,
+  type TreePageData,
+} from '@/server/services/tree.service';
 import { JoinWelcomeBanner } from '@/components/features/tree/JoinWelcomeBanner';
 import { RequestEditorAccessButton } from '@/components/features/tree/RequestEditorAccessButton';
 import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPanel';
@@ -33,7 +33,7 @@ export default async function TreeShortCodePage({
   const dir = locale === 'he' ? 'rtl' : 'ltr';
   let treeData: TreePageData;
   try {
-    treeData = await fetchTreeData(locale, shortCode);
+    treeData = await resolveTreePageDataBySlug(shortCode);
   } catch {
     const t = await getTranslations('treePage');
     return (
@@ -104,6 +104,7 @@ export default async function TreeShortCodePage({
           )}
         <div className="min-h-0 flex-1">
           <TreeCanvasWithModals
+            key={shortCode}
             treeId={treeData.treeId}
             treeRouteCode={shortCode}
             initialPersons={treeData.initialPersons}
@@ -132,29 +133,4 @@ function TreeShell({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
-}
-
-async function fetchTreeData(locale: string, shortCode: string): Promise<TreePageData> {
-  const hdrs = await headers();
-  const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host');
-  const proto = hdrs.get('x-forwarded-proto') ?? 'http';
-  if (!host) throw new Error('Missing host header');
-
-  const res = await fetch(`${proto}://${host}/${locale}/tree/${shortCode}/data`, {
-    cache: 'no-store',
-    headers: {
-      cookie: hdrs.get('cookie') ?? '',
-      accept: 'application/json',
-    },
-  });
-
-  const envelope = (await res.json()) as ApiEnvelope<TreePageData>;
-  if (envelope.error !== null) {
-    throw new Error(envelope.error.message);
-  }
-  return {
-    ...envelope.data,
-    initialPersons: envelope.data.initialPersons as PersonRow[],
-    initialRelationships: envelope.data.initialRelationships as RelationshipRow[],
-  };
 }
