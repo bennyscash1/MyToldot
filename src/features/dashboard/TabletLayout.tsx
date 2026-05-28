@@ -45,7 +45,8 @@ export function TabletLayout({ data, rotation, metrics }: TabletLayoutProps) {
           <button
             type="button"
             onClick={rotation.next}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            disabled={rotation.isNextDebounced}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t('nextPerson')}
           </button>

@@ -1,13 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { usePathname, useRouter } from '@/i18n/routing';
+import { usePathname } from '@/i18n/routing';
 
 import type { DashboardPerson } from '../types';
 
+const PERSON_DURATION_MS = 60_000;
 const PERSON_DURATION_SECONDS = 60;
+const TICK_MS = 1000;
+const MANUAL_NEXT_DEBOUNCE_MS = 500;
 
 function shuffle<T>(input: T[]): T[] {
   const arr = [...input];
@@ -42,6 +44,7 @@ export interface UsePersonRotationResult {
   setFocalPersonId: (id: string) => void;
   totalCount: number;
   currentIndex: number;
+  isNextDebounced: boolean;
 }
 
 export function usePersonRotation(
@@ -50,9 +53,7 @@ export function usePersonRotation(
   initialPersonId?: string | null,
   autoAdvance = true,
 ): UsePersonRotationResult {
-  const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const order = useMemo(() => shuffle(persons), [persons]);
   const storageKey = `dashboard:position:${treeId}`;
 
@@ -69,6 +70,99 @@ export function usePersonRotation(
     PERSON_DURATION_SECONDS,
   );
   const [paused, setPaused] = useState<boolean>(false);
+  const [isNextDebounced, setIsNextDebounced] = useState(false);
+
+  const orderRef = useRef(order);
+  const lastAdvanceAtRef = useRef(Date.now());
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const manualNextLockRef = useRef(false);
+
+  orderRef.current = order;
+
+  const syncSecondsFromClock = useCallback(() => {
+    const elapsed = Date.now() - lastAdvanceAtRef.current;
+    const remaining = Math.max(
+      0,
+      Math.ceil((PERSON_DURATION_MS - elapsed) / 1000),
+    );
+    setSecondsRemaining(remaining);
+  }, []);
+
+  const advanceToNextPerson = useCallback(() => {
+    const len = orderRef.current.length;
+    if (len === 0) return;
+    setIndex((i) => (i + 1) % len);
+    lastAdvanceAtRef.current = Date.now();
+    setSecondsRemaining(PERSON_DURATION_SECONDS);
+  }, []);
+
+  const advanceToPrevPerson = useCallback(() => {
+    const len = orderRef.current.length;
+    if (len === 0) return;
+    setIndex((i) => (i - 1 + len) % len);
+    lastAdvanceAtRef.current = Date.now();
+    setSecondsRemaining(PERSON_DURATION_SECONDS);
+  }, []);
+
+  const bumpRotationClock = useCallback(() => {
+    lastAdvanceAtRef.current = Date.now();
+    setSecondsRemaining(PERSON_DURATION_SECONDS);
+  }, []);
+
+  const clearAutoAdvanceTimer = useCallback(() => {
+    if (autoAdvanceTimerRef.current !== null) {
+      clearInterval(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, []);
+
+  const clearCountdownTimer = useCallback(() => {
+    if (countdownTimerRef.current !== null) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+  }, []);
+
+  const restartAutoAdvanceTimer = useCallback(() => {
+    clearAutoAdvanceTimer();
+    if (!autoAdvance || paused || orderRef.current.length <= 1) return;
+
+    autoAdvanceTimerRef.current = setInterval(() => {
+      advanceToNextPerson();
+    }, PERSON_DURATION_MS);
+  }, [advanceToNextPerson, autoAdvance, clearAutoAdvanceTimer, paused]);
+
+  const restartCountdownTimer = useCallback(() => {
+    clearCountdownTimer();
+    if (!autoAdvance || paused) return;
+
+    syncSecondsFromClock();
+    countdownTimerRef.current = setInterval(() => {
+      syncSecondsFromClock();
+    }, TICK_MS);
+  }, [autoAdvance, clearCountdownTimer, paused, syncSecondsFromClock]);
+
+  useEffect(() => {
+    restartAutoAdvanceTimer();
+    restartCountdownTimer();
+    return () => {
+      clearAutoAdvanceTimer();
+      clearCountdownTimer();
+    };
+  }, [
+    autoAdvance,
+    paused,
+    order.length,
+    restartAutoAdvanceTimer,
+    restartCountdownTimer,
+    clearAutoAdvanceTimer,
+    clearCountdownTimer,
+  ]);
 
   useEffect(() => {
     if (order.length === 0) return;
@@ -77,50 +171,79 @@ export function usePersonRotation(
     } catch {
       /* ignore */
     }
+
     const person = order[index];
     if (!person) return;
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    if (params.get('personId') !== person.id) {
-      params.set('personId', person.id);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  }, [index, storageKey, order, router, pathname, searchParams]);
 
-  useEffect(() => {
-    if (!autoAdvance || paused || order.length <= 1) return;
-    const id = window.setInterval(() => {
-      setSecondsRemaining((s) => {
-        if (s <= 1) {
-          setIndex((i) => (i + 1) % order.length);
-          return PERSON_DURATION_SECONDS;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [autoAdvance, paused, order.length]);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('personId') === person.id) return;
+
+    params.set('personId', person.id);
+    const nextUrl = `${pathname}?${params.toString()}`;
+
+    // Use replaceState only — router.replace was re-triggering RSC navigation
+    // and stacking rotation timers on each person change.
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [index, storageKey, order, pathname]);
+
+  const next = useCallback(() => {
+    if (manualNextLockRef.current || orderRef.current.length === 0) return;
+
+    manualNextLockRef.current = true;
+    setIsNextDebounced(true);
+
+    advanceToNextPerson();
+    restartAutoAdvanceTimer();
+    if (autoAdvance && !paused) {
+      restartCountdownTimer();
+    }
+
+    window.setTimeout(() => {
+      manualNextLockRef.current = false;
+      setIsNextDebounced(false);
+    }, MANUAL_NEXT_DEBOUNCE_MS);
+  }, [
+    advanceToNextPerson,
+    autoAdvance,
+    paused,
+    restartAutoAdvanceTimer,
+    restartCountdownTimer,
+  ]);
+
+  const prev = useCallback(() => {
+    if (orderRef.current.length === 0) return;
+    advanceToPrevPerson();
+    restartAutoAdvanceTimer();
+    if (autoAdvance && !paused) {
+      restartCountdownTimer();
+    }
+  }, [
+    advanceToPrevPerson,
+    autoAdvance,
+    paused,
+    restartAutoAdvanceTimer,
+    restartCountdownTimer,
+  ]);
 
   const setFocalPersonId = useCallback(
     (id: string) => {
-      const idx = order.findIndex((p) => p.id === id);
+      const idx = orderRef.current.findIndex((p) => p.id === id);
       if (idx < 0) return;
       setIndex(idx);
-      setSecondsRemaining(PERSON_DURATION_SECONDS);
+      bumpRotationClock();
+      restartAutoAdvanceTimer();
+      if (autoAdvance && !paused) {
+        restartCountdownTimer();
+      }
     },
-    [order],
+    [
+      autoAdvance,
+      bumpRotationClock,
+      paused,
+      restartAutoAdvanceTimer,
+      restartCountdownTimer,
+    ],
   );
-
-  const next = useCallback(() => {
-    if (order.length === 0) return;
-    setIndex((i) => (i + 1) % order.length);
-    setSecondsRemaining(PERSON_DURATION_SECONDS);
-  }, [order.length]);
-
-  const prev = useCallback(() => {
-    if (order.length === 0) return;
-    setIndex((i) => (i - 1 + order.length) % order.length);
-    setSecondsRemaining(PERSON_DURATION_SECONDS);
-  }, [order.length]);
 
   const togglePause = useCallback(() => {
     setPaused((p) => !p);
@@ -143,5 +266,6 @@ export function usePersonRotation(
     setFocalPersonId,
     totalCount: order.length,
     currentIndex: index,
+    isNextDebounced,
   };
 }

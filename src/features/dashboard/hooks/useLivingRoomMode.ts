@@ -32,7 +32,10 @@ function resolveInitialMode(): DashboardDisplayMode {
 }
 
 export function useLivingRoomMode() {
-  const [displayMode, setDisplayMode] = useState<DashboardDisplayMode>('tv');
+  const [displayMode, setDisplayMode] = useState<DashboardDisplayMode>(() => {
+    if (typeof window === 'undefined') return 'tv';
+    return readStoredMode() ?? 'tv';
+  });
   const [hydrated, setHydrated] = useState(false);
 
   const isLivingRoomMode = displayMode === 'tv';
