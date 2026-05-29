@@ -61,6 +61,23 @@ async function runCase(label: string, rels: RelationshipRow[], focal: string) {
       `union ${n.id} layout_solo_parent_id=${n.union?.layout_solo_parent_id ?? '—'}`,
     );
   }
+  const row = layout.nodes
+    .filter((n) => n.kind === 'person' && n.gen === (posById.get('yossi')?.gen ?? 0))
+    .sort((a, b) => a.x - b.x)
+    .map((n) => n.id);
+  console.log('person row (L→R):', row.join(' | '));
+  const yi = row.indexOf('yossi');
+  const il = row.indexOf('ilana');
+  const av = row.indexOf('aviva');
+  const sh = row.indexOf('shula');
+  if (yi >= 0 && il >= 0 && av >= 0) {
+    console.log(
+      `2-pill sandwich ok=${av < yi && yi < il} (aviva=${av} yossi=${yi} ilana=${il})`,
+    );
+  }
+  if (sh >= 0 && yi >= 0) {
+    console.log(`shula not between pills: shula idx=${sh} yossi idx=${yi}`);
+  }
   for (const e of flowChildren) {
     const child = e.target;
     const src = e.source;

@@ -8,7 +8,13 @@ import {
   PERSON_SPOUSE_HANDLE_Y,
   UNION_NODE_HEIGHT,
 } from './constants';
-import { applyMultiSpouseLayoutPolicy } from './multiSpouseLayout';
+import {
+  applyMultiSpouseLayoutPolicy,
+  couplePartnersByPerson,
+  coupleUnionsForPerson,
+  MULTI_SPOUSE_PARTNER_THRESHOLD,
+  type CoupleUnionRef,
+} from './multiSpouseLayout';
 import type { BipartiteEdge, BipartiteGraph, BipartiteNode } from './types';
 
 // Both the person card and the union pill live in the same generation
@@ -148,7 +154,7 @@ export async function layoutBipartiteGraph(
   // adjacent and swaps the partner into a slot next to its anchor. Then
   // we re-run union re-centering so pill positions follow the new
   // person X grid.
-  if (enforceCoupleAdjacency(nodeMap, graph.edges)) {
+  if (enforceCoupleAdjacency(nodeMap, graph.edges, graph)) {
     recenterCoupleUnions(nodeMap);
   }
 
@@ -184,7 +190,12 @@ export async function layoutBipartiteGraph(
   // the new person X positions.
   recenterCoupleUnions(nodeMap);
 
+  applyTwoPillSandwichLayout(nodeMap, graph);
+  applyOverflowPartnerLayout(nodeMap, graph);
+  recenterCoupleUnions(nodeMap);
+
   // Union X may have moved after Pass 3; keep each child under its union pill.
+  // Skip multi-spouse anchors — their X comes from the two-pill sandwich row.
   centerLoneChildrenUnderUnions(nodeMap, graph.edges);
 
   const nodes: PositionedNode[] = Array.from(nodeMap.values());
@@ -197,6 +208,19 @@ export async function layoutBipartiteGraph(
 
 /** No-op — kept for any future HMR cleanup. */
 export function disposeElkWorker(): void {}
+
+function coupleUnionCountForPerson(
+  nodeMap: Map<string, PositionedNode>,
+  personId: string,
+): number {
+  let count = 0;
+  for (const n of nodeMap.values()) {
+    if (n.kind !== 'union' || n.union?.kind !== 'couple') continue;
+    const pids = n.union.parent_ids;
+    if (pids?.includes(personId)) count += 1;
+  }
+  return count;
+}
 
 function centerLoneChildrenUnderUnions(
   nodeMap: Map<string, PositionedNode>,
@@ -217,6 +241,10 @@ function centerLoneChildrenUnderUnions(
 
     const child = nodeMap.get(childEdges[0]!.target);
     if (!child || child.kind !== 'person') continue;
+
+    // A person with two couple unions uses the sandwich row; do not pull them
+    // back under an ancestor union (that breaks wife | anchor | wife layout).
+    if (coupleUnionCountForPerson(nodeMap, child.id) >= 2) continue;
 
     // For solo unions the pill is hidden and the visible connector goes from
     // the parent's center bottom → child. Center the child under the parent
@@ -393,9 +421,131 @@ function childCountByUnion(edges: BipartiteEdge[]): Map<string, number> {
   return counts;
 }
 
+function shouldUseTwoPillSandwich(
+  graph: BipartiteGraph,
+  nodeMap: Map<string, PositionedNode>,
+  anchorId: string,
+): boolean {
+  const pillUnions = coupleUnionsForPerson(graph, anchorId).filter(
+    (u) => !nodeMap.get(u.unionId)?.union?.layout_solo_parent_id,
+  );
+  return pillUnions.length >= 2;
+}
+
+/**
+ * Place the two pill spouses on opposite sides of a shared anchor:
+ * [spouseA] — pill — [anchor] — pill — [spouseB] (union ids determine A vs B).
+ */
+function enforceTwoPillSandwich(
+  nodeMap: Map<string, PositionedNode>,
+  personsByGen: Map<number, PositionedNode[]>,
+  xGridByGen: Map<number, number[]>,
+  anchorId: string,
+  firstUnion: CoupleUnionRef,
+  secondUnion: CoupleUnionRef,
+): boolean {
+  const anchor = nodeMap.get(anchorId);
+  if (!anchor || anchor.kind !== 'person') return false;
+
+  const leftSpouse = nodeMap.get(firstUnion.partnerId);
+  const rightSpouse = nodeMap.get(secondUnion.partnerId);
+  if (!leftSpouse || !rightSpouse || leftSpouse.kind !== 'person' || rightSpouse.kind !== 'person') {
+    return false;
+  }
+  if (leftSpouse.gen !== anchor.gen || rightSpouse.gen !== anchor.gen) return false;
+
+  const list = personsByGen.get(anchor.gen);
+  const xs = xGridByGen.get(anchor.gen);
+  if (!list || !xs) return false;
+
+  const removeIds = new Set([anchorId, firstUnion.partnerId, secondUnion.partnerId]);
+  const remaining = list.filter((p) => !removeIds.has(p.id));
+  const anchorIdx = list.findIndex((p) => p.id === anchorId);
+  const insertAt = anchorIdx >= 0 ? Math.min(anchorIdx, remaining.length) : 0;
+
+  const newList = [
+    ...remaining.slice(0, insertAt),
+    leftSpouse,
+    anchor,
+    rightSpouse,
+    ...remaining.slice(insertAt),
+  ];
+  personsByGen.set(anchor.gen, newList);
+  for (let i = 0; i < newList.length; i += 1) {
+    newList[i]!.x = xs[i] ?? newList[i]!.x;
+  }
+  return true;
+}
+
+/** Run after all other X-shifting passes so collision repair cannot undo the row. */
+function applyTwoPillSandwichLayout(
+  nodeMap: Map<string, PositionedNode>,
+  graph: BipartiteGraph,
+): void {
+  const partnersByPerson = couplePartnersByPerson(graph);
+  for (const [anchorId] of partnersByPerson) {
+    if (!shouldUseTwoPillSandwich(graph, nodeMap, anchorId)) continue;
+    const pillUnions = coupleUnionsForPerson(graph, anchorId).filter(
+      (u) => !nodeMap.get(u.unionId)?.union?.layout_solo_parent_id,
+    );
+    const [first, second] = pillUnions;
+    if (!first || !second) continue;
+
+    const personsByGen = new Map<number, PositionedNode[]>();
+    for (const node of nodeMap.values()) {
+      if (node.kind !== 'person') continue;
+      const list = personsByGen.get(node.gen) ?? [];
+      list.push(node);
+      personsByGen.set(node.gen, list);
+    }
+    for (const list of personsByGen.values()) {
+      list.sort((a, b) => a.x - b.x);
+    }
+    const xGridByGen = new Map<number, number[]>();
+    for (const [gen, list] of personsByGen) {
+      xGridByGen.set(gen, list.map((p) => p.x));
+    }
+    enforceTwoPillSandwich(nodeMap, personsByGen, xGridByGen, anchorId, first, second);
+  }
+}
+
+/** Place 3rd+ spouses immediately to the right of the two-pill sandwich (no marriage line). */
+function applyOverflowPartnerLayout(
+  nodeMap: Map<string, PositionedNode>,
+  graph: BipartiteGraph,
+): void {
+  const partnersByPerson = couplePartnersByPerson(graph);
+
+  for (const [anchorId, partnerSet] of partnersByPerson) {
+    if (partnerSet.size < MULTI_SPOUSE_PARTNER_THRESHOLD) continue;
+
+    const pillUnions = coupleUnionsForPerson(graph, anchorId).filter(
+      (u) => !nodeMap.get(u.unionId)?.union?.layout_solo_parent_id,
+    );
+    const secondPill = pillUnions[1];
+    if (!secondPill) continue;
+
+    const rightSpouse = nodeMap.get(secondPill.partnerId);
+    if (!rightSpouse || rightSpouse.kind !== 'person') continue;
+
+    const overflowPartners = coupleUnionsForPerson(graph, anchorId).filter(
+      (u) => nodeMap.get(u.unionId)?.union?.layout_solo_parent_id,
+    );
+
+    let nextX = rightSpouse.x + rightSpouse.width + NODE_GAP;
+    for (const { partnerId } of overflowPartners) {
+      const partner = nodeMap.get(partnerId);
+      if (!partner || partner.kind !== 'person') continue;
+      partner.x = nextX;
+      nextX += partner.width + NODE_GAP;
+    }
+  }
+}
+
 function enforceCoupleAdjacency(
   nodeMap: Map<string, PositionedNode>,
   edges: BipartiteEdge[],
+  graph: BipartiteGraph,
 ): boolean {
   const childCounts = childCountByUnion(edges);
   const personsByGen = new Map<number, PositionedNode[]>();
@@ -416,6 +566,8 @@ function enforceCoupleAdjacency(
     xGridByGen.set(gen, list.map((p) => p.x));
   }
 
+  let changed = false;
+
   const couples = Array.from(nodeMap.values())
     .filter((n) => n.kind === 'union' && n.union?.parent_ids?.length === 2)
     .sort((a, b) => {
@@ -424,7 +576,6 @@ function enforceCoupleAdjacency(
       return a.id.localeCompare(b.id);
     });
 
-  let changed = false;
   for (const u of couples) {
     // Only force adjacency for unions that anchor existing children. Childless
     // spouse pairs (e.g. a second marriage added later) keep ELK positions so
@@ -432,9 +583,12 @@ function enforceCoupleAdjacency(
     if ((childCounts.get(u.id) ?? 0) === 0) continue;
     // 3+ partner anchors: only the first two couple unions (by id) use pills.
     if (u.union?.layout_solo_parent_id) continue;
-
     const ids = u.union?.parent_ids;
     if (!ids || ids.length !== 2) continue;
+    // Two pill unions on the same anchor use applyTwoPillSandwichLayout instead.
+    if (shouldUseTwoPillSandwich(graph, nodeMap, ids[0])) continue;
+    if (shouldUseTwoPillSandwich(graph, nodeMap, ids[1])) continue;
+
     const a = nodeMap.get(ids[0]);
     const b = nodeMap.get(ids[1]);
     if (!a || !b || a.gen !== b.gen) continue;

@@ -7,7 +7,7 @@ export const MULTI_SPOUSE_PARTNER_THRESHOLD = 3;
 /** How many couple-union pills to keep per multi-spouse anchor (rest use solo-parent children). */
 export const MULTI_SPOUSE_PILL_SLOTS = 2;
 
-interface CoupleUnionRef {
+export interface CoupleUnionRef {
   unionId: string;
   partnerId: string;
 }
@@ -35,7 +35,7 @@ export function couplePartnersByPerson(graph: BipartiteGraph): Map<string, Set<s
   return partners;
 }
 
-function coupleUnionsForPerson(graph: BipartiteGraph, personId: string): CoupleUnionRef[] {
+export function coupleUnionsForPerson(graph: BipartiteGraph, personId: string): CoupleUnionRef[] {
   const refs: CoupleUnionRef[] = [];
   for (const n of graph.nodes) {
     if (n.kind !== 'union' || n.union?.kind !== 'couple') continue;
