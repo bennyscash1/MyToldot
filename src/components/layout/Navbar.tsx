@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { BrandMark } from '@/components/brand/BrandMark';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { NavbarActions } from './NavbarActions';
+import { LivingRoomModeToggle } from '@/features/dashboard/components/LivingRoomModeToggle';
 
 // ──────────────────────────────────────────────
 // Navbar — Async Server Component.
@@ -218,6 +219,9 @@ export async function Navbar() {
 
         {/* ── Right-side actions ── */}
         <div className="flex items-center gap-3">
+          {/* Living-room toggle is auth-independent: rendered for everyone on
+              the dashboard route (guests and signed-in users alike). */}
+          <LivingRoomModeToggle variant="enter" />
           <LanguageSwitcher />
           <NavbarActions />
         </div>
