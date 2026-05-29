@@ -24,7 +24,7 @@ import { UNION_NODE_HEIGHT, UNION_NODE_WIDTH } from '../../lib/constants';
 function UnionNodeInner({ data }: NodeProps) {
   const { meta } = data as unknown as UnionNodeData;
 
-  const visible = meta.kind !== 'solo';
+  const visible = meta.kind !== 'solo' && !meta.layout_solo_parent_id;
 
   return (
     <div

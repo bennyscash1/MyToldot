@@ -12,6 +12,7 @@ See the attached investigation plan for full code citations. This document summa
 
 1. **`elkLayout.ts`:** Only run couple adjacency forcing for unions with ≥1 child edge; sort processing by child count; re-run `centerLoneChildrenUnderUnions` after final union re-centering.
 2. **`currentSpouses.ts`:** `getCurrentSpouseIdsOrdered` — spouses sorted by `start_date` then relationship id (used for add-child co-parent modal and single-spouse auto-pick).
+3. **`multiSpouseLayout.ts` + render layer (3+ partners):** When a person has ≥3 distinct partners on `couple` unions, the first two unions by union node id keep marriage pills and couple child lines; further unions set `layout_solo_parent_id` on union meta (layout-only). Pills and spouse edges are hidden; children center under and draw from the non-shared parent via existing solo pedigree routing.
 
 ## Add-child flow (unchanged behavior)
 

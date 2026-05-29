@@ -8,6 +8,7 @@ import {
   PERSON_SPOUSE_HANDLE_Y,
   UNION_NODE_HEIGHT,
 } from './constants';
+import { applyMultiSpouseLayoutPolicy } from './multiSpouseLayout';
 import type { BipartiteEdge, BipartiteGraph, BipartiteNode } from './types';
 
 // Both the person card and the union pill live in the same generation
@@ -123,6 +124,10 @@ export async function layoutBipartiteGraph(
     });
   }
 
+  // Mark 3+ partner anchors: unions beyond the first two (by union id) render
+  // children from the non-shared spouse only; pills stay in ELK but hide in UI.
+  applyMultiSpouseLayoutPolicy(nodeMap, graph);
+
   // ── Pass 1.5: keep couple unions centered between spouses ────────────────
   // ELK can legally place same-generation union pills far away within the row,
   // which makes spouse lines span across unrelated siblings. Re-center each
@@ -219,6 +224,15 @@ function centerLoneChildrenUnderUnions(
     if (union.union?.kind === 'solo') {
       const parentId = union.union.parent_ids[0];
       const parent = parentId ? nodeMap.get(parentId) : undefined;
+      if (!parent || parent.kind !== 'person') continue;
+      const parentCenterX = parent.x + parent.width / 2;
+      child.x = parentCenterX - child.width / 2;
+      continue;
+    }
+
+    const soloParentId = union.union?.layout_solo_parent_id;
+    if (soloParentId) {
+      const parent = nodeMap.get(soloParentId);
       if (!parent || parent.kind !== 'person') continue;
       const parentCenterX = parent.x + parent.width / 2;
       child.x = parentCenterX - child.width / 2;
@@ -343,6 +357,7 @@ function repairSubtreeCollisions(
 function recenterCoupleUnions(nodeMap: Map<string, PositionedNode>): void {
   for (const node of nodeMap.values()) {
     if (node.kind !== 'union') continue;
+    if (node.union?.layout_solo_parent_id) continue;
     const parentIds = node.union?.parent_ids;
     if (!parentIds || parentIds.length !== 2) continue;
 
@@ -415,6 +430,8 @@ function enforceCoupleAdjacency(
     // spouse pairs (e.g. a second marriage added later) keep ELK positions so
     // they cannot displace the first spouse away from the focal parent.
     if ((childCounts.get(u.id) ?? 0) === 0) continue;
+    // 3+ partner anchors: only the first two couple unions (by id) use pills.
+    if (u.union?.layout_solo_parent_id) continue;
 
     const ids = u.union?.parent_ids;
     if (!ids || ids.length !== 2) continue;

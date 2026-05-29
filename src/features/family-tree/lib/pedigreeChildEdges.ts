@@ -72,6 +72,8 @@ export function buildPedigreeChildFlowEdges(
     if (sourceNode?.kind === 'union' && sourceNode.union?.kind === 'solo') {
       const parentId = sourceNode.union.parent_ids[0];
       if (parentId) groupKey = `solo:${parentId}`;
+    } else if (sourceNode?.kind === 'union' && sourceNode.union?.layout_solo_parent_id) {
+      groupKey = `solo:${sourceNode.union.layout_solo_parent_id}`;
     }
 
     const list = groups.get(groupKey) ?? [];
@@ -84,11 +86,14 @@ export function buildPedigreeChildFlowEdges(
   for (const [, edges] of groups) {
     const first = edges[0];
     const sourceNode = posById.get(first.source);
+    const layoutSoloParentId = sourceNode?.union?.layout_solo_parent_id;
     const isSolo =
-      sourceNode?.kind === 'union' && sourceNode.union?.kind === 'solo';
+      (sourceNode?.kind === 'union' && sourceNode.union?.kind === 'solo') ||
+      Boolean(layoutSoloParentId);
 
     if (isSolo) {
-      const parentId = sourceNode!.union!.parent_ids[0];
+      const parentId =
+        layoutSoloParentId ?? sourceNode!.union!.parent_ids[0];
       for (const e of edges) {
         out.push({
           id: e.id,

@@ -67,6 +67,11 @@ export interface UnionMeta {
   spouse_relationship_id: string | null;
   is_divorced: boolean;
   is_engaged: boolean;
+  /**
+   * Layout/render only (set in elkLayout for 3+ partner anchors). When set, the
+   * marriage pill is hidden and children of this union draw from this parent.
+   */
+  layout_solo_parent_id?: string;
 }
 
 export interface BipartiteNode {

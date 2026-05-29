@@ -202,6 +202,7 @@ function toFlowElements(
       // "marriage line" appears in the parent's row.
       const isSoloUnion =
         union?.kind === 'union' && union.union?.kind === 'solo';
+      const isOverflowUnion = Boolean(union?.union?.layout_solo_parent_id);
 
       return {
         id: e.id,
@@ -210,7 +211,7 @@ function toFlowElements(
         type: edgeType,
         sourceHandle,
         targetHandle,
-        className: isSoloUnion
+        className: isSoloUnion || isOverflowUnion
           ? 'shortree-edge-hidden'
           : e.meta?.is_divorced
             ? 'shortree-edge-divorced'
