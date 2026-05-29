@@ -9,7 +9,7 @@ import type { PersonPhotoDTO, PersonRow, PlaceholderMeta, RelationshipRow } from
 import { useTreeMutations } from '../hooks/useTreeMutations';
 import { FamilyTreeViewer } from './FamilyTreeViewer';
 import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
-import { getCurrentSpouseIds } from '../lib/currentSpouses';
+import { getCurrentSpouseIdsOrdered } from '../lib/currentSpouses';
 import { fullNameFromPerson } from '../lib/personDisplayName';
 import { AddRelativePopover } from './panels/AddRelativePopover';
 import { NoSpouseChildModal } from './panels/NoSpouseChildModal';
@@ -339,7 +339,7 @@ export function TreeCanvasWithModals({
     const anchor = persons.find((p) => p.id === sidePersonId);
     if (!anchor) return;
     const personName = fullNameFromPerson(anchor) || sidePersonId;
-    const spouseIds = getCurrentSpouseIds(sidePersonId, relationships);
+    const spouseIds = getCurrentSpouseIdsOrdered(sidePersonId, relationships);
 
     if (spouseIds.length === 1) {
       openAddChildPopover(sidePersonId, [sidePersonId, spouseIds[0]]);

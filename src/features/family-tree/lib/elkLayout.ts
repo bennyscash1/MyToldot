@@ -143,7 +143,7 @@ export async function layoutBipartiteGraph(
   // adjacent and swaps the partner into a slot next to its anchor. Then
   // we re-run union re-centering so pill positions follow the new
   // person X grid.
-  if (enforceCoupleAdjacency(nodeMap)) {
+  if (enforceCoupleAdjacency(nodeMap, graph.edges)) {
     recenterCoupleUnions(nodeMap);
   }
 
@@ -178,6 +178,9 @@ export async function layoutBipartiteGraph(
   // After shifting, re-center couple unions so the spouse-line pill follows
   // the new person X positions.
   recenterCoupleUnions(nodeMap);
+
+  // Union X may have moved after Pass 3; keep each child under its union pill.
+  centerLoneChildrenUnderUnions(nodeMap, graph.edges);
 
   const nodes: PositionedNode[] = Array.from(nodeMap.values());
 
@@ -359,14 +362,27 @@ function recenterCoupleUnions(nodeMap: Map<string, PositionedNode>): void {
  * their generation, and reorder persons in that gen so they are. Returns
  * true if anything moved (caller must re-run `recenterCoupleUnions`).
  *
- * Couple unions are processed in id-sorted order so the result is
- * deterministic. For a person with multiple spouses, only the first
- * couple processed wins the adjacent slot — secondary spouses may stay
- * far. The smoothstep fallback in useElkLayout.ts handles those leftover
- * far-spouse edges so they route around obstacles instead of through
- * sibling cards.
+ * Couple unions are processed in deterministic order: unions with more
+ * child edges first (so the co-parent of existing children wins the
+ * adjacent slot when a person has multiple spouses), then union id.
+ * Secondary spouses may stay far. The smoothstep fallback in
+ * useElkLayout.ts handles those leftover far-spouse edges so they route
+ * around obstacles instead of through sibling cards.
  */
-function enforceCoupleAdjacency(nodeMap: Map<string, PositionedNode>): boolean {
+function childCountByUnion(edges: BipartiteEdge[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const e of edges) {
+    if (e.kind !== 'child') continue;
+    counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function enforceCoupleAdjacency(
+  nodeMap: Map<string, PositionedNode>,
+  edges: BipartiteEdge[],
+): boolean {
+  const childCounts = childCountByUnion(edges);
   const personsByGen = new Map<number, PositionedNode[]>();
   for (const node of nodeMap.values()) {
     if (node.kind !== 'person') continue;
@@ -387,10 +403,19 @@ function enforceCoupleAdjacency(nodeMap: Map<string, PositionedNode>): boolean {
 
   const couples = Array.from(nodeMap.values())
     .filter((n) => n.kind === 'union' && n.union?.parent_ids?.length === 2)
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => {
+      const childDiff = (childCounts.get(b.id) ?? 0) - (childCounts.get(a.id) ?? 0);
+      if (childDiff !== 0) return childDiff;
+      return a.id.localeCompare(b.id);
+    });
 
   let changed = false;
   for (const u of couples) {
+    // Only force adjacency for unions that anchor existing children. Childless
+    // spouse pairs (e.g. a second marriage added later) keep ELK positions so
+    // they cannot displace the first spouse away from the focal parent.
+    if ((childCounts.get(u.id) ?? 0) === 0) continue;
+
     const ids = u.union?.parent_ids;
     if (!ids || ids.length !== 2) continue;
     const a = nodeMap.get(ids[0]);
