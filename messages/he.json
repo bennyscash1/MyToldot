@@ -247,6 +247,36 @@
     "errorUpload": "העלאת התמונה נכשלה. אנא נסה שוב.",
     "errorGeneric": "שמירת האדם נכשלה. אנא נסה שוב."
   },
+  "personImage": {
+    "changePhoto": "החלף תמונה",
+    "addPhoto": "הוסף תמונה",
+    "uploadFile": "העלאת קובץ",
+    "pasteUrl": "הדבק קישור",
+    "aiSearch": "חיפוש תמונה עם AI",
+    "invalidUrl": "יש להזין כתובת HTTPS/HTTP תקינה עם סיומת תמונה (.jpg, .png, .webp, .gif)",
+    "cancel": "ביטול",
+    "applyUrl": "החל",
+    "uploadFailed": "העלאה נכשלה",
+    "pendingSave": "ממתין לשמירה"
+  },
+  "aiImageSearch": {
+    "title": "חיפוש תמונה עם AI",
+    "searchContext": "הקשר חיפוש",
+    "search": "חפש",
+    "searching": "מחפש…",
+    "searchFailed": "החיפוש נכשל. נסו שוב.",
+    "noResults": "לא נמצאו תמונות. נסו לערוך את הקשר החיפוש.",
+    "mainPhoto": "תמונה ראשית",
+    "addToGallery": "הוסף לגלריה",
+    "saveSelection": "שמור בחירה",
+    "cancel": "בטל",
+    "close": "סגור",
+    "confidence": {
+      "high": "גבוה",
+      "medium": "בינוני",
+      "low": "נמוך"
+    }
+  },
   "auth": {
     "loginTitle": "ברוכים השבים",
     "loginSubtitle": "התחברו לחשבון שלכם.",

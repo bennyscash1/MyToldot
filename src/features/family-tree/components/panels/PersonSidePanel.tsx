@@ -11,8 +11,11 @@ import { useLocale, useTranslations } from 'next-intl';
 
 import type { PersonPatch } from '@/features/family-tree/schemas/person.schema';
 import type { PersonRow } from '../../lib/types';
-import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
-import { profileImagePublicUrl } from '@/lib/supabase/public-url';
+import { getPersonProfileImageUrl } from '@/lib/images/get-person-profile-image-url';
+import { normalizeExternalImageUrl, EXTERNAL_IMAGE_IMG_PROPS } from '@/lib/images/normalize-external-image-url';
+import { addPersonPhotoUrlsBatchAction } from '@/server/actions/person-photo.actions';
+import type { AiImageSelection } from './AiImageSearchModal';
+import { PersonImagePicker } from './PersonImagePicker';
 import { storageService } from '@/services/storage.service';
 import { DateInput } from '@/components/ui/DateInput';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
@@ -83,6 +86,7 @@ export function PersonSidePanel({
   const locale = useLocale();
   const panelDir = locale === 'he' ? 'rtl' : 'ltr';
   const tPerson = useTranslations('person');
+  const tImage = useTranslations('personImage');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullName, setFullName] = useState(() => fullNameFromPerson(person));
   const [birthDate, setBirthDate] = useState<Date | null>(() =>
@@ -94,7 +98,10 @@ export function PersonSidePanel({
   );
   const [bio, setBio] = useState(() => person.bio ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [stagedProfileImageUrl, setStagedProfileImageUrl] = useState<string | null>(null);
+  const [stagedGalleryPhotos, setStagedGalleryPhotos] = useState<
+    Array<{ imageUrl: string; caption?: string }>
+  >([]);
   const aliveBtnRef = useRef<HTMLButtonElement>(null);
   const deceasedBtnRef = useRef<HTMLButtonElement>(null);
   const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -119,6 +126,8 @@ export function PersonSidePanel({
     setBio(person.bio ?? '');
     setConfirmDelete(false);
     setLocalError(null);
+    setStagedProfileImageUrl(null);
+    setStagedGalleryPhotos([]);
   }, [person]);
 
   const selectAlive = () => {
@@ -167,9 +176,22 @@ export function PersonSidePanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const previewUrl =
-    profileImagePublicUrl(person.profile_image) ?? person.profile_image?.trim() ?? null;
-  const photoSrc = previewUrl || DEFAULT_PERSON_IMAGE_SRC;
+  const previewPerson = stagedProfileImageUrl
+    ? { ...person, profile_image_url: stagedProfileImageUrl, profile_image: null }
+    : person;
+  const photoSrc = stagedProfileImageUrl
+    ? normalizeExternalImageUrl(stagedProfileImageUrl)
+    : getPersonProfileImageUrl(previewPerson);
+
+  const defaultSearchContext = fullNameFromPerson(person);
+
+  const birthDateLabel = person.birth_date
+    ? new Date(person.birth_date).getFullYear().toString()
+    : undefined;
+  const deathDateLabel =
+    person.is_deceased && person.death_date
+      ? new Date(person.death_date).getFullYear().toString()
+      : undefined;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -183,18 +205,56 @@ export function PersonSidePanel({
       is_deceased: isDeceased,
       death_date: isDeceased ? deathDate : null,
       bio: bio.trim() || null,
-      profile_image: person.profile_image,
     };
+
+    if (stagedProfileImageUrl) {
+      patch.profile_image_url = stagedProfileImageUrl;
+      patch.profile_image = null;
+    }
+
     await onSave(patch);
+
+    if (stagedProfileImageUrl) {
+      setStagedProfileImageUrl(null);
+    }
+
+    if (stagedGalleryPhotos.length > 0) {
+      const result = await addPersonPhotoUrlsBatchAction({
+        treeId,
+        personId: person.id,
+        shortCode: treeRouteCode,
+        photos: stagedGalleryPhotos,
+      });
+      if (!result.ok) {
+        setLocalError(result.error.message);
+        return;
+      }
+      onPhotosChange([...photos, ...result.data]);
+      setStagedGalleryPhotos([]);
+    }
   };
 
   const onPickImage = async (file: File) => {
     setLocalError(null);
+    setStagedProfileImageUrl(null);
     try {
       const { path } = await storageService.uploadProfileImage(file, treeId, person.id);
-      await onSave({ profile_image: path });
+      await onSave({ profile_image: path, profile_image_url: null });
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'העלאה נכשלה');
+      setLocalError(err instanceof Error ? err.message : tImage('uploadFailed'));
+    }
+  };
+
+  const handleProfileUrl = (url: string) => {
+    setStagedProfileImageUrl(url);
+  };
+
+  const handleProfileAi = (selection: AiImageSelection) => {
+    if (selection.profileUrl) {
+      setStagedProfileImageUrl(selection.profileUrl);
+    }
+    if (selection.galleryItems?.length) {
+      setStagedGalleryPhotos((prev) => [...prev, ...selection.galleryItems!]);
     }
   };
 
@@ -233,26 +293,26 @@ export function PersonSidePanel({
                   src={photoSrc}
                   alt=""
                   className="h-48 w-48 object-cover object-top bg-slate-100"
+                  {...(person.profile_image_url || stagedProfileImageUrl
+                    ? EXTERNAL_IMAGE_IMG_PROPS
+                    : {})}
                 />
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(ev) => {
-                  const f = ev.target.files?.[0];
-                  ev.target.value = '';
-                  if (f) void onPickImage(f);
-                }}
-              />
-              <button
-                type="button"
-                className="mt-2 text-sm font-medium text-[#3e5045] underline-offset-2 hover:underline"
-                onClick={() => fileRef.current?.click()}
-              >
-                החלף תמונה
-              </button>
+              {canEdit ? (
+                <PersonImagePicker
+                  mode="profile"
+                  personId={person.id}
+                  personName={fullNameFromPerson(person)}
+                  birthDateLabel={birthDateLabel}
+                  deathDateLabel={deathDateLabel}
+                  defaultSearchContext={defaultSearchContext}
+                  disabled={isSaving}
+                  onUploadFile={onPickImage}
+                  onUrlSelected={handleProfileUrl}
+                  onAiSelected={handleProfileAi}
+                  className="mt-2"
+                />
+              ) : null}
             </div>
 
             <PersonGalleryEditor
@@ -263,6 +323,17 @@ export function PersonSidePanel({
               photosLoading={photosLoading}
               onPhotosChange={onPhotosChange}
               canEdit={canEdit}
+              personName={fullNameFromPerson(person)}
+              birthDateLabel={birthDateLabel}
+              deathDateLabel={deathDateLabel}
+              defaultSearchContext={defaultSearchContext}
+              stagedGalleryPhotos={stagedGalleryPhotos}
+              onStageGalleryPhotos={(items) =>
+                setStagedGalleryPhotos((prev) => [...prev, ...items])
+              }
+              onRemoveStagedGalleryPhoto={(index) =>
+                setStagedGalleryPhotos((prev) => prev.filter((_, i) => i !== index))
+              }
             />
 
             <label className="mb-3 flex flex-col gap-1">

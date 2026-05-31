@@ -31,3 +31,25 @@ export const RemovePersonPhotoSchema = z.object({
   photoId: PersonPhotoIdSchema,
   shortCode: z.string().min(1),
 });
+
+export const AddPersonPhotoUrlSchema = z.object({
+  treeId: CuidSchema,
+  personId: CuidSchema,
+  imageUrl: z.string().url().max(2048),
+  caption: PersonPhotoCaptionSchema,
+});
+
+export const AddPersonPhotoUrlsBatchSchema = z.object({
+  treeId: CuidSchema,
+  personId: CuidSchema,
+  shortCode: z.string().min(1),
+  photos: z
+    .array(
+      z.object({
+        imageUrl: z.string().url().max(2048),
+        caption: PersonPhotoCaptionSchema,
+      }),
+    )
+    .min(1)
+    .max(5),
+});

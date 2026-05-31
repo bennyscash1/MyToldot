@@ -12,6 +12,7 @@ import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
 import { deleteProfileImage } from '@/lib/supabase/storage';
+import { applyProfileImagePatch } from '@/server/lib/profile-image-patch';
 import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { buildRestPatchPersonDates } from '@/server/lib/person-dates';
 import type { UpdatePersonBody, PersonDto } from '@/types/api';
@@ -33,6 +34,7 @@ const PERSON_SELECT = {
   birth_place: true,
   bio: true,
   profile_image: true,
+  profile_image_url: true,
   first_name_he: true,
   last_name_he: true,
   created_at: true,
@@ -105,6 +107,19 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
     },
   );
 
+  const profileImageData = await applyProfileImagePatch(
+    {
+      profile_image: existing.profile_image,
+      profile_image_url: existing.profile_image_url,
+    },
+    {
+      ...(body.profile_image !== undefined && { profile_image: body.profile_image ?? null }),
+      ...(body.profile_image_url !== undefined && {
+        profile_image_url: body.profile_image_url ?? null,
+      }),
+    },
+  );
+
   const updated = await prisma.person.update({
     where: { id: personId },
     data: {
@@ -120,7 +135,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
       ...(hebrewPatch ?? {}),
       ...(body.birth_place   !== undefined && { birth_place:   body.birth_place?.trim()  ?? null }),
       ...(body.bio           !== undefined && { bio:           body.bio?.trim()          ?? null }),
-      ...(body.profile_image !== undefined && { profile_image: body.profile_image        ?? null }),
+      ...profileImageData,
       ...(body.first_name_he !== undefined && { first_name_he: body.first_name_he?.trim() ?? null }),
       ...(body.last_name_he  !== undefined && { last_name_he:  body.last_name_he?.trim()  ?? null }),
     },

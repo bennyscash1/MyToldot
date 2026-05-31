@@ -111,6 +111,7 @@ function inputToRow(id: string, input: PersonInput): PersonRow {
     birth_place: input.birth_place ?? null,
     bio: input.bio ?? null,
     profile_image: input.profile_image ?? null,
+    profile_image_url: input.profile_image_url ?? null,
   };
 }
 
@@ -680,7 +681,12 @@ export function useTreeMutations({
             ...hebrew,
             birth_place: patch.birth_place ?? p.birth_place,
             bio: patch.bio ?? p.bio,
-            profile_image: patch.profile_image ?? p.profile_image,
+            profile_image:
+              patch.profile_image !== undefined ? patch.profile_image : p.profile_image,
+            profile_image_url:
+              patch.profile_image_url !== undefined
+                ? patch.profile_image_url
+                : p.profile_image_url,
           };
         }),
       );

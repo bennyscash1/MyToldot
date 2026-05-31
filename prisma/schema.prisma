@@ -158,8 +158,9 @@ model Person {
   birth_place String?
   bio         String? // free-text biography
 
-  // Media (Supabase Storage path, not full URL)
-  profile_image String? // e.g. "avatars/<person_id>.webp"
+  // Media — profile_image is Supabase Storage path; profile_image_url is external URL (mutually exclusive in practice)
+  profile_image     String? // e.g. "avatars/<person_id>.webp"
+  profile_image_url String? // external image URL (alternative to profile_image)
 
   // i18n display overrides (Hebrew names)
   first_name_he String?
@@ -194,7 +195,8 @@ model PersonPhoto {
   id           String   @id @default(cuid())
   person_id    String   @map("person_id")
   tree_id      String   @map("tree_id")
-  storage_path String   @map("storage_path")
+  storage_path String?  @map("storage_path") // Supabase path (mutually exclusive with image_url)
+  image_url    String?  @map("image_url")    // external image URL
   caption      String?
   sort_order   Int      @default(0) @map("sort_order")
   uploaded_by  String?  @map("uploaded_by")

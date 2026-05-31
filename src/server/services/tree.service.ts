@@ -32,6 +32,8 @@ import {
   withHebrewDatesForCreate,
   withHebrewDatesForUpdate,
 } from '@/server/lib/person-dates';
+import { applyProfileImagePatch } from '@/server/lib/profile-image-patch';
+import { resolveExternalImageUrl } from '@/lib/images/validate-external-image-url';
 import { extractPathsFromAboutJson } from '@/lib/tree/about-images';
 
 export interface PersonDto {
@@ -78,7 +80,8 @@ function toPersonPhotoDTO(row: {
   id: string;
   person_id: string;
   tree_id: string;
-  storage_path: string;
+  storage_path: string | null;
+  image_url: string | null;
   caption: string | null;
   sort_order: number;
   created_at: Date;
@@ -88,6 +91,7 @@ function toPersonPhotoDTO(row: {
     person_id: row.person_id,
     tree_id: row.tree_id,
     storage_path: row.storage_path,
+    image_url: row.image_url,
     caption: row.caption,
     sort_order: row.sort_order,
     created_at: row.created_at.toISOString(),
@@ -137,6 +141,18 @@ const PERSON_LIST_SELECT = {
   birth_place: true,
   bio: true,
   profile_image: true,
+  profile_image_url: true,
+} as const;
+
+const PERSON_PHOTO_SELECT = {
+  id: true,
+  person_id: true,
+  tree_id: true,
+  storage_path: true,
+  image_url: true,
+  caption: true,
+  sort_order: true,
+  created_at: true,
 } as const;
 
 const OptionalDate = z
@@ -421,15 +437,7 @@ export async function resolveTreePageData(): Promise<TreePageData> {
       prisma.personPhoto.findMany({
         where: { tree_id: treeId },
         orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
-        select: {
-          id: true,
-          person_id: true,
-          tree_id: true,
-          storage_path: true,
-          caption: true,
-          sort_order: true,
-          created_at: true,
-        },
+        select: PERSON_PHOTO_SELECT,
       }),
     ]);
 
@@ -559,16 +567,6 @@ export async function resolveTreePageDataBySlug(routeParam: string): Promise<Tre
   };
 }
 
-const PERSON_PHOTO_SELECT = {
-  id: true,
-  person_id: true,
-  tree_id: true,
-  storage_path: true,
-  caption: true,
-  sort_order: true,
-  created_at: true,
-} as const;
-
 /** Gallery photos for a tree — loaded on demand when the side panel opens. */
 export async function resolveTreePhotosBySlug(
   routeParam: string,
@@ -620,16 +618,21 @@ export async function updatePersonInTree(
       birth_date: true,
       death_date: true,
       is_deceased: true,
+      profile_image: true,
+      profile_image_url: true,
     },
   });
   if (!existing) throw Errors.notFound('Person');
 
   const data = withHebrewDatesForUpdate(parsed, existing);
+  const profileImageData = await applyProfileImagePatch(existing, parsed);
+
+  const { profile_image: _pi, profile_image_url: _pu, ...restData } = data;
 
   return prisma.person.update({
     where: { id },
-    data,
-    select: PERSON_SELECT,
+    data: { ...restData, ...profileImageData },
+    select: PERSON_LIST_SELECT,
   });
 }
 
@@ -655,7 +658,9 @@ export async function removePersonFromTree(
     select: { storage_path: true },
   });
   for (const { storage_path } of galleryPaths) {
-    await deletePersonGalleryObject(storage_path);
+    if (storage_path) {
+      await deletePersonGalleryObject(storage_path);
+    }
   }
 
   await prisma.person.delete({ where: { id } });
@@ -703,7 +708,9 @@ export async function deleteTree(treeId: string): Promise<{ id: string }> {
     .map((p) => p.profile_image)
     .filter((p): p is string => !!p);
   const aboutPaths = extractPathsFromAboutJson(tree.about_images);
-  const galleryPaths = photoRows.map((r) => r.storage_path);
+  const galleryPaths = photoRows
+    .map((r) => r.storage_path)
+    .filter((p): p is string => !!p);
 
   await Promise.allSettled([
     ...profilePaths.map((p) => deleteProfileImage(p)),
@@ -790,15 +797,7 @@ export async function addPersonPhotoToTree(params: {
           sort_order: sortOrder,
           uploaded_by: user.id,
         },
-        select: {
-          id: true,
-          person_id: true,
-          tree_id: true,
-          storage_path: true,
-          caption: true,
-          sort_order: true,
-          created_at: true,
-        },
+        select: PERSON_PHOTO_SELECT,
       });
     });
 
@@ -807,6 +806,75 @@ export async function addPersonPhotoToTree(params: {
     await deletePersonGalleryObject(storagePath);
     throw err;
   }
+}
+
+export async function addPersonPhotoFromUrl(params: {
+  treeId: string;
+  personId: string;
+  imageUrl: string;
+  caption?: string | null;
+}): Promise<PersonPhotoDTO> {
+  const { treeId, personId, imageUrl } = params;
+  const caption = normalizePhotoCaption(params.caption);
+
+  const user = await requireAuthUser();
+  await requireTreeRole(treeId, 'EDITOR');
+
+  const resolved = await resolveExternalImageUrl(imageUrl);
+  if (!resolved.ok) {
+    throw Errors.unprocessable(resolved.reason);
+  }
+
+  const row = await prisma.$transaction(async (tx) => {
+    await assertPersonsInTree(tx, treeId, [personId]);
+
+    const count = await tx.personPhoto.count({
+      where: { person_id: personId, tree_id: treeId },
+    });
+    if (count >= MAX_PHOTOS_PER_PERSON) {
+      throw Errors.maxPhotosReached();
+    }
+
+    const maxOrder = await tx.personPhoto.aggregate({
+      where: { person_id: personId, tree_id: treeId },
+      _max: { sort_order: true },
+    });
+    const sortOrder = (maxOrder._max.sort_order ?? -1) + 1;
+
+    return tx.personPhoto.create({
+      data: {
+        person_id: personId,
+        tree_id: treeId,
+        image_url: resolved.url,
+        storage_path: null,
+        caption,
+        sort_order: sortOrder,
+        uploaded_by: user.id,
+      },
+      select: PERSON_PHOTO_SELECT,
+    });
+  });
+
+  return toPersonPhotoDTO(row);
+}
+
+export async function addPersonPhotosFromUrls(params: {
+  treeId: string;
+  personId: string;
+  photos: Array<{ imageUrl: string; caption?: string | null }>;
+}): Promise<PersonPhotoDTO[]> {
+  const results: PersonPhotoDTO[] = [];
+  for (const photo of params.photos) {
+    results.push(
+      await addPersonPhotoFromUrl({
+        treeId: params.treeId,
+        personId: params.personId,
+        imageUrl: photo.imageUrl,
+        caption: photo.caption,
+      }),
+    );
+  }
+  return results;
 }
 
 export async function removePersonPhoto(photoId: string): Promise<{ id: string }> {
@@ -819,7 +887,9 @@ export async function removePersonPhoto(photoId: string): Promise<{ id: string }
 
   await requireTreeRole(existing.tree_id, 'EDITOR');
   await prisma.personPhoto.delete({ where: { id } });
-  await deletePersonGalleryObject(existing.storage_path);
+  if (existing.storage_path) {
+    await deletePersonGalleryObject(existing.storage_path);
+  }
   return { id };
 }
 
@@ -841,15 +911,7 @@ export async function updatePersonPhotoCaption(params: {
   const row = await prisma.personPhoto.update({
     where: { id },
     data: { caption },
-    select: {
-      id: true,
-      person_id: true,
-      tree_id: true,
-      storage_path: true,
-      caption: true,
-      sort_order: true,
-      created_at: true,
-    },
+    select: PERSON_PHOTO_SELECT,
   });
 
   return toPersonPhotoDTO(row);

@@ -5,7 +5,8 @@ import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
 import { MAX_CAPTION_LENGTH } from '@/lib/images/gallery-upload-constraints';
-import { personGalleryPublicUrl } from '@/lib/supabase/public-url';
+import { getPersonPhotoUrl } from '@/lib/images/get-person-photo-url';
+import { EXTERNAL_IMAGE_IMG_PROPS } from '@/lib/images/normalize-external-image-url';
 import { cn } from '@/lib/utils';
 import type { PersonPhotoDTO } from '@/features/family-tree/lib/types';
 
@@ -46,7 +47,7 @@ export function PhotoLightbox({
 
   if (!open) return null;
 
-  const src = personGalleryPublicUrl(photo.storage_path);
+  const src = getPersonPhotoUrl(photo);
 
   return (
     <div
@@ -77,6 +78,7 @@ export function PhotoLightbox({
             src={src}
             alt=""
             className="mx-auto mt-6 max-h-[60vh] w-auto max-w-full rounded-lg object-contain"
+            {...(photo.image_url ? EXTERNAL_IMAGE_IMG_PROPS : {})}
           />
         ) : null}
 

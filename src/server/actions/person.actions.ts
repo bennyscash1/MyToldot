@@ -23,6 +23,19 @@ import {
   type BioResult,
   type BioSubject,
 } from '@/server/lib/gemini';
+import {
+  buildDefaultImageSearchContext,
+  generatePersonImageCandidates,
+  type ImageSearchSubject,
+} from '@/server/lib/gemini-person-images';
+import {
+  SearchPersonImagesInputSchema,
+  type ImageCandidate,
+} from '@/features/family-tree/schemas/person-image-search.schema';
+import {
+  isBlockedImageDomain,
+  resolveExternalImageUrl,
+} from '@/lib/images/validate-external-image-url';
 
 /** Creates a standalone person (no relationships). Used for the tree root, or prior to wiring. */
 export async function createPersonAction(
@@ -275,5 +288,106 @@ export async function fetchAiBiographyAction(
 
     const subject = buildSubject(person, father, mother, spouse, children, siblings);
     return await generateGroundedHebrewBio(subject);
+  });
+}
+
+function formatDateForSearch(d: Date | null): string | undefined {
+  if (!d) return undefined;
+  const iso = d.toISOString().slice(0, 10);
+  return iso;
+}
+
+function buildImageSearchSubject(
+  person: {
+    first_name: string;
+    last_name: string | null;
+    first_name_he: string | null;
+    last_name_he: string | null;
+    gender: Gender;
+    birth_date: Date | null;
+    death_date: Date | null;
+    birth_place: string | null;
+  },
+  parent: {
+    first_name: string;
+    last_name: string | null;
+    first_name_he: string | null;
+    last_name_he: string | null;
+    gender: Gender;
+  } | null,
+  parentRelation?: string,
+): ImageSearchSubject {
+  const heName = [person.first_name_he, person.last_name_he].filter(Boolean).join(' ').trim();
+  const enName = [person.first_name, person.last_name].filter(Boolean).join(' ').trim();
+  const parentHe = parent
+    ? [parent.first_name_he, parent.last_name_he].filter(Boolean).join(' ').trim() ||
+      [parent.first_name, parent.last_name].filter(Boolean).join(' ').trim()
+    : '';
+
+  return {
+    fullNameHe: heName || enName || '(unnamed)',
+    fullNameEn: enName || undefined,
+    gender: person.gender,
+    birthDate: formatDateForSearch(person.birth_date),
+    deathDate: formatDateForSearch(person.death_date),
+    birthPlace: person.birth_place?.trim() || undefined,
+    parentNameHe: parentHe || undefined,
+    parentRelation,
+  };
+}
+
+export async function searchPersonImagesAction(input: {
+  personId: string;
+  searchContext?: string;
+}): Promise<ActionResult<{ candidates: ImageCandidate[] }>> {
+  return withAction(async () => {
+    const { personId, searchContext } = SearchPersonImagesInputSchema.parse(input);
+    if (!process.env.GEMINI_API_KEY) {
+      throw Errors.internal('GEMINI_API_KEY is not configured');
+    }
+
+    const person = await prisma.person.findUnique({
+      where: { id: personId },
+      include: {
+        relationships_as_person2: {
+          where: {
+            relationship_type: {
+              in: [RelationshipType.PARENT_CHILD, RelationshipType.ADOPTED_PARENT],
+            },
+          },
+          include: { person1: { select: NAME_AND_VITALS_SELECT } },
+        },
+      },
+    });
+
+    if (!person) {
+      throw Errors.notFound('Person');
+    }
+
+    await requireTreeRole(person.tree_id, TreeMemberRole.EDITOR);
+
+    const parentEdge = person.relationships_as_person2[0];
+    const parent = parentEdge?.person1 ?? null;
+    const parentRelation =
+      parent?.gender === Gender.MALE ? 'אב' : parent?.gender === Gender.FEMALE ? 'אם' : undefined;
+
+    const subject = buildImageSearchSubject(person, parent, parentRelation);
+    const context =
+      searchContext?.trim() || buildDefaultImageSearchContext(subject);
+
+    const rawCandidates = await generatePersonImageCandidates(subject, context);
+
+    const filtered: ImageCandidate[] = [];
+    for (const candidate of rawCandidates) {
+      if (filtered.length >= 8) break;
+      if (isBlockedImageDomain(candidate.imageUrl)) continue;
+
+      const resolved = await resolveExternalImageUrl(candidate.imageUrl);
+      if (!resolved.ok) continue;
+
+      filtered.push({ ...candidate, imageUrl: resolved.url });
+    }
+
+    return { candidates: filtered };
   });
 }

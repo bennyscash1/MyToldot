@@ -4,8 +4,8 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import clsx from 'clsx';
 
-import { DEFAULT_PERSON_IMAGE_SRC } from '@/lib/images/default-person';
-import { profileImagePublicUrl } from '@/lib/supabase/public-url';
+import { getPersonProfileImageUrl } from '@/lib/images/get-person-profile-image-url';
+import { EXTERNAL_IMAGE_IMG_PROPS } from '@/lib/images/normalize-external-image-url';
 import type { PersonNodeData } from '../../lib/types';
 import {
   PERSON_NODE_HEIGHT,
@@ -122,15 +122,15 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
 }
 
 function Avatar({ person }: { person: PersonNodeData['person'] }) {
-  const uploaded =
-    profileImagePublicUrl(person.profile_image) ?? person.profile_image?.trim() ?? null;
-  const src = uploaded || DEFAULT_PERSON_IMAGE_SRC;
+  const src = getPersonProfileImageUrl(person);
+  const isExternal = Boolean(person.profile_image_url?.trim());
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt=""
       className="h-[132px] w-full flex-shrink-0 rounded-t-[10px] object-cover object-top bg-slate-100"
+      {...(isExternal ? EXTERNAL_IMAGE_IMG_PROPS : {})}
     />
   );
 }

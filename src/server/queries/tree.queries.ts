@@ -34,6 +34,7 @@ export interface TreeViewerPayload {
     death_year_hebrew: string | null;
     birth_place: string | null;
     profile_image: string | null;
+    profile_image_url: string | null;
   }>;
   relationships: Array<{
     id: string;
@@ -100,6 +101,7 @@ export async function getTreeViewerPayload(treeId: string): Promise<TreeViewerPa
         death_year_hebrew: true,
         birth_place: true,
         profile_image: true,
+        profile_image_url: true,
       },
       orderBy: { created_at: 'asc' }, // stable order for non-member public viewers
     }),

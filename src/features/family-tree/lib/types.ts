@@ -19,7 +19,8 @@ export interface PersonPhotoDTO {
   id: string;
   person_id: string;
   tree_id: string;
-  storage_path: string;
+  storage_path: string | null;
+  image_url: string | null;
   caption: string | null;
   sort_order: number;
   created_at: string;
@@ -44,6 +45,7 @@ export interface PersonRow {
   /** Optional — may be loaded from DB even if the canvas omits it in the hash. */
   bio?: string | null;
   profile_image: string | null;
+  profile_image_url: string | null;
 }
 
 export interface RelationshipRow {

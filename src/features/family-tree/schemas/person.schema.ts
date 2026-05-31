@@ -33,6 +33,7 @@ const personFieldsShape = {
   birth_place: z.string().trim().max(200).optional().nullable(),
   bio: z.string().trim().max(5000).optional().nullable(),
   profile_image: z.string().trim().max(500).optional().nullable(),
+  profile_image_url: z.string().url().max(2048).optional().nullable(),
 } as const;
 
 // Cross-field rule: when the person is explicitly alive, death_date must be empty.

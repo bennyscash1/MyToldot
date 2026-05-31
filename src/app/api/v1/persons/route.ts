@@ -37,6 +37,7 @@ const PERSON_SELECT = {
   birth_place: true,
   bio: true,
   profile_image: true,
+  profile_image_url: true,
   first_name_he: true,
   last_name_he: true,
   created_at: true,

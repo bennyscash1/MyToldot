@@ -1,7 +1,8 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
-import { profileImagePublicUrl, personGalleryPublicUrl } from '@/lib/supabase/public-url';
+import { getPersonProfileImageUrl } from '@/lib/images/get-person-profile-image-url';
+import { getPersonPhotoUrl } from '@/lib/images/get-person-photo-url';
 import {
   buildRelationsMap,
   computeGenerationCount,
@@ -52,6 +53,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
         is_deceased: true,
         bio: true,
         profile_image: true,
+        profile_image_url: true,
         gender: true,
         updated_at: true,
       },
@@ -72,6 +74,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
         id: true,
         person_id: true,
         storage_path: true,
+        image_url: true,
         caption: true,
         sort_order: true,
         created_at: true,
@@ -104,7 +107,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     return {
       id: p.id,
       displayName: displayNameFor(p),
-      profileImageUrl: profileImagePublicUrl(p.profile_image),
+      profileImageUrl: getPersonProfileImageUrl(p, { fallback: '' }) || null,
     };
   };
 
@@ -117,7 +120,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     return {
       id: p.id,
       displayName: displayNameFor(p),
-      profileImageUrl: profileImagePublicUrl(p.profile_image),
+      profileImageUrl: getPersonProfileImageUrl(p, { fallback: '' }) || null,
       gender: p.gender,
       isAdoptive: opts?.isAdoptive,
       isDivorcedSpouse: opts?.isDivorcedSpouse,
@@ -141,7 +144,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
 
   for (const p of personRows) {
     const photos = photosByPerson.get(p.id) ?? [];
-    const profileUrl = profileImagePublicUrl(p.profile_image);
+    const profileUrl = getPersonProfileImageUrl(p, { fallback: '' }) || null;
     const hasBio = (p.bio?.trim().length ?? 0) >= MIN_BIO_CHARS;
     const eligible = hasBio || profileUrl !== null || photos.length > 0;
     if (!eligible) continue;
@@ -175,7 +178,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
 
     const galleryUrls = photos
       .map((photo) => {
-        const url = personGalleryPublicUrl(photo.storage_path);
+        const url = getPersonPhotoUrl(photo);
         return url ? { url, caption: photo.caption } : null;
       })
       .filter((g): g is { url: string; caption: string | null } => g !== null);
@@ -262,7 +265,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
     .map((p) => ({
       personId: p.id,
       personName: displayNameFor(p),
-      profileImageUrl: profileImagePublicUrl(p.profile_image),
+      profileImageUrl: getPersonProfileImageUrl(p, { fallback: '' }) || null,
       updatedAt: p.updated_at.toISOString(),
     }));
 
@@ -272,7 +275,7 @@ export async function getDashboardData(treeId: string): Promise<DashboardData | 
   const recentPhotos: RecentPhoto[] = allPhotosSorted
     .slice(0, RECENT_PHOTOS_LIMIT)
     .map((photo) => {
-      const url = personGalleryPublicUrl(photo.storage_path);
+      const url = getPersonPhotoUrl(photo);
       const owner = personIndex.get(photo.person_id);
       return url
         ? {

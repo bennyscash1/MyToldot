@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { MAX_PHOTOS_PER_PERSON } from '@/lib/images/gallery-upload-constraints';
-import { personGalleryPublicUrl } from '@/lib/supabase/public-url';
+import { getPersonPhotoUrl } from '@/lib/images/get-person-photo-url';
+import { EXTERNAL_IMAGE_IMG_PROPS, normalizeExternalImageUrl } from '@/lib/images/normalize-external-image-url';
 import { cn } from '@/lib/utils';
 import {
   removePersonPhotoAction,
@@ -16,6 +17,8 @@ import type { PersonPhotoDTO } from '@/features/family-tree/lib/types';
 
 import { Spinner } from '@/components/ui/Spinner';
 import { PhotoLightbox } from './PhotoLightbox';
+import { PersonImagePicker } from './PersonImagePicker';
+import type { AiImageSelection } from './AiImageSearchModal';
 
 export interface PersonGalleryEditorProps {
   treeId: string;
@@ -25,6 +28,13 @@ export interface PersonGalleryEditorProps {
   photosLoading?: boolean;
   onPhotosChange: (next: PersonPhotoDTO[]) => void;
   canEdit: boolean;
+  personName: string;
+  birthDateLabel?: string;
+  deathDateLabel?: string;
+  defaultSearchContext: string;
+  stagedGalleryPhotos?: Array<{ imageUrl: string; caption?: string }>;
+  onStageGalleryPhotos?: (items: Array<{ imageUrl: string; caption?: string }>) => void;
+  onRemoveStagedGalleryPhoto?: (index: number) => void;
 }
 
 function PhotoIcon({ className }: { className?: string }) {
@@ -53,8 +63,16 @@ export function PersonGalleryEditor({
   photosLoading = false,
   onPhotosChange,
   canEdit,
+  personName,
+  birthDateLabel,
+  deathDateLabel,
+  defaultSearchContext,
+  stagedGalleryPhotos = [],
+  onStageGalleryPhotos,
+  onRemoveStagedGalleryPhoto,
 }: PersonGalleryEditorProps) {
   const t = useTranslations('gallery');
+  const tImage = useTranslations('personImage');
   const locale = useLocale();
   const dir = locale === 'he' ? 'rtl' : 'ltr';
 
@@ -63,9 +81,8 @@ export function PersonGalleryEditor({
   const [showMaxModal, setShowMaxModal] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<PersonPhotoDTO | null>(null);
   const [isPending, startTransition] = useTransition();
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  const count = photos.length;
+  const count = photos.length + stagedGalleryPhotos.length;
 
   useEffect(() => {
     setOpen(false);
@@ -74,6 +91,10 @@ export function PersonGalleryEditor({
   }, [personId]);
 
   const handleUpload = (file: File) => {
+    if (count >= MAX_PHOTOS_PER_PERSON) {
+      setShowMaxModal(true);
+      return;
+    }
     setLocalError(null);
     startTransition(async () => {
       try {
@@ -139,6 +160,25 @@ export function PersonGalleryEditor({
     onPhotosChange(prev.map((p) => (p.id === result.data.id ? result.data : p)));
   };
 
+  const handleGalleryUrl = (url: string) => {
+    if (count >= MAX_PHOTOS_PER_PERSON) {
+      setShowMaxModal(true);
+      return;
+    }
+    onStageGalleryPhotos?.([{ imageUrl: url }]);
+  };
+
+  const handleGalleryAi = (selection: AiImageSelection) => {
+    const items = selection.galleryItems ?? [];
+    if (items.length === 0) return;
+    const remaining = MAX_PHOTOS_PER_PERSON - count;
+    if (remaining <= 0) {
+      setShowMaxModal(true);
+      return;
+    }
+    onStageGalleryPhotos?.(items.slice(0, remaining));
+  };
+
   const gridSlots = 5;
   const emptySlots = Math.max(0, gridSlots - count - (canEdit && count < MAX_PHOTOS_PER_PERSON ? 1 : 0));
 
@@ -189,7 +229,7 @@ export function PersonGalleryEditor({
           <div className="rounded-lg border border-gray-200/80 bg-[#faf9f3] p-2.5">
             <div className="grid grid-cols-3 gap-2">
               {photos.map((photo) => {
-                const src = personGalleryPublicUrl(photo.storage_path);
+                const src = getPersonPhotoUrl(photo);
                 return (
                   <div key={photo.id} className="relative aspect-square">
                     <button
@@ -203,6 +243,7 @@ export function PersonGalleryEditor({
                           src={src}
                           alt=""
                           className="h-full w-full object-cover"
+                          {...(photo.image_url ? EXTERNAL_IMAGE_IMG_PROPS : {})}
                         />
                       ) : null}
                       {photo.caption ? (
@@ -232,21 +273,49 @@ export function PersonGalleryEditor({
                 );
               })}
 
+              {stagedGalleryPhotos.map((staged, index) => (
+                <div key={`staged-${index}`} className="relative aspect-square">
+                  <div className="relative h-full w-full overflow-hidden rounded-lg border-2 border-dashed border-emerald-400 bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={normalizeExternalImageUrl(staged.imageUrl)}
+                      alt=""
+                      className="h-full w-full object-cover opacity-90"
+                      {...EXTERNAL_IMAGE_IMG_PROPS}
+                    />
+                    <span className="absolute bottom-1 start-1 rounded bg-emerald-600/90 px-1 text-[9px] text-white">
+                      {tImage('pendingSave')}
+                    </span>
+                  </div>
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveStagedGalleryPhoto?.(index)}
+                      className="absolute start-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-xs text-white hover:bg-red-600"
+                      aria-label={t('delete')}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+
               {canEdit && count < MAX_PHOTOS_PER_PERSON ? (
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => fileRef.current?.click()}
-                  className={cn(
-                    'flex aspect-square flex-col items-center justify-center rounded-lg',
-                    'border-2 border-dashed border-emerald-300 bg-emerald-50',
-                    'text-emerald-700 transition hover:bg-emerald-100',
-                    'disabled:opacity-50',
-                  )}
-                >
-                  <span className="text-2xl leading-none">+</span>
-                  <span className="mt-0.5 text-[10px] font-medium">{t('addPhoto')}</span>
-                </button>
+                <div className="flex aspect-square flex-col items-center justify-center rounded-lg border-2 border-dashed border-emerald-300 bg-emerald-50 px-1">
+                  <PersonImagePicker
+                    mode="gallery"
+                    personId={personId}
+                    personName={personName}
+                    birthDateLabel={birthDateLabel}
+                    deathDateLabel={deathDateLabel}
+                    defaultSearchContext={defaultSearchContext}
+                    disabled={isPending}
+                    onUploadFile={handleUpload}
+                    onUrlSelected={handleGalleryUrl}
+                    onAiSelected={handleGalleryAi}
+                    className="text-center"
+                  />
+                </div>
               ) : null}
 
               {Array.from({ length: emptySlots }).map((_, i) => (
@@ -275,18 +344,6 @@ export function PersonGalleryEditor({
           </div>
         </div>
       </div>
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = '';
-          if (f) handleUpload(f);
-        }}
-      />
 
       {lightboxPhoto ? (
         <PhotoLightbox

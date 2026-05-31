@@ -86,6 +86,7 @@ function toPhotoDTO(photo: RecentPhoto, treeId: string): PersonPhotoDTO {
     person_id: photo.personId,
     tree_id: treeId,
     storage_path: photo.storagePath,
+    image_url: null,
     caption: photo.caption,
     sort_order: 0,
     created_at: new Date().toISOString(),

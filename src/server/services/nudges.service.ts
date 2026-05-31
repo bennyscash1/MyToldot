@@ -52,6 +52,7 @@ export async function computeNudgesForTree(treeId: string): Promise<Nudge[]> {
         birth_place: true,
         bio: true,
         profile_image: true,
+        profile_image_url: true,
       },
     }),
     prisma.relationship.findMany({
@@ -103,7 +104,7 @@ export async function computeNudgesForTree(treeId: string): Promise<Nudge[]> {
       });
     }
 
-    if (p.profile_image === null) {
+    if (p.profile_image === null && p.profile_image_url === null) {
       candidates.push({
         id: `${idBase}:profile_image`,
         type: 'profile_image',

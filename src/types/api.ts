@@ -105,6 +105,7 @@ export interface PersonDto {
   birth_place: string | null;
   bio: string | null;
   profile_image: string | null;
+  profile_image_url: string | null;
   first_name_he: string | null;
   last_name_he: string | null;
   created_at: string;
@@ -126,6 +127,8 @@ export interface CreatePersonBody {
   last_name_he?: string;
   /** Supabase Storage path (not a full URL). Set after image upload. */
   profile_image?: string;
+  /** External image URL (mutually exclusive with profile_image). */
+  profile_image_url?: string | null;
 }
 
 export type UpdatePersonBody = Partial<Omit<CreatePersonBody, 'tree_id'>>;
