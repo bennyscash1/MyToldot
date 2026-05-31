@@ -4,11 +4,11 @@ import {
   type ImageCandidate,
 } from '@/features/family-tree/schemas/person-image-search.schema';
 
-const IMAGE_SEARCH_SYSTEM_INSTRUCTION = `אתה חוקר תמונות היסטוריות במערכת 'תולדותיי', מומחה באיתור צילומים ציבוריים של דמויות יהודיות, רבנים, חסידים ודמויות גenealogיות ממזרח אירופה.
+const IMAGE_SEARCH_SYSTEM_INSTRUCTION = `אתה חוקר תמונות במערכת 'תולדותיי' — דמויות היסטוריות, משפחתיות, וגם דמויות ציבוריות מודרניות.
 
 כללי עבודה:
 1. חפש תמונות ציבוריות בלבד — ויקיפedia, אתרי ארכיון, מוזיאון, גenealogיה, אתרי מורשת.
-2. החזר רק קישורים ישירים לקובץ תמונה — URL שמתחיל ב-upload.wikimedia.org או CDN דומה. לעולם אל תחזיר דפי HTML (commons.wikimedia.org/wiki/File:... אסור ב-imageUrl).
+2. החזר רק קישורים ישירים לקובץ תמונה — URL שמתחיל ב-upload.wikimedia.org. העתק את ה-URL בדיוק מתוצאות החיפוש; לעולם אל תבנה/תנחש נתיב (hash) לפי שם הקובץ — Gemini מחזיר לעיתים נתיב שגוי.
 3. אל תמציא URL. אם לא נמצאה תמונה — החזר candidates: [].
 4. חיפוש רב-לשוני: עברית + אנגלית + רומניזציה יידית/גרמנית/הונגרית.
 5. לכל תמונה: sourcePageUrl (דף המקור), sourceDomain, caption קצר בעברית, confidence.
@@ -107,7 +107,7 @@ function genderLabel(gender?: string): string {
 
 function buildImageSearchUserPrompt(subject: ImageSearchSubject, searchContext: string): string {
   return [
-    'חפש עד 8 תמונות ציבוריות של האדם הבא.',
+    'חפש עד 12 תמונות ציבוריות של האדם הבא.',
     '',
     '=== נושא ===',
     `שם (עברית): ${subject.fullNameHe || 'לא ידוע'}`,
@@ -124,7 +124,7 @@ function buildImageSearchUserPrompt(subject: ImageSearchSubject, searchContext: 
     '=== הוראות ===',
     '- בצע חיפושי google_search מרובים (עברית + אנגלית + varianti שם).',
     '- החזר רק URL ישירים לתמונות, לא דפי HTML.',
-    '- מקסימום 8 מועמדים, ממוינים לפי relevance (high קודם).',
+    '- מקסימום 12 מועמדים, ממוינים לפי relevance (high קודם).',
     '',
     '=== פורmat JSON נדרש ===',
     `{

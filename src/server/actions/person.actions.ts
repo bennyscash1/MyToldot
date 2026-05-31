@@ -33,7 +33,13 @@ import {
   type ImageCandidate,
 } from '@/features/family-tree/schemas/person-image-search.schema';
 import {
+  buildCommonsSearchQueries,
+  searchCommonsImageCandidates,
+} from '@/lib/images/commons-image-search';
+import {
+  extractWikimediaFileName,
   isBlockedImageDomain,
+  prefetchCommonsDirectUrls,
   resolveExternalImageUrl,
 } from '@/lib/images/validate-external-image-url';
 
@@ -375,15 +381,33 @@ export async function searchPersonImagesAction(input: {
     const context =
       searchContext?.trim() || buildDefaultImageSearchContext(subject);
 
-    const rawCandidates = await generatePersonImageCandidates(subject, context);
+    const MAX_RESULTS = 12;
+
+    const [rawCandidates, commonsCandidates] = await Promise.all([
+      generatePersonImageCandidates(subject, context),
+      searchCommonsImageCandidates(
+        buildCommonsSearchQueries(subject.fullNameEn, context),
+        MAX_RESULTS,
+      ),
+    ]);
+
+    const mergedCandidates = [...rawCandidates, ...commonsCandidates];
+
+    const fileNames = mergedCandidates
+      .map((c) => extractWikimediaFileName(c.imageUrl))
+      .filter((name): name is string => Boolean(name));
+    await prefetchCommonsDirectUrls(fileNames);
 
     const filtered: ImageCandidate[] = [];
-    for (const candidate of rawCandidates) {
-      if (filtered.length >= 8) break;
+    const seenUrls = new Set<string>();
+    for (const candidate of mergedCandidates) {
+      if (filtered.length >= MAX_RESULTS) break;
       if (isBlockedImageDomain(candidate.imageUrl)) continue;
 
       const resolved = await resolveExternalImageUrl(candidate.imageUrl);
       if (!resolved.ok) continue;
+      if (seenUrls.has(resolved.url)) continue;
+      seenUrls.add(resolved.url);
 
       filtered.push({ ...candidate, imageUrl: resolved.url });
     }

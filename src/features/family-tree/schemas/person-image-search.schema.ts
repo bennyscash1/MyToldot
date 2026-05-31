@@ -16,7 +16,7 @@ export const ImageCandidateSchema = z.object({
 });
 
 export const ImageSearchResponseSchema = z.object({
-  candidates: z.array(ImageCandidateSchema).max(8),
+  candidates: z.array(ImageCandidateSchema).max(16),
 });
 
 export type ImageCandidate = z.infer<typeof ImageCandidateSchema>;
