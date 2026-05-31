@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/routing';
 
@@ -72,6 +72,7 @@ export function TreeCanvasWithModals({
     addSpouse,
     addChild,
     addSibling,
+    commitDiscoveredMember,
     updatePerson,
     deletePerson,
     isSaving,
@@ -86,6 +87,11 @@ export function TreeCanvasWithModals({
     initialRelationships,
     onMutationDone: bumpNudgesRefetch,
   });
+
+  const existingPersonNamesHe = useMemo(
+    () => persons.map((p) => fullNameFromPerson(p)),
+    [persons],
+  );
 
   const [popover, setPopover] = useState<{
     meta: PlaceholderMeta;
@@ -632,6 +638,8 @@ export function TreeCanvasWithModals({
         <NudgesPanelContainer
           treeId={treeId}
           refetchSignal={nudgesRefetchSignal}
+          existingPersonNamesHe={existingPersonNamesHe}
+          onCommitProposal={commitDiscoveredMember}
           onOpenSidePanelForBio={onOpenSidePanelForBio}
           onSelectPerson={onSelectPerson}
         />

@@ -1,14 +1,30 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
+import type { FamilyMemberProposalDto } from '../lib/family-discovery-types';
 import type { Nudge } from '../lib/nudge-types';
+import type { FamilyDiscoveryStatus } from '../hooks/useFamilyDiscovery';
+import { FamilyDiscoveryProposalCard } from './FamilyDiscoveryProposalCard';
+import { FamilyDiscoverySection } from './FamilyDiscoverySection';
 import { NudgeCard } from './NudgeCard';
+
+const MAX_VISIBLE = 5;
 
 interface NudgesPanelProps {
   treeId: string;
   nudges: Nudge[];
+  proposals: FamilyMemberProposalDto[];
   visibleCount: number;
+  discoveryStatus: FamilyDiscoveryStatus;
+  discoveryError: string | null;
+  onDiscover: () => void;
+  onDiscoveryRetry: () => void;
+  onCommitProposal: (proposal: FamilyMemberProposalDto) => Promise<boolean>;
+  onCommitAllProposals: () => void;
+  isAddingAll: boolean;
+  onDismissProposal: (dedupeKey: string) => void;
   onMinimize: () => void;
   onSavedAndDone: (nudgeId: string) => void;
   onSkip: (nudgeId: string) => void;
@@ -19,7 +35,16 @@ interface NudgesPanelProps {
 export function NudgesPanel({
   treeId,
   nudges,
+  proposals,
   visibleCount,
+  discoveryStatus,
+  discoveryError,
+  onDiscover,
+  onDiscoveryRetry,
+  onCommitProposal,
+  onCommitAllProposals,
+  isAddingAll,
+  onDismissProposal,
   onMinimize,
   onSavedAndDone,
   onSkip,
@@ -27,7 +52,25 @@ export function NudgesPanel({
   onSelectPerson,
 }: NudgesPanelProps) {
   const t = useTranslations('nudges');
-  const isEmpty = nudges.length === 0;
+  const tDiscovery = useTranslations('familyDiscovery');
+
+  const visibleProposals = useMemo(() => {
+    const slots = Math.min(proposals.length, MAX_VISIBLE);
+    return proposals.slice(0, slots);
+  }, [proposals]);
+
+  const visibleNudges = useMemo(() => {
+    const remaining = MAX_VISIBLE - visibleProposals.length;
+    if (remaining <= 0) return [];
+    return nudges.slice(0, remaining);
+  }, [nudges, visibleProposals.length]);
+
+  const isListEmpty =
+    visibleProposals.length === 0 &&
+    visibleNudges.length === 0 &&
+    discoveryStatus !== 'loading';
+  const showDiscoveryButton =
+    discoveryStatus !== 'loading' && proposals.length === 0;
 
   return (
     <div className="flex max-h-[500px] w-[340px] flex-col overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-xl">
@@ -50,14 +93,47 @@ export function NudgesPanel({
       </header>
 
       <div className="flex-1 overflow-y-auto p-3">
-        {isEmpty ? (
+        <FamilyDiscoverySection
+          status={discoveryStatus}
+          error={discoveryError}
+          onDiscover={onDiscover}
+          onRetry={onDiscoveryRetry}
+          showButton={showDiscoveryButton}
+        />
+
+        {proposals.length >= 2 && (
+          <div className="mb-3">
+            <button
+              type="button"
+              onClick={onCommitAllProposals}
+              disabled={isAddingAll || discoveryStatus === 'loading'}
+              className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isAddingAll
+                ? tDiscovery('addingAll')
+                : tDiscovery('addAllToTree', { count: proposals.length })}
+            </button>
+          </div>
+        )}
+
+        {isListEmpty ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <SparklesIcon className="h-12 w-12 text-emerald-300" aria-hidden />
             <p className="font-medium text-gray-600">{t('allComplete')}</p>
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
-            {nudges.map((nudge) => (
+            {visibleProposals.map((proposal) => (
+              <li key={proposal.dedupeKey}>
+                <FamilyDiscoveryProposalCard
+                  proposal={proposal}
+                  onAdd={() => onCommitProposal(proposal)}
+                  onDismiss={() => onDismissProposal(proposal.dedupeKey)}
+                  disabled={isAddingAll}
+                />
+              </li>
+            ))}
+            {visibleNudges.map((nudge) => (
               <li key={nudge.id}>
                 <NudgeCard
                   nudge={nudge}

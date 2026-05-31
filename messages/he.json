@@ -532,6 +532,36 @@
       ]
     }
   },
+  "familyDiscovery": {
+    "discoverButton": "🔍 חפש בני משפחה חדשים עם AI",
+    "discovering": "מחפש בני משפחה...",
+    "errorGeneric": "לא הצלחנו לחפש. נסה שוב.",
+    "retry": "נסה שוב",
+    "addToTree": "הוסף לעץ",
+    "addAllToTree": "הוסף את כולם לעץ ({count})",
+    "adding": "מוסיף...",
+    "addingAll": "מוסיף את כולם...",
+    "dismiss": "דחה",
+    "expandDetails": "▸ פרטים נוספים",
+    "collapseDetails": "▾ הסתר פרטים",
+    "born": "נולד",
+    "died": "נפטר",
+    "birthPlace": "מקום לידה",
+    "confidence": {
+      "high": "גבוה",
+      "medium": "בינוני",
+      "low": "נמוך"
+    },
+    "connection": {
+      "parentOfMale": "אביו של {name}",
+      "parentOfFemale": "אמו של {name}",
+      "childOfMale": "בנו של {name}",
+      "childOfFemale": "בתו של {name}",
+      "spouseOf": "בן/בת זוגו של {name}",
+      "siblingOfMale": "אחיו של {name}",
+      "siblingOfFemale": "אחותו של {name}"
+    }
+  },
   "landing": {
     "meta": {
       "title": "תולדותיי | כותבים עתיד",

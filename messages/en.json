@@ -532,6 +532,36 @@
       ]
     }
   },
+  "familyDiscovery": {
+    "discoverButton": "🔍 Discover new family members with AI",
+    "discovering": "Searching for family members...",
+    "errorGeneric": "Search failed. Please try again.",
+    "retry": "Try again",
+    "addToTree": "Add to tree",
+    "addAllToTree": "Add all to tree ({count})",
+    "adding": "Adding...",
+    "addingAll": "Adding all...",
+    "dismiss": "Dismiss",
+    "expandDetails": "▸ More details",
+    "collapseDetails": "▾ Hide details",
+    "born": "Born",
+    "died": "Died",
+    "birthPlace": "Birthplace",
+    "confidence": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "connection": {
+      "parentOfMale": "Father of {name}",
+      "parentOfFemale": "Mother of {name}",
+      "childOfMale": "Son of {name}",
+      "childOfFemale": "Daughter of {name}",
+      "spouseOf": "Spouse of {name}",
+      "siblingOfMale": "Brother of {name}",
+      "siblingOfFemale": "Sister of {name}"
+    }
+  },
   "landing": {
     "meta": {
       "title": "Toldotay | Writing the Future",

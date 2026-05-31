@@ -7,6 +7,9 @@ import type { AddedRelativeDto } from '@/server/services/tree.service';
 import {
   updatePersonAction,
 } from '@/server/actions/person.actions';
+import { commitDiscoveredMemberAction } from '@/server/actions/family-discovery.actions';
+import type { FamilyMemberProposalDto } from '@/features/nudges/lib/family-discovery-types';
+import { proposalToPersonInput } from '@/features/family-tree/lib/proposal-to-person';
 import type {
   PersonInput,
   PersonPatch,
@@ -60,6 +63,8 @@ export interface UseTreeMutationsResult {
     skipSpouseAutoLink?: boolean;
   }) => Promise<string | null>;
   addSibling: (args: { existingSiblingId: string; sibling: PersonInput }) => Promise<boolean>;
+  /** Commits an AI-discovered family member proposal with optimistic canvas update. */
+  commitDiscoveredMember: (proposal: FamilyMemberProposalDto) => Promise<boolean>;
   updatePerson: (args: { personId: string; patch: PersonPatch }) => Promise<void>;
   deletePerson: (personId: string) => Promise<void>;
   isSaving: boolean;
@@ -513,6 +518,132 @@ export function useTreeMutations({
     [asMutationResult, treeId, treeRouteBase, relationships, runOptimistic],
   );
 
+  // ── commitDiscoveredMember ─────────────────────────────────────
+  const commitDiscoveredMember = useCallback<
+    UseTreeMutationsResult['commitDiscoveredMember']
+  >(
+    async (proposal) => {
+      let personInput = proposalToPersonInput(proposal);
+      const { relatedToPersonId, type } = proposal.relationship;
+
+      const newPersonId = tmpId('person');
+      let tempRelationships: RelationshipRow[] = [];
+
+      if (type === 'PARENT') {
+        tempRelationships = [
+          {
+            id: tmpId('rel'),
+            relationship_type: 'PARENT_CHILD',
+            person1_id: newPersonId,
+            person2_id: relatedToPersonId,
+            start_date: null,
+            end_date: null,
+          },
+        ];
+      } else if (type === 'CHILD') {
+        tempRelationships = [
+          {
+            id: tmpId('rel'),
+            relationship_type: 'PARENT_CHILD',
+            person1_id: relatedToPersonId,
+            person2_id: newPersonId,
+            start_date: null,
+            end_date: null,
+          },
+        ];
+      } else if (type === 'SPOUSE') {
+        const focusedPerson = persons.find((p) => p.id === relatedToPersonId);
+        if (!focusedPerson) {
+          setLastError('Focused person was not found');
+          return false;
+        }
+        const spouseGender = oppositeBinaryGender(focusedPerson.gender);
+        if (!spouseGender) {
+          setLastError('Cannot add spouse unless the focused person is male or female.');
+          return false;
+        }
+        personInput = { ...personInput, gender: spouseGender };
+        tempRelationships = [
+          {
+            id: tmpId('rel'),
+            relationship_type: 'SPOUSE',
+            person1_id: relatedToPersonId,
+            person2_id: newPersonId,
+            start_date: null,
+            end_date: null,
+          },
+        ];
+      } else if (type === 'SIBLING') {
+        const parentRels = relationships.filter(
+          (r) =>
+            r.person2_id === relatedToPersonId &&
+            (r.relationship_type === 'PARENT_CHILD' || r.relationship_type === 'ADOPTED_PARENT'),
+        );
+        if (parentRels.length === 0) {
+          tempRelationships = [
+            {
+              id: tmpId('rel'),
+              relationship_type: 'SIBLING',
+              person1_id: relatedToPersonId,
+              person2_id: newPersonId,
+              start_date: null,
+              end_date: null,
+            },
+          ];
+        } else {
+          tempRelationships = parentRels.map((pr) => ({
+            id: tmpId('rel'),
+            relationship_type: pr.relationship_type,
+            person1_id: pr.person1_id,
+            person2_id: newPersonId,
+            start_date: null,
+            end_date: null,
+          }));
+        }
+      }
+
+      const tempPerson = inputToRow(newPersonId, personInput);
+      let success = false;
+
+      await new Promise<void>((resolve) => {
+        startTransition(async () => {
+          const data = await runOptimistic({
+            tempPersons: [tempPerson],
+            tempRelationships,
+            run: async () => {
+              const result = await commitDiscoveredMemberAction(treeId, proposal);
+              if (result.ok) return { ok: true as const, data: result.data };
+              return {
+                ok: false as const,
+                error: {
+                  code: result.error.code,
+                  message: result.error.message,
+                  details: result.error.details,
+                },
+              };
+            },
+            onSuccess: (d) => {
+              const swapRelationshipIds: Record<string, string> = {};
+              tempRelationships.forEach((tr, i) => {
+                const realId = d.relationship_ids[i];
+                if (realId) swapRelationshipIds[tr.id] = realId;
+              });
+              return {
+                swapPersonIds: { [newPersonId]: d.person.id },
+                swapRelationshipIds,
+              };
+            },
+          });
+          success = data !== undefined;
+          resolve();
+        });
+      });
+
+      return success;
+    },
+    [persons, relationships, runOptimistic, treeId],
+  );
+
   // ── updatePerson ───────────────────────────────────────────────
   const updatePerson = useCallback<UseTreeMutationsResult['updatePerson']>(
     async ({ personId, patch }) => {
@@ -627,6 +758,7 @@ export function useTreeMutations({
     addSpouse,
     addChild,
     addSibling,
+    commitDiscoveredMember,
     updatePerson,
     deletePerson,
     isSaving: isPending,
