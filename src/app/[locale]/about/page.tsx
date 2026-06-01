@@ -4,6 +4,18 @@ import type { Metadata } from 'next';
 import type { LocalePageProps } from '@/types';
 import { LOCALE_DIR } from '@/types';
 
+function proseParagraphs(text: string, baseClass: string, firstMt = 'mt-4') {
+  return text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((paragraph, index) => (
+      <p key={index} className={`${baseClass} ${index === 0 ? firstMt : 'mt-4'}`}>
+        {paragraph}
+      </p>
+    ));
+}
+
 export async function generateMetadata({
   params,
 }: LocalePageProps): Promise<Metadata> {
@@ -20,26 +32,40 @@ export default async function AboutPage({ params }: LocalePageProps) {
   const t = await getTranslations({ locale, namespace: 'siteAbout' });
   const dir = LOCALE_DIR[locale];
 
+  const bodyClass =
+    'text-[1.0625rem] font-normal leading-[1.8] sm:text-lg';
+  const exampleClass =
+    'mt-3 text-[1.0625rem] italic leading-[1.8] text-[#3d3d5c] sm:text-lg';
+  const quoteClass =
+    'mt-4 border-s border-slate-300 ps-4 text-[1.0625rem] leading-[1.8] text-[#3d3d5c] sm:text-lg';
+
   const sections = [
+    { title: t('section1Title'), body: t('section1Body') },
+    { title: t('section2Title'), body: t('section2Body') },
+    { title: t('section3Title'), body: t('section3Body') },
+  ] as const;
+
+  const magicFeatures = [
     {
-      title: t('section1Title'),
-      body: t('section1Body'),
+      title: t('magicFeature1Title'),
+      lead: t('magicFeature1Lead'),
+      sample: t('magicFeature1Sample'),
+      body: t('magicFeature1Body'),
+      example: t('magicFeature1Example'),
     },
     {
-      title: t('section2Title'),
-      body: t('section2Body'),
+      title: t('magicFeature2Title'),
+      lead: null,
+      sample: null,
+      body: t('magicFeature2Body'),
+      example: t('magicFeature2Example'),
     },
     {
-      title: t('section3Title'),
-      body: t('section3Body'),
-    },
-    {
-      title: t('section4Title'),
-      body: t('section4Body'),
-    },
-    {
-      title: t('section5Title'),
-      body: t('section5Body'),
+      title: t('magicFeature3Title'),
+      lead: null,
+      sample: null,
+      body: t('magicFeature3Body'),
+      example: null,
     },
   ] as const;
 
@@ -56,14 +82,10 @@ export default async function AboutPage({ params }: LocalePageProps) {
         <div className="mt-12 flex flex-col gap-12 sm:mt-14">
           {sections.map(({ title, body }, index) => (
             <section key={index}>
-              {title && (
-                <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
-                  {title}
-                </h2>
-              )}
-              <p className="mt-4 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
-                {body}
-              </p>
+              <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
+                {title}
+              </h2>
+              {proseParagraphs(body, bodyClass)}
             </section>
           ))}
 
@@ -71,43 +93,35 @@ export default async function AboutPage({ params }: LocalePageProps) {
             <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
               {t('magicTitle')}
             </h2>
-            <p className="mt-4 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
-              {t('magicIntro')}
-            </p>
 
             <div className="mt-10 flex flex-col gap-10">
-              {(
-                [
-                  {
-                    title: t('magicFeature1Title'),
-                    body: t('magicFeature1Body'),
-                    example: t('magicFeature1Example'),
-                  },
-                  {
-                    title: t('magicFeature2Title'),
-                    body: t('magicFeature2Body'),
-                    example: t('magicFeature2Example'),
-                  },
-                  {
-                    title: t('magicFeature3Title'),
-                    body: t('magicFeature3Body'),
-                    example: t('magicFeature3Example'),
-                  },
-                ] as const
-              ).map(({ title, body, example }) => (
-                <div key={title}>
-                  <h3 className="text-lg font-semibold leading-snug tracking-tight sm:text-xl">
-                    {title}
-                  </h3>
-                  <p className="mt-3 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
-                    {body}
-                  </p>
-                  <p className="mt-3 text-[1.0625rem] italic leading-[1.8] text-[#3d3d5c] sm:text-lg">
-                    {example}
-                  </p>
-                </div>
-              ))}
+              {magicFeatures.map(
+                ({ title, lead, sample, body, example }) => (
+                  <div key={title}>
+                    <h3 className="text-lg font-semibold leading-snug tracking-tight sm:text-xl">
+                      {title}
+                    </h3>
+                    {lead && (
+                      <p className={`mt-3 ${bodyClass}`}>{lead}</p>
+                    )}
+                    {sample && (
+                      <p className={quoteClass}>&ldquo;{sample}&rdquo;</p>
+                    )}
+                    {proseParagraphs(body, bodyClass, 'mt-3')}
+                    {example && (
+                      <p className={exampleClass}>{example}</p>
+                    )}
+                  </div>
+                ),
+              )}
             </div>
+          </section>
+
+          <section>
+            <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
+              {t('section4Title')}
+            </h2>
+            {proseParagraphs(t('section4Body'), bodyClass)}
           </section>
         </div>
 
