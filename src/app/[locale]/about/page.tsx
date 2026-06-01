@@ -66,6 +66,49 @@ export default async function AboutPage({ params }: LocalePageProps) {
               </p>
             </section>
           ))}
+
+          <section>
+            <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
+              {t('magicTitle')}
+            </h2>
+            <p className="mt-4 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
+              {t('magicIntro')}
+            </p>
+
+            <div className="mt-10 flex flex-col gap-10">
+              {(
+                [
+                  {
+                    title: t('magicFeature1Title'),
+                    body: t('magicFeature1Body'),
+                    example: t('magicFeature1Example'),
+                  },
+                  {
+                    title: t('magicFeature2Title'),
+                    body: t('magicFeature2Body'),
+                    example: t('magicFeature2Example'),
+                  },
+                  {
+                    title: t('magicFeature3Title'),
+                    body: t('magicFeature3Body'),
+                    example: t('magicFeature3Example'),
+                  },
+                ] as const
+              ).map(({ title, body, example }) => (
+                <div key={title}>
+                  <h3 className="text-lg font-semibold leading-snug tracking-tight sm:text-xl">
+                    {title}
+                  </h3>
+                  <p className="mt-3 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
+                    {body}
+                  </p>
+                  <p className="mt-3 text-[1.0625rem] italic leading-[1.8] text-[#3d3d5c] sm:text-lg">
+                    {example}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
 
         <section className="mt-14 border-t border-slate-200 pt-8">
