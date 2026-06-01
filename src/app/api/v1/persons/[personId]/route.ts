@@ -12,6 +12,7 @@ import { ok, withErrorHandler } from '@/lib/api/response';
 import { Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
 import { deleteProfileImage } from '@/lib/supabase/storage';
+import { decrementImageCount } from '@/lib/usage/tracker';
 import { applyProfileImagePatch } from '@/server/lib/profile-image-patch';
 import { coerceGregorianDate } from '@/lib/dates/gregorian';
 import { buildRestPatchPersonDates } from '@/server/lib/person-dates';
@@ -108,6 +109,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
   );
 
   const profileImageData = await applyProfileImagePatch(
+    existing.tree_id,
     {
       profile_image: existing.profile_image,
       profile_image_url: existing.profile_image_url,
@@ -157,6 +159,7 @@ export const DELETE = withErrorHandler(async (_req: NextRequest, ctx: RouteConte
   // Clean up storage before deleting the DB record.
   if (person.profile_image) {
     await deleteProfileImage(person.profile_image);
+    await decrementImageCount(person.tree_id);
   }
 
   await prisma.person.delete({ where: { id: personId } });

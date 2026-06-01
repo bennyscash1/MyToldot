@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError } from './errors';
+import { QuotaExceededError } from '@/lib/usage/errors';
 
 // ──────────────────────────────────────────────
 // Standard API Response Envelope
@@ -44,6 +45,10 @@ export function err(
   error: ApiError | Error | unknown,
   fallbackStatus = 500,
 ): NextResponse<ApiErrorEnvelope> {
+  if (error instanceof QuotaExceededError) {
+    return NextResponse.json(error.toEnvelope(), { status: 429 });
+  }
+
   if (error instanceof ApiError) {
     return NextResponse.json(
       {

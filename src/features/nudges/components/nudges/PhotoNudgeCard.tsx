@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 
 import { personsService } from '@/services/persons.service';
 import { storageService } from '@/services/storage.service';
+import { openQuotaFromError, useQuotaDialog } from '@/components/providers/QuotaDialogProvider';
 import { ServiceError } from '@/services/api.client';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import type { Nudge } from '../../lib/nudge-types';
@@ -30,6 +31,7 @@ export function PhotoNudgeCard({
 }: Props) {
   const t = useTranslations('nudges');
   const tMessages = useTranslations('nudges.messages');
+  const { showQuotaDialog } = useQuotaDialog();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
@@ -66,6 +68,15 @@ export function PhotoNudgeCard({
         setTimeout(onSavedAndDone, 220);
       }, SAVED_FLASH_MS);
     } catch (err) {
+      if (
+        err instanceof ServiceError &&
+        openQuotaFromError(showQuotaDialog, {
+          code: err.code,
+          details: err.details,
+        })
+      ) {
+        return;
+      }
       const msg = err instanceof ServiceError ? err.message : 'Upload failed';
       setError(msg);
     } finally {

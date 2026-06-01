@@ -98,7 +98,9 @@ export function buildTreeSummaryBlock(input: TreeSummaryInput): string {
   const parentEdges = input.relationships.filter((r) =>
     parentTypes.includes(r.relationship_type),
   );
-  const spouseEdges = input.relationships.filter((r) => r.relationship_type === 'SPOUSE');
+  const spouseEdges = input.relationships.filter(
+    (r) => r.relationship_type === 'SPOUSE' || r.relationship_type === 'ENGAGED',
+  );
   const siblingEdges = input.relationships.filter((r) => r.relationship_type === 'SIBLING');
 
   lines.push('', `### קשרים (${input.relationships.length})`);
@@ -116,7 +118,9 @@ export function buildTreeSummaryBlock(input: TreeSummaryInput): string {
     const a = lookup.get(r.person1_id);
     const b = lookup.get(r.person2_id);
     if (!a || !b) continue;
-    lines.push(`- ${hebrewFullName(a)} ↔ בן/בת זוג ↔ ${hebrewFullName(b)}`);
+    const label =
+      r.relationship_type === 'ENGAGED' ? 'אירוסין' : 'בן/בת זוג';
+    lines.push(`- ${hebrewFullName(a)} ↔ ${label} ↔ ${hebrewFullName(b)}`);
   }
 
   for (const r of siblingEdges) {

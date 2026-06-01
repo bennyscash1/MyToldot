@@ -16,7 +16,9 @@ import { normalizeExternalImageUrl, EXTERNAL_IMAGE_IMG_PROPS } from '@/lib/image
 import { addPersonPhotoUrlsBatchAction } from '@/server/actions/person-photo.actions';
 import type { AiImageSelection } from './AiImageSearchModal';
 import { PersonImagePicker } from './PersonImagePicker';
+import { openQuotaFromError, useQuotaDialog } from '@/components/providers/QuotaDialogProvider';
 import { storageService } from '@/services/storage.service';
+import { ServiceError } from '@/services/api.client';
 import { DateInput } from '@/components/ui/DateInput';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { coerceGregorianDate, parseGregorianDate } from '@/lib/dates/gregorian';
@@ -87,6 +89,7 @@ export function PersonSidePanel({
   const panelDir = locale === 'he' ? 'rtl' : 'ltr';
   const tPerson = useTranslations('person');
   const tImage = useTranslations('personImage');
+  const { showQuotaDialog } = useQuotaDialog();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [fullName, setFullName] = useState(() => fullNameFromPerson(person));
   const [birthDate, setBirthDate] = useState<Date | null>(() =>
@@ -241,6 +244,15 @@ export function PersonSidePanel({
       const { path } = await storageService.uploadProfileImage(file, treeId, person.id);
       await onSave({ profile_image: path, profile_image_url: null });
     } catch (err) {
+      if (
+        err instanceof ServiceError &&
+        openQuotaFromError(showQuotaDialog, {
+          code: err.code,
+          details: err.details,
+        })
+      ) {
+        return;
+      }
       setLocalError(err instanceof Error ? err.message : tImage('uploadFailed'));
     }
   };

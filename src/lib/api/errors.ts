@@ -17,7 +17,8 @@ export type ApiErrorCode =
   | 'INTERNAL_SERVER_ERROR'
   | 'BRANCHING_NOT_ALLOWED'
   | 'MAX_PHOTOS_REACHED'
-  | 'INVALID_CONFIRM_CODE';
+  | 'INVALID_CONFIRM_CODE'
+  | 'QUOTA_EXCEEDED';
 
 /** Structured error thrown inside API route handlers. */
 export class ApiError extends Error {

@@ -41,9 +41,62 @@ const COUPLE_TYPE_PRIORITY: Record<string, number> = {
   DIVORCED: 1,
 };
 
+interface UnionRecord {
+  id: string;
+  parent_ids: [string] | [string, string];
+  kind: 'couple' | 'solo' | 'coparent';
+  spouse_relationship_id: string | null;
+  is_divorced: boolean;
+  is_engaged: boolean;
+}
+
 /** Sort ids lexicographically so (A,B) and (B,A) produce the same key. */
 function coupleKey(a: string, b: string): string {
   return a < b ? `c:${a}|${b}` : `c:${b}|${a}`;
+}
+
+function spouseUnionSortKey(
+  u: { id: string; spouse_relationship_id: string | null },
+  relById: Map<string, RelationshipRow>,
+): { date: number; tie: string } {
+  const rel = u.spouse_relationship_id ? relById.get(u.spouse_relationship_id) : undefined;
+  const raw = rel?.start_date;
+  const date =
+    raw == null
+      ? Number.MIN_SAFE_INTEGER
+      : new Date(raw).getTime();
+  return {
+    date: Number.isNaN(date) ? Number.MIN_SAFE_INTEGER : date,
+    tie: u.id,
+  };
+}
+
+/**
+ * When a child has only one recorded parent but that parent has a current
+ * spouse union in the tree, hang the child from the couple union (not solo).
+ */
+function findCoupleUnionForSingleParent(
+  parentId: string,
+  unionsByKey: Map<string, UnionRecord>,
+  relById: Map<string, RelationshipRow>,
+): UnionRecord | null {
+  const candidates: UnionRecord[] = [];
+
+  for (const u of unionsByKey.values()) {
+    if (u.kind !== 'couple' || u.is_divorced) continue;
+    if (!u.parent_ids.includes(parentId)) continue;
+    candidates.push(u);
+  }
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => {
+    const ka = spouseUnionSortKey(a, relById);
+    const kb = spouseUnionSortKey(b, relById);
+    return kb.date - ka.date || kb.tie.localeCompare(ka.tie);
+  });
+
+  return candidates[0];
 }
 
 export function buildBipartiteGraph(
@@ -52,16 +105,9 @@ export function buildBipartiteGraph(
   focalId: string | null,
 ): BipartiteGraph {
   const personById = new Map(persons.map((p) => [p.id, p]));
+  const relById = new Map(relationships.map((r) => [r.id, r]));
 
   // ── Pass 1: collect couple unions keyed by sorted parent pair ───────────
-  interface UnionRecord {
-    id: string;
-    parent_ids: [string] | [string, string];
-    kind: 'couple' | 'solo' | 'coparent';
-    spouse_relationship_id: string | null;
-    is_divorced: boolean;
-    is_engaged: boolean;
-  }
   const unionsByKey = new Map<string, UnionRecord>();
   const unionPriorityByKey = new Map<string, number>();
 
@@ -154,20 +200,28 @@ export function buildBipartiteGraph(
         childUnionOf.set(childId, synthetic.id);
       }
     } else {
-      // Single recorded parent → solo union.
+      // Single recorded parent — prefer the couple union when that parent has
+      // a current spouse in the tree (fixes legacy/AI rows with one PARENT_CHILD).
       const p = parents[0];
-      const soloId = `u:solo:${p}`;
-      if (!keptUnions.has(soloId)) {
-        keptUnions.set(soloId, {
-          id: soloId,
-          parent_ids: [p],
-          kind: 'solo',
-          spouse_relationship_id: null,
-          is_divorced: false,
-          is_engaged: false,
-        });
+      const coupleUnion = findCoupleUnionForSingleParent(p, unionsByKey, relById);
+
+      if (coupleUnion) {
+        childUnionOf.set(childId, coupleUnion.id);
+        keptUnions.set(coupleUnion.id, coupleUnion);
+      } else {
+        const soloId = `u:solo:${p}`;
+        if (!keptUnions.has(soloId)) {
+          keptUnions.set(soloId, {
+            id: soloId,
+            parent_ids: [p],
+            kind: 'solo',
+            spouse_relationship_id: null,
+            is_divorced: false,
+            is_engaged: false,
+          });
+        }
+        childUnionOf.set(childId, soloId);
       }
-      childUnionOf.set(childId, soloId);
     }
   }
 

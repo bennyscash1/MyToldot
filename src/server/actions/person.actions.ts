@@ -11,6 +11,8 @@ import {
 } from '@/features/family-tree/schemas/person.schema';
 import { prisma } from '@/lib/prisma';
 import { requireTreeRole } from '@/lib/api/auth';
+import { ensureMirroredAuthUser } from '@/lib/ensure-mirrored-auth-user';
+import { assertAiUsageAllowed, incrementAiUsage } from '@/lib/usage/tracker';
 import { Errors } from '@/lib/api/errors';
 import {
   createPersonInTree,
@@ -254,7 +256,9 @@ export async function fetchAiBiographyAction(
       throw Errors.notFound('Person');
     }
 
-    await requireTreeRole(person.tree_id, TreeMemberRole.EDITOR);
+    const user = await requireTreeRole(person.tree_id, TreeMemberRole.EDITOR);
+    await ensureMirroredAuthUser(user);
+    await assertAiUsageAllowed(user.id);
 
     // Subject is on the person2 side of a PARENT_CHILD/ADOPTED_PARENT edge,
     // so the parent is on the person1 side. Gender determines father vs mother.
@@ -293,7 +297,9 @@ export async function fetchAiBiographyAction(
     ];
 
     const subject = buildSubject(person, father, mother, spouse, children, siblings);
-    return await generateGroundedHebrewBio(subject);
+    const bio = await generateGroundedHebrewBio(subject);
+    await incrementAiUsage(user.id);
+    return bio;
   });
 }
 

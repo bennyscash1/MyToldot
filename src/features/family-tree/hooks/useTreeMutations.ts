@@ -15,8 +15,13 @@ import type {
   PersonPatch,
 } from '@/features/family-tree/schemas/person.schema';
 import { deriveHebrewDateFields } from '@/features/persons/lib/hebrewDate';
+import {
+  openQuotaFromError,
+  useQuotaDialog,
+} from '@/components/providers/QuotaDialogProvider';
 import { apiClient, ServiceError } from '@/services/api.client';
 import type { PersonRow, RelationshipRow } from '../lib/types';
+import { resolveCoParentIdsForChild } from '../lib/currentSpouses';
 
 // ────────────────────────────────────────────────────────────────
 // useTreeMutations
@@ -123,6 +128,7 @@ export function useTreeMutations({
   onMutationDone,
 }: UseTreeMutationsArgs): UseTreeMutationsResult {
   const locale = useLocale();
+  const { showQuotaDialog } = useQuotaDialog();
   const treeRouteBase = `/${locale}/tree/${treeRouteCode}`;
   const [persons, setPersons] = useState<PersonRow[]>(initialPersons);
   const [relationships, setRelationships] = useState<RelationshipRow[]>(initialRelationships);
@@ -190,6 +196,8 @@ export function useTreeMutations({
       onSuccess?: (data: T) => {
         swapPersonIds?: Record<string, string>;
         swapRelationshipIds?: Record<string, string>;
+        /** Extra relationship rows returned by the server but not staged optimistically. */
+        appendRelationships?: RelationshipRow[];
       };
     }): Promise<T | undefined> => {
       const { tempPersons = [], tempRelationships = [], run, onSuccess } = args;
@@ -207,6 +215,9 @@ export function useTreeMutations({
             const ownerEmail = typeof raw === 'string' ? raw : undefined;
             setLastBlocked({ ownerEmail });
             setLastError(null);
+          } else if (openQuotaFromError(showQuotaDialog, result.error)) {
+            setLastBlocked(null);
+            setLastError(null);
           } else {
             setLastBlocked(null);
             setLastError(result.error.message);
@@ -217,22 +228,25 @@ export function useTreeMutations({
         }
 
         const swaps = onSuccess?.(result.data) ?? {};
-        const { swapPersonIds = {}, swapRelationshipIds = {} } = swaps;
+        const { swapPersonIds = {}, swapRelationshipIds = {}, appendRelationships = [] } = swaps;
 
         setPersons((prev) =>
           prev.map((p) => (swapPersonIds[p.id] ? { ...p, id: swapPersonIds[p.id] } : p)),
         );
-        setRelationships((prev) =>
-          prev.map((r) => {
-            // Remap both the relationship id itself AND any endpoint ids that
-            // pointed at now-real persons.
+        setRelationships((prev) => {
+          const remapped = prev.map((r) => {
             let next = r;
             if (swapRelationshipIds[r.id]) next = { ...next, id: swapRelationshipIds[r.id] };
-            if (swapPersonIds[r.person1_id]) next = { ...next, person1_id: swapPersonIds[r.person1_id] };
-            if (swapPersonIds[r.person2_id]) next = { ...next, person2_id: swapPersonIds[r.person2_id] };
+            if (swapPersonIds[r.person1_id]) {
+              next = { ...next, person1_id: swapPersonIds[r.person1_id] };
+            }
+            if (swapPersonIds[r.person2_id]) {
+              next = { ...next, person2_id: swapPersonIds[r.person2_id] };
+            }
             return next;
-          }),
-        );
+          });
+          return appendRelationships.length > 0 ? [...remapped, ...appendRelationships] : remapped;
+        });
         setLastError(null);
         setLastBlocked(null);
         onMutationDone?.();
@@ -245,7 +259,7 @@ export function useTreeMutations({
         return undefined;
       }
     },
-    [onMutationDone],
+    [onMutationDone, showQuotaDialog],
   );
 
   // ── createPerson ─────────────────────────────────────────────
@@ -529,6 +543,8 @@ export function useTreeMutations({
 
       const newPersonId = tmpId('person');
       let tempRelationships: RelationshipRow[] = [];
+      /** Set for CHILD proposals — used to sync extra server relationship rows. */
+      let childParentIds: string[] | null = null;
 
       if (type === 'PARENT') {
         tempRelationships = [
@@ -542,16 +558,15 @@ export function useTreeMutations({
           },
         ];
       } else if (type === 'CHILD') {
-        tempRelationships = [
-          {
-            id: tmpId('rel'),
-            relationship_type: 'PARENT_CHILD',
-            person1_id: relatedToPersonId,
-            person2_id: newPersonId,
-            start_date: null,
-            end_date: null,
-          },
-        ];
+        childParentIds = resolveCoParentIdsForChild(relatedToPersonId, relationships);
+        tempRelationships = childParentIds.map((pid) => ({
+          id: tmpId('rel'),
+          relationship_type: 'PARENT_CHILD' as const,
+          person1_id: pid,
+          person2_id: newPersonId,
+          start_date: null,
+          end_date: null,
+        }));
       } else if (type === 'SPOUSE') {
         const focusedPerson = persons.find((p) => p.id === relatedToPersonId);
         if (!focusedPerson) {
@@ -629,9 +644,28 @@ export function useTreeMutations({
                 const realId = d.relationship_ids[i];
                 if (realId) swapRelationshipIds[tr.id] = realId;
               });
+
+              const realChildId = d.person.id;
+              const appendRelationships: RelationshipRow[] = [];
+              if (type === 'CHILD' && childParentIds) {
+                for (let i = tempRelationships.length; i < d.relationship_ids.length; i += 1) {
+                  const relId = d.relationship_ids[i];
+                  if (!relId) continue;
+                  appendRelationships.push({
+                    id: relId,
+                    relationship_type: 'PARENT_CHILD',
+                    person1_id: childParentIds[i] ?? relatedToPersonId,
+                    person2_id: realChildId,
+                    start_date: null,
+                    end_date: null,
+                  });
+                }
+              }
+
               return {
-                swapPersonIds: { [newPersonId]: d.person.id },
+                swapPersonIds: { [newPersonId]: realChildId },
                 swapRelationshipIds,
+                appendRelationships,
               };
             },
           });
@@ -696,7 +730,11 @@ export function useTreeMutations({
           try {
             const result = await updatePersonAction(treeId, personId, patch);
             if (!result.ok) {
-              setLastError(result.error.message);
+              if (!openQuotaFromError(showQuotaDialog, result.error)) {
+                setLastError(result.error.message);
+              } else {
+                setLastError(null);
+              }
               setPersons((prev) => prev.map((p) => (p.id === personId ? snapshot : p)));
             } else {
               setLastError(null);
@@ -710,7 +748,7 @@ export function useTreeMutations({
         });
       });
     },
-    [treeId, persons, onMutationDone],
+    [treeId, persons, onMutationDone, showQuotaDialog],
   );
 
   // ── deletePerson ───────────────────────────────────────────────
@@ -737,7 +775,11 @@ export function useTreeMutations({
               }),
             );
             if (!mappedResult.ok) {
-              setLastError(mappedResult.error.message);
+              if (!openQuotaFromError(showQuotaDialog, mappedResult.error)) {
+                setLastError(mappedResult.error.message);
+              } else {
+                setLastError(null);
+              }
               setPersons((prev) => [...prev, personSnapshot]);
               setRelationships((prev) => [...prev, ...relSnapshot]);
             } else {
@@ -753,7 +795,7 @@ export function useTreeMutations({
         });
       });
     },
-    [asMutationResult, treeId, treeRouteBase, persons, relationships, onMutationDone],
+    [asMutationResult, treeId, treeRouteBase, persons, relationships, onMutationDone, showQuotaDialog],
   );
 
   return {

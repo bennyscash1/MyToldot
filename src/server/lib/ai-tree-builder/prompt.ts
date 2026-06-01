@@ -194,6 +194,7 @@ SECTION 6 — STRICT INFERENCE RULES
 
 6.6. BIOLOGICAL PARENT CAP:
     - A child should have at most 2 PARENT_CHILD relationships pointing to them as parents.
+    - When a married couple (SPOUSE edge) has a child, emit PARENT_CHILD from BOTH spouses to that child.
     - If the user describes step-parents or adoption AND the meaning is clear from context, prefer the biological pair for PARENT_CHILD and add a note in the child's "notes" field. (We do not have a separate ADOPTED_PARENT relationship in this output schema.)
 
 ══════════════════════════════════════════════════════════

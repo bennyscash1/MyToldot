@@ -17,7 +17,9 @@ const UNKNOWN_HE = 'לא ידוע';
  *     drop later flips.
  *  5. Drop redundant SIBLING edges between two persons who already share a
  *     PARENT_CHILD edge from the same parent (Section 5.2 of the prompt).
- *  6. Resolve `suggested_root_local_id` to a still-existing person; if the
+ *  6. Add missing PARENT_CHILD from spouse when a child has only one parent
+ *     but the plan includes a SPOUSE edge for that parent.
+ *  7. Resolve `suggested_root_local_id` to a still-existing person; if the
  *     pointer is dangling, pick the most-connected person as a fallback.
  *
  * Does NOT throw on duplicate persons, missing optional fields, etc. — the
@@ -37,15 +39,16 @@ export function reconcileAiTreePlan(plan: AiTreePlan): AiTreePlan {
 
   const dedupedSymmetric = dedupeSymmetric(referenceValid);
   const withoutRedundantSiblings = dropRedundantSiblings(dedupedSymmetric);
+  const withCoupleParentEdges = enrichCoupleParentChildEdges(withoutRedundantSiblings);
 
   const suggestedRoot = validIds.has(plan.suggested_root_local_id)
     ? plan.suggested_root_local_id
-    : pickFallbackRoot(persons, withoutRedundantSiblings);
+    : pickFallbackRoot(persons, withCoupleParentEdges);
 
   return {
     summary: plan.summary ?? '',
     persons,
-    relationships: withoutRedundantSiblings,
+    relationships: withCoupleParentEdges,
     suggested_root_local_id: suggestedRoot,
   };
 }
@@ -95,6 +98,54 @@ function dropRedundantSiblings(rels: AiRelationship[]): AiRelationship[] {
     for (const p of aParents) if (bParents.has(p)) return false;
     return true;
   });
+}
+
+/** When a child has one PARENT_CHILD parent who has a SPOUSE in the plan, add the spouse edge. */
+function enrichCoupleParentChildEdges(rels: AiRelationship[]): AiRelationship[] {
+  const spouseOf = new Map<string, string>();
+  for (const r of rels) {
+    if (r.type !== 'SPOUSE') continue;
+    spouseOf.set(r.from_local_id, r.to_local_id);
+    spouseOf.set(r.to_local_id, r.from_local_id);
+  }
+
+  const parentsByChild = new Map<string, Set<string>>();
+  for (const r of rels) {
+    if (r.type !== 'PARENT_CHILD') continue;
+    const set = parentsByChild.get(r.to_local_id) ?? new Set<string>();
+    set.add(r.from_local_id);
+    parentsByChild.set(r.to_local_id, set);
+  }
+
+  const existingKeys = new Set(rels.filter((r) => r.type === 'PARENT_CHILD').map(parentChildKey));
+  const additions: AiRelationship[] = [];
+
+  for (const [childId, parents] of parentsByChild) {
+    if (parents.size !== 1) continue;
+    const parentP = [...parents][0];
+    const spouseQ = spouseOf.get(parentP);
+    if (!spouseQ || parents.has(spouseQ)) continue;
+
+    const key = parentChildKey({
+      type: 'PARENT_CHILD',
+      from_local_id: spouseQ,
+      to_local_id: childId,
+    });
+    if (existingKeys.has(key)) continue;
+
+    additions.push({
+      type: 'PARENT_CHILD',
+      from_local_id: spouseQ,
+      to_local_id: childId,
+    });
+    existingKeys.add(key);
+  }
+
+  return additions.length > 0 ? [...rels, ...additions] : rels;
+}
+
+function parentChildKey(r: Pick<AiRelationship, 'type' | 'from_local_id' | 'to_local_id'>): string {
+  return `PARENT_CHILD|${r.from_local_id}|${r.to_local_id}`;
 }
 
 function pickFallbackRoot(persons: AiPerson[], rels: AiRelationship[]): string {

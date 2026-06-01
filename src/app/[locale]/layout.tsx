@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { routing, isValidLocale, type Locale } from '@/i18n/routing';
 import { LOCALE_DIR } from '@/types';
 import { Navbar } from '@/components/layout/Navbar';
+import { QuotaDialogProvider } from '@/components/providers/QuotaDialogProvider';
 import { ViewportModeSync } from '@/components/layout/ViewportModeSync';
 import {
   isDashboardPathname,
@@ -105,18 +106,20 @@ export default async function LocaleLayout({
       */}
       <body className={bodyClass} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
-          <ViewportModeSync />
-          <Navbar />
-          <main id="app-main" className={mainClass}>
-            {children}
-          </main>
-          <footer
-            id="app-footer"
-            hidden={isLockedViewport || isLandingRoot}
-            className="border-t border-gray-100 py-6 text-center text-sm text-gray-400"
-          >
-            {tCommon('footerCopyright', { year: new Date().getFullYear() })}
-          </footer>
+          <QuotaDialogProvider>
+            <ViewportModeSync />
+            <Navbar />
+            <main id="app-main" className={mainClass}>
+              {children}
+            </main>
+            <footer
+              id="app-footer"
+              hidden={isLockedViewport || isLandingRoot}
+              className="border-t border-gray-100 py-6 text-center text-sm text-gray-400"
+            >
+              {tCommon('footerCopyright', { year: new Date().getFullYear() })}
+            </footer>
+          </QuotaDialogProvider>
         </NextIntlClientProvider>
       </body>
     </html>

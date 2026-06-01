@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { profileImagePublicUrl } from '@/lib/supabase/public-url';
 import { TREE_ABOUT_IMAGES_MAX } from '@/lib/tree/about-images';
+import { openQuotaFromError, useQuotaDialog } from '@/components/providers/QuotaDialogProvider';
 import { ServiceError } from '@/services/api.client';
 import { storageService } from '@/services/storage.service';
 import type { TreeAboutImageItem } from '@/types/api';
@@ -38,6 +39,7 @@ export function TreeAboutImageGallery({
   disabled,
 }: TreeAboutImageGalleryProps) {
   const t = useTranslations('treeFamilyAboutPage');
+  const { showQuotaDialog } = useQuotaDialog();
   const fileRef = useRef<HTMLInputElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -87,6 +89,15 @@ export function TreeAboutImageGallery({
       ].map((item, i) => ({ ...item, order: i }));
       onItemsChange(next);
     } catch (err) {
+      if (
+        err instanceof ServiceError &&
+        openQuotaFromError(showQuotaDialog, {
+          code: err.code,
+          details: err.details,
+        })
+      ) {
+        return;
+      }
       setLocalError(
         err instanceof ServiceError ? err.message : t('galleryUploadError'),
       );

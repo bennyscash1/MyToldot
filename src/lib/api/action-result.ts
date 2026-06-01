@@ -1,5 +1,6 @@
 import { ZodError } from 'zod';
 import { ApiError } from './errors';
+import { QuotaExceededError } from '@/lib/usage/errors';
 
 /**
  * Plain-object envelope returned by every Server Action.
@@ -39,6 +40,12 @@ export function failure(
  * get a well-formed envelope back. Uncaught errors are logged and returned as
  * a generic INTERNAL_SERVER_ERROR — never leak raw messages to the client.
  */
+function isPrismaSchemaDriftError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: string }).code;
+  return code === 'P2021' || code === 'P2022';
+}
+
 export async function withAction<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
     return success(await fn());
@@ -51,8 +58,23 @@ export async function withAction<T>(fn: () => Promise<T>): Promise<ActionResult<
       }
       return failure('UNPROCESSABLE_ENTITY', 'Validation failed', fieldErrors);
     }
+    if (err instanceof QuotaExceededError) {
+      const { error: envelopeError } = err.toEnvelope();
+      return failure(
+        envelopeError.code,
+        envelopeError.message,
+        undefined,
+        envelopeError.details,
+      );
+    }
     if (err instanceof ApiError) {
       return failure(err.code, err.message, undefined, err.details);
+    }
+    if (isPrismaSchemaDriftError(err)) {
+      return failure(
+        'INTERNAL_SERVER_ERROR',
+        'Database schema is missing or outdated. Run `npx prisma migrate deploy` against DATABASE_URL.',
+      );
     }
     console.error('[Server Action] Unhandled error:', err);
     return failure('INTERNAL_SERVER_ERROR', 'An unexpected error occurred');

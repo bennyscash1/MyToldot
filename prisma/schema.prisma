@@ -78,6 +78,7 @@ model Tree {
   persons       Person[]
   relationships Relationship[]
   person_photos PersonPhoto[]
+  image_usage   TreeImageUsage?
 
   @@map("trees")
 }
@@ -105,6 +106,7 @@ model User {
   // All editing rights are enforced per-tree via TreeMember.role.
   tree_memberships       TreeMember[]
   uploaded_person_photos PersonPhoto[] @relation("PersonPhotoUploader")
+  ai_usage_daily         AiUsageDaily[]
 
   @@map("users")
 }
@@ -248,4 +250,37 @@ model Relationship {
   @@index([person2_id])
   @@index([tree_id, relationship_type])
   @@map("relationships")
+}
+
+// ─────────────────────────────────────────────
+// USAGE TRACKING  (quota counters)
+// ─────────────────────────────────────────────
+
+/// Per-user daily AI biography calls (bucketed by Israel calendar day).
+model AiUsageDaily {
+  id         String   @id @default(cuid())
+  user_id    String   @map("user_id")
+  day        String // "YYYY-MM-DD" in Asia/Jerusalem
+  count      Int      @default(0)
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, day])
+  @@index([user_id, day])
+  @@map("ai_usage_daily")
+}
+
+/// Per-tree count of uploaded images (profile + about; not URL-based).
+model TreeImageUsage {
+  id             String   @id @default(cuid())
+  tree_id        String   @unique @map("tree_id")
+  uploaded_count Int      @default(0) @map("uploaded_count")
+  created_at     DateTime @default(now()) @map("created_at")
+  updated_at     DateTime @updatedAt @map("updated_at")
+
+  tree Tree @relation(fields: [tree_id], references: [id], onDelete: Cascade)
+
+  @@map("tree_image_usage")
 }

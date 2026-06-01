@@ -449,6 +449,19 @@
     "emptyFiltered": "No members in this filter.",
     "emptyAll": "No members yet."
   },
+  "quota": {
+    "ai": {
+      "title": "Daily limit reached",
+      "body": "You have used {current} of {limit} AI biography searches today.",
+      "hint": "Your quota resets at midnight Israel time. You can try again tomorrow."
+    },
+    "images": {
+      "title": "Family image limit reached",
+      "body": "You have uploaded {current} of {limit} images for this tree.",
+      "hint": "You can still add images using an external URL without uploading to the server."
+    },
+    "close": "Close"
+  },
   "branching": {
     "toggleLabel": "Allow family branching",
     "toggleHelp": "When off, only direct blood-line or marriage relatives can be added. When on, editors may add any person.",

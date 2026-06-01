@@ -1,6 +1,7 @@
 import { deleteProfileImage } from '@/lib/supabase/storage';
 import { resolveExternalImageUrl } from '@/lib/images/validate-external-image-url';
 import { Errors } from '@/lib/api/errors';
+import { decrementImageCount } from '@/lib/usage/tracker';
 
 type ProfileImageExisting = {
   profile_image: string | null;
@@ -12,11 +13,20 @@ type ProfileImagePatch = {
   profile_image_url?: string | null;
 };
 
+async function deleteStoredProfileImage(
+  treeId: string,
+  path: string,
+): Promise<void> {
+  await deleteProfileImage(path);
+  await decrementImageCount(treeId);
+}
+
 /**
  * Resolves mutually-exclusive profile_image / profile_image_url updates.
  * Deletes orphaned Supabase assets when switching to external URL or clearing.
  */
 export async function applyProfileImagePatch(
+  treeId: string,
   existing: ProfileImageExisting,
   patch: ProfileImagePatch,
 ): Promise<Partial<{ profile_image: string | null; profile_image_url: string | null }>> {
@@ -31,7 +41,7 @@ export async function applyProfileImagePatch(
 
   if (touchesStorage && patch.profile_image) {
     if (existing.profile_image && existing.profile_image !== patch.profile_image) {
-      await deleteProfileImage(existing.profile_image);
+      await deleteStoredProfileImage(treeId, existing.profile_image);
     }
     return { profile_image: patch.profile_image, profile_image_url: null };
   }
@@ -42,7 +52,7 @@ export async function applyProfileImagePatch(
       throw Errors.unprocessable(resolved.reason);
     }
     if (existing.profile_image) {
-      await deleteProfileImage(existing.profile_image);
+      await deleteStoredProfileImage(treeId, existing.profile_image);
     }
     return { profile_image: null, profile_image_url: resolved.url };
   }
@@ -53,7 +63,7 @@ export async function applyProfileImagePatch(
 
   if (clearing) {
     if (existing.profile_image) {
-      await deleteProfileImage(existing.profile_image);
+      await deleteStoredProfileImage(treeId, existing.profile_image);
     }
     return { profile_image: null, profile_image_url: null };
   }
@@ -67,7 +77,7 @@ export async function applyProfileImagePatch(
       throw Errors.unprocessable(resolved.reason);
     }
     if (existing.profile_image) {
-      await deleteProfileImage(existing.profile_image);
+      await deleteStoredProfileImage(treeId, existing.profile_image);
     }
     return { profile_image: null, profile_image_url: resolved.url };
   }

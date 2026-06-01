@@ -16,6 +16,7 @@ import {
   uploadPersonGalleryAdmin,
 } from '@/lib/images/gallery-storage';
 import { deleteProfileImage } from '@/lib/supabase/storage';
+import { decrementImageCount } from '@/lib/usage/tracker';
 import { requireAuthUser, requireTreeRole } from '@/lib/api/auth';
 import { isPersonAllowed } from '@/lib/api/branching';
 import { Errors } from '@/lib/api/errors';
@@ -33,6 +34,7 @@ import {
   withHebrewDatesForUpdate,
 } from '@/server/lib/person-dates';
 import { applyProfileImagePatch } from '@/server/lib/profile-image-patch';
+import { resolveCoParentIds } from '@/server/services/co-parent';
 import { resolveExternalImageUrl } from '@/lib/images/validate-external-image-url';
 import { extractPathsFromAboutJson } from '@/lib/tree/about-images';
 
@@ -625,7 +627,7 @@ export async function updatePersonInTree(
   if (!existing) throw Errors.notFound('Person');
 
   const data = withHebrewDatesForUpdate(parsed, existing);
-  const profileImageData = await applyProfileImagePatch(existing, parsed);
+  const profileImageData = await applyProfileImagePatch(treeId, existing, parsed);
 
   const { profile_image: _pi, profile_image_url: _pu, ...restData } = data;
 
@@ -651,6 +653,7 @@ export async function removePersonFromTree(
 
   if (existing.profile_image) {
     await deleteProfileImage(existing.profile_image);
+    await decrementImageCount(treeId);
   }
 
   const galleryPaths = await prisma.personPhoto.findMany({
@@ -968,33 +971,17 @@ export async function addChildInTree(
 ): Promise<AddedRelativeDto> {
   const parsed = AddChildSchema.parse(input);
   const { treeId, parent1Id, child, skipSpouseAutoLink } = parsed;
-  let parent2Id = parsed.parent2Id ?? null;
 
   await requireTreeRole(treeId, 'EDITOR');
-  if (parent2Id && parent1Id === parent2Id) {
+
+  const parentIds = await resolveCoParentIds(treeId, parent1Id, {
+    parent2Id: parsed.parent2Id ?? null,
+    skipSpouseAutoLink,
+  });
+
+  if (parentIds.length === 2 && parentIds[0] === parentIds[1]) {
     throw Errors.badRequest('parent1 and parent2 must differ');
   }
-
-  if (!parent2Id && !skipSpouseAutoLink) {
-    const spouseRels = await prisma.relationship.findMany({
-      where: {
-        tree_id: treeId,
-        relationship_type: { in: ['SPOUSE', 'ENGAGED'] },
-        OR: [{ person1_id: parent1Id }, { person2_id: parent1Id }],
-      },
-      select: { person1_id: true, person2_id: true },
-    });
-    const coParentIds = new Set<string>();
-    for (const r of spouseRels) {
-      const other = r.person1_id === parent1Id ? r.person2_id : r.person1_id;
-      coParentIds.add(other);
-    }
-    if (coParentIds.size === 1) {
-      parent2Id = [...coParentIds][0];
-    }
-  }
-
-  const parentIds = parent2Id ? [parent1Id, parent2Id] : [parent1Id];
 
   const branching = await isPersonAllowed(treeId, { kind: 'child', anchorIds: parentIds });
   if (!branching.allowed) {
@@ -1003,6 +990,10 @@ export async function addChildInTree(
 
   return prisma.$transaction(async (tx) => {
     await assertPersonsInTree(tx, treeId, parentIds);
+
+    if (parentIds.length > 2) {
+      throw Errors.conflict('A child cannot have more than two biological parents');
+    }
 
     const newPerson = await tx.person.create({
       data: { ...withHebrewDatesForCreate(child), tree_id: treeId },

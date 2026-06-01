@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 
-import { fetchAiBiographyAction } from '@/server/actions/person.actions';
+import { openQuotaFromError, useQuotaDialog } from '@/components/providers/QuotaDialogProvider';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
+import { fetchAiBiographyAction } from '@/server/actions/person.actions';
 
 export interface AiBioResult {
   narrative: string;
@@ -18,6 +19,7 @@ interface AiBioSearchProps {
 }
 
 export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
+  const { showQuotaDialog } = useQuotaDialog();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +31,9 @@ export function AiBioSearch({ personId, onApply }: AiBioSearchProps) {
     try {
       const result = await fetchAiBiographyAction(personId);
       if (!result.ok) {
+        if (openQuotaFromError(showQuotaDialog, result.error)) {
+          return;
+        }
         setError(result.error.message || 'לא נמצא מידע. נסה שוב.');
         return;
       }

@@ -37,6 +37,10 @@ import {
 } from '@/lib/supabase/storage';
 import { isSupabaseAdminConfigured } from '@/lib/supabase/admin';
 import { CuidSchema } from '@/features/family-tree/schemas/person.schema';
+import {
+  assertImageUploadAllowed,
+  incrementImageCount,
+} from '@/lib/usage/tracker';
 
 const idsSchema = z.object({
   treeId: CuidSchema,
@@ -80,6 +84,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
   const { treeId, personId } = ids.data;
   await requireTreeRole(treeId, 'EDITOR');
+  await assertImageUploadAllowed(treeId);
 
   const fileEntry = form.get('file');
   if (!(fileEntry instanceof Blob)) {
@@ -152,6 +157,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       body: processedBuffer,
       contentType: uploadContentType,
     });
+
+    await incrementImageCount(treeId);
 
     return ok<UploadResponseDto>(result, 201);
   } catch (uploadError) {

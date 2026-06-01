@@ -15,6 +15,7 @@ import { Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
 import type { TreeAboutImageItem, TreeDto } from '@/types/api';
 import { deleteProfileImage } from '@/lib/supabase/storage';
+import { decrementImageCount } from '@/lib/usage/tracker';
 import {
   extractPathsFromAboutJson,
   normalizeAboutImages,
@@ -178,11 +179,14 @@ export const PATCH = withErrorHandler(async (req: NextRequest, ctx: RouteContext
           (p) =>
             !nextSet.has(p) && pathBelongsToTreeAbout(treeId, p),
         )
-        .map((p) =>
-          deleteProfileImage(p).catch((err) => {
+        .map(async (p) => {
+          try {
+            await deleteProfileImage(p);
+            await decrementImageCount(treeId);
+          } catch (err) {
             console.warn('[trees PATCH] delete removed about image failed', p, err);
-          }),
-        ),
+          }
+        }),
     );
   }
 
