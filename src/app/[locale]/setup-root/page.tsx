@@ -52,7 +52,7 @@ export default async function SetupRootPage({
           <p className="text-gray-500">{t('notLoggedIn')}</p>
           <Link
             href="/"
-            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 underline-offset-2 hover:underline"
+            className="text-sm font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline"
           >
             {t('goHome')}
           </Link>

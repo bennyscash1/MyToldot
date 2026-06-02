@@ -21,6 +21,9 @@ export interface InputProps
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, hint, error, forceRtl, className, id, ...props }, ref) => {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
+    const hintId = inputId ? `${inputId}-hint` : undefined;
+    const errorId = inputId ? `${inputId}-error` : undefined;
+    const describedBy = error ? errorId : hint ? hintId : undefined;
 
     return (
       <div className="flex flex-col gap-1">
@@ -40,6 +43,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           dir={forceRtl ? 'rtl' : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-required={props.required || undefined}
+          aria-describedby={describedBy}
           className={cn(
             'w-full rounded-lg border px-3 py-2 text-sm text-gray-900',
             'placeholder:text-gray-400',
@@ -55,10 +61,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         />
 
         {hint && !error && (
-          <p className="text-xs text-gray-400">{hint}</p>
+          <p id={hintId} className="text-xs text-gray-600">{hint}</p>
         )}
         {error && (
-          <p className="text-xs text-red-500" role="alert">
+          <p id={errorId} className="text-xs text-red-500" role="alert">
             {error}
           </p>
         )}

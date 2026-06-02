@@ -51,7 +51,7 @@ export function NudgeCardShell({
       {savedFlash ? (
         <p
           role="status"
-          className="mt-2 text-sm font-medium text-emerald-600"
+          className="mt-2 text-sm font-medium text-emerald-700"
         >
           ✓ {t('saved')}!
         </p>

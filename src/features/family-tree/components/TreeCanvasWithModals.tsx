@@ -21,6 +21,7 @@ import { BlockedActionDialog } from '@/components/ui/BlockedActionDialog';
 import { NudgesPanelContainer } from '@/features/nudges/components/NudgesPanelContainer';
 import { AiTreeBuilderModal } from './panels/AiTreeBuilderModal';
 import { LoadingOverlay, type LoadingVariant } from '@/components/ui/LoadingOverlay';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { apiClient } from '@/services/api.client';
 
 export interface TreeCanvasWithModalsProps {
@@ -131,6 +132,7 @@ export function TreeCanvasWithModals({
     personName: string;
   } | null>(null);
   const firstPersonModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(firstPersonModalRef, showFirstPersonForm);
 
   const treeRouteBase = `/${locale}/tree/${treeRouteCode}`;
 
@@ -476,7 +478,7 @@ export function TreeCanvasWithModals({
               </svg>
               {tAi('openButton')}
             </span>
-            <span className="text-[10px] font-normal text-emerald-600/80">
+            <span className="text-[10px] font-normal text-emerald-700">
               {tAi('openButtonHint')}
             </span>
           </button>
@@ -488,12 +490,12 @@ export function TreeCanvasWithModals({
           className="pointer-events-none absolute inset-x-0 top-4 z-40 flex justify-center px-4"
           dir={headerDir}
         >
-          <div className="pointer-events-auto flex max-w-sm items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-800 shadow-md">
+          <div role="alert" className="pointer-events-auto flex max-w-sm items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-800 shadow-md">
             <span>{firstPersonError}</span>
             <button
               type="button"
               onClick={() => setFirstPersonError(null)}
-              className="shrink-0 text-rose-500 transition hover:text-rose-700"
+              className="shrink-0 text-rose-600 transition hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"
               aria-label={locale === 'he' ? 'סגור' : 'Dismiss'}
             >
               ✕
@@ -516,6 +518,7 @@ export function TreeCanvasWithModals({
         >
           <div
             ref={firstPersonModalRef}
+            tabIndex={-1}
             className="max-h-[min(90vh,720px)] w-full max-w-[340px] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
             role="dialog"
             aria-modal="true"
@@ -531,7 +534,7 @@ export function TreeCanvasWithModals({
               <button
                 type="button"
                 onClick={closeFirstPersonForm}
-                className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                 aria-label={locale === 'he' ? 'סגור' : 'Close'}
               >
                 ✕

@@ -64,7 +64,7 @@ export function FamilyAboutReadView({
             </p>
           ))
         ) : (
-          <p className="italic text-gray-400">{labels.noAboutYet}</p>
+          <p className="italic text-gray-600">{labels.noAboutYet}</p>
         )}
       </div>
 
@@ -84,7 +84,7 @@ export function FamilyAboutReadView({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm italic text-gray-400">
+          <p className="mt-2 text-sm italic text-gray-600">
             {labels.noSurnamesYet}
           </p>
         )}

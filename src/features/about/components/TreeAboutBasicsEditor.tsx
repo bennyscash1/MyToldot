@@ -171,7 +171,7 @@ export function TreeAboutBasicsEditor({
               type="button"
               onClick={() => setIsEditing(true)}
               aria-label={t('editAbout')}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

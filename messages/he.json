@@ -171,7 +171,9 @@
     "cancel": "ביטול",
     "delete": "מחק",
     "edit": "ערוך",
-    "footerCopyright": "© {year} עץ משפחה"
+    "footerCopyright": "© {year} עץ משפחה",
+    "skipToContent": "דלג לתוכן הראשי",
+    "interactiveFamilyTree": "עץ משפחה אינטראקטיבי"
   },
   "dateInput": {
     "openCalendar": "פתח לוח שנה",
@@ -190,6 +192,8 @@
     "cancel": "ביטול",
     "close": "סגור",
     "delete": "מחק",
+    "photoViewer": "מציג תמונות",
+    "photoAlt": "תמונת גלריה",
     "errors": {
       "unsupportedType": "סוג קובץ לא נתמך",
       "uploadFailed": "ההעלאה נכשלה",

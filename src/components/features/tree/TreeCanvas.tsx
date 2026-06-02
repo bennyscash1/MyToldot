@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { Spinner } from '@/components/ui/Spinner';
 
 import {
@@ -93,8 +95,13 @@ export function TreeCanvas({
   isInitialLayouting,
   layoutError,
 }: TreeCanvasProps) {
+  const tCommon = useTranslations('common');
   return (
-    <div className="relative h-full min-h-[480px] w-full bg-white">
+    <div
+      className="relative h-full min-h-[480px] w-full bg-white"
+      role="region"
+      aria-label={tCommon('interactiveFamilyTree')}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}

@@ -102,7 +102,10 @@ export async function Navbar() {
           <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-85" aria-label="Toldotay">
             <BrandMark className="size-9" />
             <div className="text-start">
-              <div className="font-serif text-[1.375rem] font-extrabold leading-none tracking-[-0.03em] text-brand-green-deep">
+              <div
+                lang="en"
+                className="font-serif text-[1.375rem] font-extrabold leading-none tracking-[-0.03em] text-brand-green-deep"
+              >
                 TOLDOTAY
               </div>
               <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.3em] text-ink-muted">
@@ -167,7 +170,7 @@ export async function Navbar() {
               {item.disabled ? (
                 <span
                   title={tCommon('comingSoon')}
-                  className="cursor-not-allowed rounded-md px-3 py-2 text-sm font-medium text-gray-300"
+                  className="cursor-not-allowed rounded-md px-3 py-2 text-sm font-medium text-gray-500"
                 >
                   {t(item.labelKey as Parameters<typeof t>[0])}
                 </span>

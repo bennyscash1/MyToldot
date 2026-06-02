@@ -19,6 +19,7 @@ import {
 } from '@/features/about/components/FamilyAboutContent';
 import { ServiceError } from '@/services/api.client';
 import { treesService } from '@/services/trees.service';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import type { TreeAboutDto } from '@/types/api';
 
 type TreeAboutModalProps = {
@@ -33,6 +34,7 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
   const tAbout = useTranslations('aboutPage');
   const tCommon = useTranslations('common');
   const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(modalRef, open);
   const [data, setData] = useState<TreeAboutDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -243,6 +245,7 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
     >
       <div
         ref={modalRef}
+        tabIndex={-1}
         className="max-h-[min(90vh,720px)] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
         role="dialog"
         aria-modal="true"
@@ -261,7 +264,7 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
               aria-label={t('close')}
             >
               ✕

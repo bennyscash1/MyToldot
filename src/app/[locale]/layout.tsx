@@ -107,6 +107,12 @@ export default async function LocaleLayout({
       <body className={bodyClass} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <QuotaDialogProvider>
+            <a
+              href="#app-main"
+              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:z-[60] focus:rounded focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white ltr:focus:left-2 rtl:focus:right-2"
+            >
+              {tCommon('skipToContent')}
+            </a>
             <ViewportModeSync />
             <Navbar />
             <main id="app-main" className={mainClass}>
@@ -115,7 +121,7 @@ export default async function LocaleLayout({
             <footer
               id="app-footer"
               hidden={isLockedViewport || isLandingRoot}
-              className="border-t border-gray-100 py-6 text-center text-sm text-gray-400"
+              className="border-t border-gray-100 py-6 text-center text-sm text-gray-600"
             >
               {tCommon('footerCopyright', { year: new Date().getFullYear() })}
             </footer>

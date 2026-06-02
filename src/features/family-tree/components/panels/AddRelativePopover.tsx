@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useLocale } from 'next-intl';
 
 import { isInsideDatePickerPopover } from '@/components/ui/datePickerPopover';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { PersonForm } from '@/features/persons/components/PersonForm';
 import type { PersonInput } from '@/features/family-tree/schemas/person.schema';
 import type { PlaceholderMeta } from '../../lib/types';
@@ -66,6 +67,7 @@ export function AddRelativePopover({
   const locale = useLocale();
   const headerDir = locale === 'he' ? 'rtl' : 'ltr';
   const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, true);
 
   // Close on Escape + click-outside.
   useEffect(() => {
@@ -99,17 +101,19 @@ export function AddRelativePopover({
   return (
     <div
       ref={ref}
+      tabIndex={-1}
       style={{ left, top, width: POPOVER_WIDTH, maxHeight: POPOVER_MAX_HEIGHT }}
       className="fixed z-50 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="add-relative-popover-title"
     >
       <div className="mb-3 flex items-center justify-between" dir={headerDir}>
-        <h3 className="text-sm font-semibold text-slate-900">{TITLE[meta.kind]}</h3>
+        <h3 id="add-relative-popover-title" className="text-sm font-semibold text-slate-900">{TITLE[meta.kind]}</h3>
         <button
           type="button"
           onClick={onClose}
-          className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
           aria-label="סגור"
         >
           ✕

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 export interface BlockedActionDialogProps {
   open: boolean;
@@ -16,6 +17,7 @@ export function BlockedActionDialog({ open, ownerEmail, onClose }: BlockedAction
   const locale = useLocale();
   const dir = locale === 'he' ? 'rtl' : 'ltr';
   const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, open);
 
   useEffect(() => {
     if (!open) return;
@@ -38,6 +40,7 @@ export function BlockedActionDialog({ open, ownerEmail, onClose }: BlockedAction
     >
       <div
         ref={ref}
+        tabIndex={-1}
         dir={dir}
         role="dialog"
         aria-modal="true"

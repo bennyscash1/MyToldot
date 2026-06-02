@@ -171,7 +171,9 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
-    "footerCopyright": "© {year} Family Tree"
+    "footerCopyright": "© {year} Family Tree",
+    "skipToContent": "Skip to main content",
+    "interactiveFamilyTree": "Interactive family tree"
   },
   "dateInput": {
     "openCalendar": "Open calendar",
@@ -190,6 +192,8 @@
     "cancel": "Cancel",
     "close": "Close",
     "delete": "Delete",
+    "photoViewer": "Photo viewer",
+    "photoAlt": "Gallery photo",
     "errors": {
       "unsupportedType": "Unsupported file type",
       "uploadFailed": "Upload failed",

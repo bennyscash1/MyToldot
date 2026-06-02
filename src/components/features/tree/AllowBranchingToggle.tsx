@@ -42,7 +42,7 @@ export function AllowBranchingToggle({
               }
             });
           }}
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition ${
+          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 ${
             value ? 'bg-emerald-600' : 'bg-slate-300'
           }`}
         >

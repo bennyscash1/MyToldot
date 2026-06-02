@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 export type CoParentOption = { id: string; name: string };
 
@@ -26,6 +27,8 @@ export function PickCoParentModal({
   const locale = useLocale();
   const dir = locale === 'he' ? 'rtl' : 'ltr';
   const groupId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
   const [selected, setSelected] = useState<string>('single');
 
   useEffect(() => {
@@ -54,6 +57,8 @@ export function PickCoParentModal({
       }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         dir={dir}
         role="dialog"
         aria-modal="true"

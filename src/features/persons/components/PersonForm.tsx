@@ -241,7 +241,7 @@ export function PersonForm({
       )}
 
       {(localError || errorMessage) && (
-        <div className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div role="alert" className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
           {localError ?? errorMessage}
         </div>
       )}
@@ -311,6 +311,7 @@ function GenderButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={active}
       className={clsx(
         'flex-1 rounded-md border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed',
         active

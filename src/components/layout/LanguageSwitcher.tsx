@@ -88,7 +88,7 @@ export function LanguageSwitcher({ variant = 'default' }: LanguageSwitcherProps)
                     : 'text-ink-muted hover:text-brand-green-deep')
                 : (isActive
                     ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600'),
+                    : 'text-gray-600 hover:text-gray-900'),
             )}
           >
             {t(labelKey)}

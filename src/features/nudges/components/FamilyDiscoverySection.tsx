@@ -41,7 +41,7 @@ export function FamilyDiscoverySection({
         <button
           type="button"
           onClick={onRetry}
-          className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+          className="text-xs font-medium text-emerald-700 hover:text-emerald-800"
         >
           {t('retry')}
         </button>

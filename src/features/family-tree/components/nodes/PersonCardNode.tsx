@@ -80,7 +80,7 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
         className="!h-0 !w-0 !border-0 !bg-transparent"
       />
 
-      <Avatar person={person} />
+      <Avatar person={person} alt={displayName} />
 
       {person.is_deceased && (
         <span
@@ -121,14 +121,14 @@ function PersonCardNodeInner({ data, selected }: NodeProps) {
   );
 }
 
-function Avatar({ person }: { person: PersonNodeData['person'] }) {
+function Avatar({ person, alt }: { person: PersonNodeData['person']; alt: string }) {
   const src = getPersonProfileImageUrl(person);
   const isExternal = Boolean(person.profile_image_url?.trim());
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
-      alt=""
+      alt={alt}
       className="h-[132px] w-full flex-shrink-0 rounded-t-[10px] object-cover object-top bg-slate-100"
       {...(isExternal ? EXTERNAL_IMAGE_IMG_PROPS : {})}
     />

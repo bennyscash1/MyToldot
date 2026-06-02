@@ -330,7 +330,7 @@ export function PersonGalleryEditor({
             <p className="mt-2 text-center text-xs text-gray-500">
               {t('count', { current: count, max: MAX_PHOTOS_PER_PERSON })}
               {count > 0 ? (
-                <span className="mt-0.5 block text-[11px] text-gray-400">
+                <span className="mt-0.5 block text-[11px] text-gray-600">
                   {t('tapToEdit')}
                 </span>
               ) : null}

@@ -85,7 +85,7 @@ export function LoginForm() {
       <GoogleSignInButton />
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-gray-200" />
-        <span className="text-xs uppercase tracking-wide text-gray-400">or</span>
+        <span className="text-xs uppercase tracking-wide text-gray-600">or</span>
         <div className="h-px flex-1 bg-gray-200" />
       </div>
 
@@ -118,7 +118,7 @@ export function LoginForm() {
         {t('noAccount')}{' '}
         <Link
           href={`/signup${redirectQuery}`}
-          className="font-medium text-emerald-600 hover:text-emerald-700 underline-offset-2 hover:underline"
+          className="font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline"
         >
           {t('signupLink')}
         </Link>

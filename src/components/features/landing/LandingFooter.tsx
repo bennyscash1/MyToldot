@@ -13,7 +13,7 @@ export async function LandingFooter({ locale }: { locale: Locale }) {
           <Link href="/" className="inline-flex items-center gap-3">
             <BrandMark className="size-9 text-cream" monochrome />
             <div className="text-start">
-              <div className="font-serif text-xl font-extrabold tracking-[-0.03em] text-cream">TOLDOTAY</div>
+              <div lang="en" className="font-serif text-xl font-extrabold tracking-[-0.03em] text-cream">TOLDOTAY</div>
               <div className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.3em] text-cream/50">
                 {t('tagline')}
               </div>

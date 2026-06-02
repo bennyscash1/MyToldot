@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/Button';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { MAX_CAPTION_LENGTH } from '@/lib/images/gallery-upload-constraints';
 import { getPersonPhotoUrl } from '@/lib/images/get-person-photo-url';
 import { EXTERNAL_IMAGE_IMG_PROPS } from '@/lib/images/normalize-external-image-url';
@@ -30,6 +31,8 @@ export function PhotoLightbox({
   const t = useTranslations('gallery');
   const locale = useLocale();
   const dir = locale === 'he' ? 'rtl' : 'ltr';
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
   const [draftCaption, setDraftCaption] = useState(photo.caption ?? '');
 
   useEffect(() => {
@@ -58,15 +61,18 @@ export function PhotoLightbox({
       }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         dir={dir}
         className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl"
         role="dialog"
         aria-modal
+        aria-label={photo.caption || t('photoViewer')}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute start-3 top-3 rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
+          className="absolute start-3 top-3 rounded-md p-1.5 text-gray-500 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
           aria-label={t('close')}
         >
           ✕
@@ -76,7 +82,7 @@ export function PhotoLightbox({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={src}
-            alt=""
+            alt={photo.caption || t('photoAlt')}
             className="mx-auto mt-6 max-h-[60vh] w-auto max-w-full rounded-lg object-contain"
             {...(photo.image_url ? EXTERNAL_IMAGE_IMG_PROPS : {})}
           />
@@ -95,7 +101,7 @@ export function PhotoLightbox({
                 'focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500',
               )}
             />
-            <p className="text-end text-xs text-gray-400">
+            <p className="text-end text-xs text-gray-600">
               {draftCaption.length}/{MAX_CAPTION_LENGTH}
             </p>
             <div className="flex justify-end gap-2">

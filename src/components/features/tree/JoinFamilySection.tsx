@@ -55,7 +55,7 @@ export function JoinFamilySection() {
           className="text-center font-mono text-base tracking-[0.2em]"
           aria-invalid={error ? true : undefined}
         />
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
       </div>
       <Button type="submit" size="sm" disabled={isPending} className="shrink-0 sm:mb-0">
         {isPending ? t('joinFamilySubmitting') : t('joinFamilySubmit')}
