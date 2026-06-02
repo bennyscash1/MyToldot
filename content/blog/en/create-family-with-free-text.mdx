@@ -1,0 +1,142 @@
+---
+title: "Why Building a Family Tree Takes Years — and How AI Turns It Into Minutes"
+description: "The traditional process of family documentation is broken. Here's how AI with grounded search turns years of work into a single evening."
+date: "2026-06-02"
+author: "Toldotay Team"
+category: "story"
+readingTime: "10"
+coverImage: "/blog/create-family-with-free-text/1.jpg"
+---
+
+## The real problem: slow creation
+
+Building a family tree is one of those tasks everyone wants to do, and very few finish. Not because they do not care — because the traditional process is broken.
+
+How long does it actually take to build a serious family tree with existing methods?
+
+Try doing the math. Let's say you have 50 relatives you want to document — parents, grandparents, great-grandparents, uncles, cousins, nieces, nephews. Reasonable. For each one, you need:
+
+- Full name in Hebrew and English
+- Date of birth (Gregorian and Hebrew)
+- Place of birth
+- Spouse's name
+- Parents' names
+- If deceased — date of death
+- A short biography — what they did in life, where they lived, what they worked on
+- A photo
+
+That is about 8-10 fields per person. Times 50 people = 400-500 details you need to collect, verify, and type in.
+
+And now the real question: where do you get this information?
+
+A small part is in your head. Some is with a parent. Some is with an uncle abroad. Some is buried in old ID papers in grandma's closet. Some is in community books, synagogue records, Wikipedia archives, genealogy sites like JewishGen and Geni. And some does not exist anywhere accessible — it exists only as memory in someone's mind who can no longer tell it.
+
+<BlogImage
+  src="/blog/create-family-with-free-text/1.jpg"
+  alt="Family tree building is slow and scattered"
+  caption="Hundreds of details, dozens of sources, and one question: where do you even start?"
+/>
+
+## Why existing tools do not solve this
+
+The tools on the market today fall into two categories, and both miss the core problem.
+
+First category: professional genealogy tools (MyHeritage, Geni, Ancestry).
+
+They are excellent if you are a serious genealogy researcher willing to invest hundreds of hours. They are built around matching against strangers' trees, historical documents, and complex search engines. They require patience, expensive subscriptions, and research know-how. Most people who start there quit within two weeks. The industry knows these numbers well.
+
+Second category: simple tools (FamilyEcho, even Excel).
+
+They let you enter names quickly. But they do not help you find the information. They are empty of content — you end up with a table of names and dates, with no story, no context, no meaning.
+
+There is a gap between the two. Most attempts fall into that gap.
+
+## The need: fast and rich creation
+
+For a normal person — not a researcher, not a historian, just a son or daughter in a family — to build meaningful family documentation, three things are needed:
+
+1. Fast structure input. Adding one person must not take more than 30 seconds. If adding a grandfather requires filling out a 12-field form, you quit after 5 people.
+2. Automatic content retrieval. Information about great-grandparents is not in your head — it is online, scattered across many sources. You need something that searches for you.
+3. Automatic network expansion. Once you have 20-30 people in the tree, you need help discovering who else belongs — forgotten siblings, disconnected branches, relatives abroad.
+
+That is exactly what Toldotay is building.
+
+<BlogImage
+  src="/blog/create-family-with-free-text/2.jpg"
+  alt="Three engines for fast family tree creation"
+  caption="Fast input, content retrieval, and network expansion — the three engines of meaningful documentation."
+/>
+
+## How AI solves slow creation
+
+First engine: automatic biography generation in Hebrew.
+
+You add someone to the tree — say, your grandfather. You type his name and who his father is. That's it, you click "Create Biography."
+
+The system takes the name and family context and sends it to Google's Gemini 2.5 Pro with grounded Google Search. The AI then scans:
+
+- Hebrew and English Wikipedia
+- Jewish genealogy sites (JewishGen, Geni, MyHeritage Public Trees)
+- Rabbinic books and responsa collections
+- Digital community archives
+- Mentions in articles and publications
+
+In under a minute, you get a 3-5 paragraph biography in Hebrew. With sources. In fluent Hebrew, not machine-translated text. The biography understands who this person was, what role they played, where they lived, and how they connect to the larger family story.
+
+That changes the time equation dramatically. Instead of 30 minutes of research per person, you get a high-quality draft in 30 seconds. You can edit it, add your own family knowledge, correct it — but the starting point is already there.
+
+Second engine: finding relatives you did not know about.
+
+This is the capability that transforms the building experience. Once you have a core tree — say 10-15 people — you can ask the AI: "Find me more relatives."
+
+The AI takes the data it already has — surnames, birthplaces, time periods, relationships — and searches the web for additional relatives. It can find:
+
+- Siblings of grandparents who disappeared from family memory
+- Cousins who immigrated separately
+- Branches that moved to the U.S., Argentina, or Australia
+- Roots in European towns before the Holocaust
+- Connections to rabbis, writers, or public figures in the family line
+
+For each suggestion, the AI presents the source and reasoning — why it believes this is a true family match. You approve or reject. In an hour of this workflow, you can add 30-40 people you likely would not have found even after years of manual searching.
+
+<BlogImage
+  src="/blog/create-family-with-free-text/3.jpg"
+  alt="AI proposing newly discovered relatives"
+  caption="AI does not just fill fields — it expands your family network."
+/>
+
+## Why this works now (and not three years ago)
+
+Until recently, AI simply was not good enough for this task. Older models hallucinated people who never existed, mixed biographies, and attributed achievements to the wrong relatives. It was more dangerous than useful.
+
+Two changes shifted the equation.
+
+First, grounded-search models. Instead of relying only on what AI "remembers" from training, it performs live Google search and grounds responses in real results. Every claim is backed by a source. This reduces hallucinations by about 90%.
+
+Second, Hebrew quality. Until 2024, Hebrew AI output was often awkward, literal, or simply wrong. The 2025-generation models — Gemini 2.5 in particular — write Hebrew at human-editor level. That is critical for a product whose audience is Hebrew-speaking, and whose outputs are meant to be preserved for generations.
+
+The combination — grounded search + high-quality Hebrew — is what makes automated family documentation feasible for the first time.
+
+## Documentation that does not disappear
+
+Beyond features, this is a product philosophy.
+
+Family trees on most platforms are static documents. Names and lines. But family is not just names — it is story. Who this person was, where they grew up, what they loved, how they met their spouse, why they emigrated, when they lost their parents, how they built a home anyway.
+
+These stories disappear at an incredible speed. Every grandmother who passes away takes an entire library of memories that no one documented. The current generation — ages 35-50 — is the last generation that can still capture living memory from grandparents born before the Holocaust. In another decade, it may be too late.
+
+Toldotay is built on this assumption: every person deserves more than four lines. High-quality biography should be available even to people without thousands of research hours. Technology — if used correctly — can be the tool that saves family memory, not replaces it.
+
+## Who this is for
+
+This product is built for someone specific: people aged 35-50, with aging parents or grandparents, who at least once thought, "I must document this before it is too late" — and did not know where to begin.
+
+They are not genealogy researchers. They do not want monthly subscriptions. They want, across a few evenings, to build something real they can show mom on her birthday, let their kids browse, and present on a screen in grandpa's living room.
+
+Toldotay makes that urgency possible — not over years of work, but in one evening.
+
+<BlogImage
+  src="/blog/create-family-with-free-text/4.jpg"
+  alt="A family viewing a rich digital family tree together"
+  caption="Not a years-long project — meaningful family documentation in a few evenings."
+/>
