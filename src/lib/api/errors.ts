@@ -18,7 +18,9 @@ export type ApiErrorCode =
   | 'BRANCHING_NOT_ALLOWED'
   | 'MAX_PHOTOS_REACHED'
   | 'INVALID_CONFIRM_CODE'
-  | 'QUOTA_EXCEEDED';
+  | 'QUOTA_EXCEEDED'
+  | 'VALIDATION_ERROR'
+  | 'EMAIL_SEND_FAILED';
 
 /** Structured error thrown inside API route handlers. */
 export class ApiError extends Error {
@@ -70,4 +72,10 @@ export const Errors = {
 
   invalidConfirmCode: (msg = 'Confirmation code does not match') =>
     new ApiError('INVALID_CONFIRM_CODE', msg, 400),
+
+  validation: (msg = 'Validation failed', details?: Record<string, unknown>) =>
+    new ApiError('VALIDATION_ERROR', msg, 422, details),
+
+  emailSendFailed: (msg = 'Unable to send your message. Please try again later.') =>
+    new ApiError('EMAIL_SEND_FAILED', msg, 502),
 } as const;

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 
 import type { LocalePageProps } from '@/types';
 import { LOCALE_DIR } from '@/types';
+import { ContactSection } from '@/features/contact/ContactSection';
 
 function proseParagraphs(text: string, baseClass: string, firstMt = 'mt-4') {
   return text
@@ -125,32 +126,26 @@ export default async function AboutPage({ params }: LocalePageProps) {
           </section>
         </div>
 
-        <section className="mt-14 border-t border-slate-200 pt-8">
-          <h2 className="text-[1.375rem] font-semibold leading-snug tracking-tight sm:text-2xl">
-            {t('contactTitle')}
-          </h2>
-          <div className="mt-4 flex flex-col gap-2 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
-            <a className="underline hover:no-underline" href={`mailto:${t('contactEmail')}`}>
-              {t('contactEmail')}
-            </a>
-            <a
-              className="underline hover:no-underline"
-              href={t('contactLinkedInUrl')}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('contactLinkedInLabel')}
-            </a>
-            <a
-              className="underline hover:no-underline"
-              href={t('contactDevUrl')}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('contactDevLabel')}
-            </a>
-          </div>
-        </section>
+        <ContactSection align="start" className="mt-14 border-t border-slate-200 pt-8" />
+
+        <div className="mt-8 flex flex-col gap-2 text-[1.0625rem] font-normal leading-[1.8] sm:text-lg">
+          <a
+            className="underline hover:no-underline"
+            href={t('contactLinkedInUrl')}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('contactLinkedInLabel')}
+          </a>
+          <a
+            className="underline hover:no-underline"
+            href={t('contactDevUrl')}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('contactDevLabel')}
+          </a>
+        </div>
       </div>
     </article>
   );

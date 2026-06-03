@@ -418,6 +418,27 @@
     "successTitle": "Additions applied",
     "successDescription": "Added {applied} people. Skipped {skipped}."
   },
+  "contact": {
+    "heading": "Contact us",
+    "subheading": "Have a question, suggestion, or issue? We'd love to hear from you.",
+    "fields": {
+      "name": "Full name",
+      "email": "Email",
+      "phone": "Phone",
+      "message": "Message"
+    },
+    "submit": "Send",
+    "submitting": "Sending…",
+    "success": "Your message was sent successfully. We'll get back to you soon.",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "errorSendFailed": "We couldn't send your message. Please try again later.",
+    "validation": {
+      "name": "Enter your full name (at least 2 characters)",
+      "email": "Enter a valid email address",
+      "phone": "Enter a valid phone number (at least 7 digits)",
+      "message": "Write a message (at least 5 characters)"
+    }
+  },
   "familyHub": {
     "title": "Your Family Trees",
     "subtitle": "Select a family to enter",
