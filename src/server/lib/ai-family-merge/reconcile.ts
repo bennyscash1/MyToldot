@@ -8,12 +8,6 @@ import type {
 } from './schema';
 import { FamilyMergeProposalSchema } from './schema';
 
-const TEMP_ID_RE = /^new_\d+$/i;
-
-function isTempId(id: string): boolean {
-  return TEMP_ID_RE.test(id);
-}
-
 function isExistingId(id: string, existingIds: Set<string>): boolean {
   return existingIds.has(id);
 }
@@ -164,7 +158,7 @@ export function reconcileMergeProposal(
     cleanedPeople.push({ ...p, tempId: p.tempId });
   }
 
-  let newPeople = dropDuplicatesAgainstExisting(cleanedPeople, existingMembers);
+  const newPeople = dropDuplicatesAgainstExisting(cleanedPeople, existingMembers);
   if (newPeople.length < cleanedPeople.length) {
     warnings.push('Removed newPeople that duplicate existing names');
   }
@@ -178,8 +172,6 @@ export function reconcileMergeProposal(
   if (ambiguousMatches.length > 0) {
     parsed.needsReview = true;
   }
-
-  const ambiguousTempIds = new Set(ambiguousMatches.map((a) => a.tempId));
 
   const proposal: FamilyMergeProposal = {
     matchedTo: parsed.matchedTo ?? null,
