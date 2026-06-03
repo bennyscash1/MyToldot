@@ -8,7 +8,13 @@ import { withAction, type ActionResult } from '@/lib/api/action-result';
 import { CuidSchema } from '@/features/family-tree/schemas/person.schema';
 import { ApiError, Errors } from '@/lib/api/errors';
 import { requireTreeRole } from '@/lib/api/auth';
-import { generateStructuredJson, type GeminiContent } from '@/server/lib/gemini';
+import {
+  generateStructuredJson,
+  geminiContentsUserCharCount,
+  structuredJsonTimeoutMs,
+  type GeminiContent,
+} from '@/server/lib/gemini';
+import { generateGroundedAiTreePlan } from '@/server/lib/ai-tree-builder/gemini-grounded';
 import { AI_TREE_BUILDER_SYSTEM_PROMPT } from '@/server/lib/ai-tree-builder/prompt';
 import {
   AiTreePlanSchema,
@@ -29,6 +35,11 @@ export interface PlanFamilyResult {
   contents: GeminiContent[];
 }
 
+export interface PlanFamilyFromTextOptions {
+  /** When true, Gemini may use google_search to enrich from public sources. Default false. */
+  searchKnowledgeBases?: boolean;
+}
+
 /**
  * Call Gemini with the tree-builder system prompt and either the initial user
  * text or a refinement turn. Returns the parsed+reconciled plan plus the
@@ -41,7 +52,9 @@ export async function planFamilyFromTextAction(
   treeId: string,
   userText: string,
   priorContents: GeminiContent[] = [],
+  options: PlanFamilyFromTextOptions = {},
 ): Promise<ActionResult<PlanFamilyResult>> {
+  const searchKnowledgeBases = options.searchKnowledgeBases === true;
   const isRefinement = priorContents.length > 0;
   return withAction(async () => {
     try {
@@ -72,10 +85,13 @@ export async function planFamilyFromTextAction(
         { role: 'user', parts: [{ text: trimmed }] },
       ];
 
-      const { parsed, text, finishReason } = await generateStructuredJson({
-        systemInstruction: AI_TREE_BUILDER_SYSTEM_PROMPT,
-        contents: nextContents,
-      });
+      const { parsed, text, finishReason } = searchKnowledgeBases
+        ? await generateGroundedAiTreePlan({ contents: nextContents })
+        : await generateStructuredJson({
+            systemInstruction: AI_TREE_BUILDER_SYSTEM_PROMPT,
+            contents: nextContents,
+            timeoutMs: structuredJsonTimeoutMs(geminiContentsUserCharCount(nextContents)),
+          });
 
       if (!parsed) {
         // Translate the finish reason into something the user can act on,
@@ -93,6 +109,7 @@ export async function planFamilyFromTextAction(
         }
         console.error('[ai-tree:plan] empty/unparseable AI response', {
           isRefinement,
+          searchKnowledgeBases,
           finishReason,
           textLen: text.length,
         });
@@ -118,6 +135,7 @@ export async function planFamilyFromTextAction(
       if (err instanceof ApiError || err instanceof ZodError) throw err;
       console.error('[ai-tree:plan] unexpected error', {
         isRefinement,
+        searchKnowledgeBases,
         turns: priorContents.length + 1,
       }, err);
       throw Errors.internal('Something went wrong while building your tree. Please try again.');

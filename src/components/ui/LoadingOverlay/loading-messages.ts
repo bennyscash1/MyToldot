@@ -8,6 +8,7 @@
  */
 export type LoadingVariant =
   | 'creating-tree'
+  | 'creating-tree-grounded'
   | 'refining-tree'
   | 'ai-biography'
   | 'saving';
@@ -30,6 +31,20 @@ export const LOADING_MESSAGES: Record<
       'Arranging the branches, connecting the generations...',
       "Each of them left a mark. We're putting it in order...",
       'Almost there — the magic is happening...',
+    ],
+  },
+  'creating-tree-grounded': {
+    he: [
+      'מחפש במאגרי מידע ציבוריים…',
+      'מצליב מקורות, בונה את העץ…',
+      'זה עשוי לקחת יותר זמן מהרגיל — תודה על הסבלנות',
+      'מחבר בין הדורות לפי מה שנמצא…',
+    ],
+    en: [
+      'Searching public knowledge bases…',
+      'Cross-referencing sources, building your tree…',
+      'This may take longer than usual — thanks for waiting',
+      'Connecting generations from what we found…',
     ],
   },
   'refining-tree': {

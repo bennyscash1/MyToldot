@@ -503,6 +503,8 @@ export interface StructuredJsonOpts {
   signal?: AbortSignal;
   /** Override max output tokens; defaults to 12288 (matches the grounded retry budget). */
   maxOutputTokens?: number;
+  /** Per-request fetch timeout; defaults from {@link structuredJsonTimeoutMs}. */
+  timeoutMs?: number;
 }
 
 export interface StructuredJsonResult {
@@ -516,10 +518,35 @@ export interface StructuredJsonResult {
   raw: unknown;
 }
 
-// gemini-2.5-pro with a large multi-turn conversation can take a while; 90s is
-// generous but bounded so a hung connection becomes a clean timeout rather than
-// an unbounded await that the caller surfaces as a generic crash.
-const STRUCTURED_TIMEOUT_MS = 90_000;
+// gemini-2.5-pro with a large multi-turn conversation can take a while. Large
+// family descriptions (30–50 people) routinely exceed 90s; use tiered timeouts.
+const STRUCTURED_TIMEOUT_MS_DEFAULT = 120_000;
+const STRUCTURED_TIMEOUT_MS_LARGE = 240_000;
+const STRUCTURED_TIMEOUT_MS_HUGE = 300_000;
+/** Total user text length (all turns) above which we use the large timeout. */
+const STRUCTURED_LARGE_INPUT_CHARS = 1_200;
+const STRUCTURED_HUGE_INPUT_CHARS = 2_500;
+
+/**
+ * Fetch timeout for AI tree structured JSON based on cumulative user text size.
+ * Exported so server actions can surface consistent guidance on timeout errors.
+ */
+export function structuredJsonTimeoutMs(totalUserTextChars: number): number {
+  if (totalUserTextChars >= STRUCTURED_HUGE_INPUT_CHARS) return STRUCTURED_TIMEOUT_MS_HUGE;
+  if (totalUserTextChars >= STRUCTURED_LARGE_INPUT_CHARS) return STRUCTURED_TIMEOUT_MS_LARGE;
+  return STRUCTURED_TIMEOUT_MS_DEFAULT;
+}
+
+/** Sum character length of all user turns in a Gemini contents array. */
+export function geminiContentsUserCharCount(contents: GeminiContent[]): number {
+  return contents.reduce(
+    (n, c) =>
+      c.role === 'user'
+        ? n + c.parts.reduce((p, part) => p + (part.text?.length ?? 0), 0)
+        : n,
+    0,
+  );
+}
 // Headroom for large families: a ~24-person tree serializes to ~3k JSON tokens,
 // plus the model's hidden thinking pass. 16384 keeps full regeneration on a
 // refinement turn from truncating.
@@ -560,8 +587,9 @@ function withTimeoutSignal(
  * Generate structured JSON from a multi-turn conversation. Independent of
  * generateGroundedHebrewBio. Hardened so transient infrastructure failures
  * (network reset, timeout, 5xx, non-JSON body) surface as clean ApiErrors with
- * actionable messages instead of raw exceptions — and are retried once before
- * giving up. Does NOT throw on MAX_TOKENS/empty output; it returns
+ * actionable messages instead of raw exceptions. Retries once on transient HTTP
+ * or network failures only — not on client timeouts (same payload won't finish
+ * faster). Does NOT throw on MAX_TOKENS/empty output; it returns
  * `{ parsed: null, finishReason }` so the caller can craft a precise message.
  */
 export async function generateStructuredJson(
@@ -590,6 +618,8 @@ export async function generateStructuredJson(
   const url = `${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`;
   const MAX_ATTEMPTS = 2;
   let lastTransient = 'unknown';
+  const timeoutMs =
+    opts.timeoutMs ?? structuredJsonTimeoutMs(geminiContentsUserCharCount(opts.contents));
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     // Caller cancelled between attempts — stop without another network call.
@@ -597,7 +627,7 @@ export async function generateStructuredJson(
       throw Errors.internal('AI request was cancelled.');
     }
 
-    const { signal, cleanup } = withTimeoutSignal(opts.signal, STRUCTURED_TIMEOUT_MS);
+    const { signal, cleanup } = withTimeoutSignal(opts.signal, timeoutMs);
     let response: Response;
     try {
       response = await fetch(url, {
@@ -616,12 +646,21 @@ export async function generateStructuredJson(
       }
       lastTransient = isTimeout ? 'timeout' : 'network';
       // eslint-disable-next-line no-console
-      console.error(`[gemini:structured] fetch failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${lastTransient}`, err);
+      console.error(
+        `[gemini:structured] fetch failed (attempt ${attempt}/${MAX_ATTEMPTS}, timeoutMs=${timeoutMs}): ${lastTransient}`,
+        err,
+      );
+      if (isTimeout) {
+        const largeInput = geminiContentsUserCharCount(opts.contents) >= STRUCTURED_LARGE_INPUT_CHARS;
+        throw Errors.internal(
+          largeInput
+            ? 'This family description is very large and the AI did not finish in time. Try splitting it into smaller parts (e.g. one branch at a time), or try again.'
+            : 'The AI service took too long to respond. Please try again.',
+        );
+      }
       if (attempt < MAX_ATTEMPTS) continue;
       throw Errors.internal(
-        isTimeout
-          ? 'The AI service took too long to respond. Please try again.'
-          : 'Could not reach the AI service. Please check your connection and try again.',
+        'Could not reach the AI service. Please check your connection and try again.',
       );
     }
 

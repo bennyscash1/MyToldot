@@ -288,3 +288,26 @@ If any check fails, fix it before responding.
 ══════════════════════════════════════════════════════════
 END OF INSTRUCTIONS
 ══════════════════════════════════════════════════════════`;
+
+/**
+ * Grounded tree builder: same JSON contract as AI_TREE_BUILDER_SYSTEM_PROMPT,
+ * but Section 6.3 is replaced to allow google_search enrichment from public sources.
+ */
+const GROUNDED_SECTION_6_3_REPLACEMENT = `6.3. EXTERNAL KNOWLEDGE (ENABLED — user opted into knowledge-base search):
+    - You MUST perform multiple google_search queries (Hebrew + English + transliterations) before building the tree.
+    - Prefer genealogy sources: FamilySearch, Geni, MyHeritage public trees, JewishGen, Wikipedia HE/EN, Wikidata, Yad Vashem, HebrewBooks, rabbinic archives.
+    - You MAY add persons, dates, and relationships found in reliable public sources when the user's text is partial (e.g. "the Poppins family from the grandfather").
+    - Do NOT invent facts with no search support. If uncertain, omit optional fields and note uncertainty in "summary" or person "notes".
+    - When gender or dates come only from the web, use gender_confidence "low" and only include birth_year/death_year when sources agree reasonably.
+    - End the summary with a sentence (in the user's language) that some details may be inaccurate and should be reviewed before saving.`;
+
+export const AI_TREE_BUILDER_GROUNDED_SYSTEM_PROMPT =
+  AI_TREE_BUILDER_SYSTEM_PROMPT.replace(
+    `6.3. DO NOT fetch or assume facts from external knowledge.
+    - Even if a user mentions "Yossi Banai" and you know he is a famous Israeli actor, DO NOT add his real birth year, death year, or biographical facts unless the user mentioned them.
+    - The tree must reflect ONLY what the user said.`,
+    GROUNDED_SECTION_6_3_REPLACEMENT,
+  );
+
+export const AI_TREE_BUILDER_GROUNDED_RETRY_USER_PROMPT =
+  'Return ONLY a single valid JSON object matching the schema in the system instructions. No markdown fences, no commentary outside the JSON.';

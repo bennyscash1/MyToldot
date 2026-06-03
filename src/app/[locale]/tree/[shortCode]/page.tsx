@@ -11,6 +11,9 @@ import { RequestEditorAccessButton } from '@/components/features/tree/RequestEdi
 import { PendingMembersPanel } from '@/components/features/tree/PendingMembersPanel';
 import { TreeCanvasShell } from './TreeCanvasShell';
 
+/** Allow long-running AI tree builder server actions on this route (local dev + Vercel). */
+export const maxDuration = 300;
+
 type TreeShortCodePageProps = {
   params: Promise<{ locale: string; shortCode: string }>;
   searchParams: Promise<{
