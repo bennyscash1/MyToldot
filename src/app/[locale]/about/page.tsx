@@ -141,7 +141,14 @@ export default async function AboutPage({ params }: LocalePageProps) {
             >
               {t('contactLinkedInLabel')}
             </a>
-            <p>{t('contactCredit')}</p>
+            <a
+              className="underline hover:no-underline"
+              href={t('contactDevUrl')}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('contactDevLabel')}
+            </a>
           </div>
         </section>
       </div>

@@ -20,6 +20,7 @@ import { PersonForm } from '@/features/persons/components/PersonForm';
 import { BlockedActionDialog } from '@/components/ui/BlockedActionDialog';
 import { NudgesPanelContainer } from '@/features/nudges/components/NudgesPanelContainer';
 import { AiTreeBuilderModal } from './panels/AiTreeBuilderModal';
+import { AiFamilyMergeModal } from './panels/AiFamilyMergeModal';
 import { LoadingOverlay, type LoadingVariant } from '@/components/ui/LoadingOverlay';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { apiClient } from '@/services/api.client';
@@ -57,6 +58,7 @@ export function TreeCanvasWithModals({
   const tTree = useTranslations('treePage');
   const tPersonForm = useTranslations('personForm');
   const tAi = useTranslations('aiTreeBuilder');
+  const tMerge = useTranslations('aiFamilyMerge');
   const headerDir = locale === 'he' ? 'rtl' : 'ltr';
 
   const [nudgesRefetchSignal, setNudgesRefetchSignal] = useState(0);
@@ -110,6 +112,7 @@ export function TreeCanvasWithModals({
   const photosFetchStartedRef = useRef(false);
   const [showFirstPersonForm, setShowFirstPersonForm] = useState(false);
   const [showAiBuilder, setShowAiBuilder] = useState(false);
+  const [showAiMerge, setShowAiMerge] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(openAboutOnLoad);
   // ── First-person creation lock ──────────────────────────────────
   // Spans the whole empty→populated window (submit click → canvas shows the
@@ -199,6 +202,22 @@ export function TreeCanvasWithModals({
   const onCloseAiBuilder = useCallback(() => {
     setShowAiBuilder(false);
   }, []);
+
+  const onOpenAiMerge = useCallback(() => {
+    clearError();
+    clearBlocked();
+    setShowAiMerge(true);
+  }, [clearError, clearBlocked]);
+
+  const onCloseAiMerge = useCallback(() => {
+    setShowAiMerge(false);
+  }, []);
+
+  const onAiMergeApplied = useCallback(() => {
+    setShowAiMerge(false);
+    router.refresh();
+    bumpNudgesRefetch();
+  }, [router, bumpNudgesRefetch]);
 
   const clearFirstPersonLock = useCallback(() => {
     creatingLockRef.current = false;
@@ -456,6 +475,35 @@ export function TreeCanvasWithModals({
         />
       </LoadingOverlay>
 
+      {canEdit && persons.length > 0 && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-4 z-30 flex justify-center px-4"
+          dir={headerDir}
+        >
+          <button
+            type="button"
+            onClick={onOpenAiMerge}
+            className="pointer-events-auto flex flex-col items-center gap-0.5 rounded-full border border-emerald-200 bg-white/90 px-5 py-2 text-sm font-medium text-emerald-700 shadow-md backdrop-blur transition hover:border-emerald-300 hover:bg-white hover:text-emerald-800"
+          >
+            <span className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M10 1.5a.75.75 0 0 1 .727.564l.708 2.75 2.75.708a.75.75 0 0 1 0 1.456l-2.75.708-.708 2.75a.75.75 0 0 1-1.454 0l-.708-2.75-2.75-.708a.75.75 0 0 1 0-1.456l2.75-.708.708-2.75A.75.75 0 0 1 10 1.5ZM5 11a.6.6 0 0 1 .582.452l.41 1.556 1.556.41a.6.6 0 0 1 0 1.164l-1.556.41-.41 1.556a.6.6 0 0 1-1.164 0l-.41-1.556-1.556-.41a.6.6 0 0 1 0-1.164l1.556-.41.41-1.556A.6.6 0 0 1 5 11Zm10 1a.55.55 0 0 1 .533.414l.32 1.233 1.234.32a.55.55 0 0 1 0 1.066l-1.234.32-.32 1.233a.55.55 0 0 1-1.066 0l-.32-1.233-1.234-.32a.55.55 0 0 1 0-1.066l1.234-.32.32-1.233A.55.55 0 0 1 15 12Z" />
+              </svg>
+              {tMerge('openButton')}
+            </span>
+            <span className="text-[10px] font-normal text-emerald-700">
+              {tMerge('openButtonHint')}
+            </span>
+          </button>
+        </div>
+      )}
+
       {canEdit && persons.length === 0 && !isCreatingFirstPerson && (
         <div
           className="pointer-events-none absolute inset-x-0 top-4 z-30 flex justify-center px-4"
@@ -509,6 +557,13 @@ export function TreeCanvasWithModals({
         treeId={treeId}
         onClose={onCloseAiBuilder}
         onApplied={onAiPlanApplied}
+      />
+
+      <AiFamilyMergeModal
+        open={showAiMerge && canEdit && persons.length > 0}
+        treeId={treeId}
+        onClose={onCloseAiMerge}
+        onApplied={onAiMergeApplied}
       />
 
       {showFirstPersonForm && (
