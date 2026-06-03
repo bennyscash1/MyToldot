@@ -22,5 +22,8 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 
+# Claude/Cursor local agent worktrees and settings (not part of the app)
+.claude/
+
 # misc
 *.tsbuildinfo
