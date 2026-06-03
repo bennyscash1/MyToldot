@@ -629,7 +629,9 @@ export async function updatePersonInTree(
   const data = withHebrewDatesForUpdate(parsed, existing);
   const profileImageData = await applyProfileImagePatch(treeId, existing, parsed);
 
-  const { profile_image: _pi, profile_image_url: _pu, ...restData } = data;
+  const restData = { ...data };
+  delete restData.profile_image;
+  delete restData.profile_image_url;
 
   return prisma.person.update({
     where: { id },

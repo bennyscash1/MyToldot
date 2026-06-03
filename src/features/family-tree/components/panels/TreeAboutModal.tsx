@@ -97,12 +97,12 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
     setIsEditing(true);
   };
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setIsEditing(false);
     setErrorMessage(null);
-  };
+  }, []);
 
-  const commitSurnameInput = () => {
+  const commitSurnameInput = useCallback(() => {
     const trimmed = surnameInput.trim();
     if (!trimmed) return;
     const exists = draftSurnames.some(
@@ -112,26 +112,29 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
       setDraftSurnames((prev) => [...prev, trimmed]);
     }
     setSurnameInput('');
-  };
+  }, [draftSurnames, surnameInput]);
 
-  const removeSurname = (index: number) => {
+  const removeSurname = useCallback((index: number) => {
     setDraftSurnames((prev) => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const handleSurnameKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === ',') {
-      event.preventDefault();
-      commitSurnameInput();
-    } else if (
-      event.key === 'Backspace' &&
-      surnameInput === '' &&
-      draftSurnames.length > 0
-    ) {
-      removeSurname(draftSurnames.length - 1);
-    }
-  };
+  const handleSurnameKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        commitSurnameInput();
+      } else if (
+        event.key === 'Backspace' &&
+        surnameInput === '' &&
+        draftSurnames.length > 0
+      ) {
+        removeSurname(draftSurnames.length - 1);
+      }
+    },
+    [commitSurnameInput, draftSurnames.length, removeSurname, surnameInput],
+  );
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const pending = surnameInput.trim();
     const surnamesToSave = pending
       ? draftSurnames.some((s) => s.toLocaleLowerCase() === pending.toLocaleLowerCase())
@@ -159,7 +162,7 @@ export function TreeAboutModal({ treeId, canEdit, open, onClose }: TreeAboutModa
         setErrorMessage(message);
       }
     });
-  };
+  }, [draftSurnames, draftText, surnameInput, startSaving, treeId, tAbout]);
 
   const body = useMemo(() => {
     if (isLoading || data == null) {

@@ -76,14 +76,13 @@ export function buildCommonsSearchQueries(
   if (ctx && isLatinQuery(ctx)) queries.add(ctx);
 
   const enLower = en?.toLowerCase() ?? '';
-  const ctxLower = ctx.toLowerCase();
   const first = en?.split(/\s+/)[0];
 
   if (first) {
-    if (/kardashian/i.test(enLower) || /kardashian|קרדש/i.test(ctx)) {
+    if (/kardashian/i.test(enLower) || /kardashian|קרדש/i.test(ctx.toLowerCase())) {
       queries.add(`${first} Jenner`);
     }
-    if (/jenner/i.test(enLower) || /jenner|ג'נר|ג׳נר/i.test(ctx)) {
+    if (/jenner/i.test(enLower) || /jenner|ג'נר|ג׳נר/i.test(ctx.toLowerCase())) {
       queries.add(`${first} Kardashian`);
     }
     if (/west/i.test(enLower) || /west|ווסט/i.test(ctx)) {
