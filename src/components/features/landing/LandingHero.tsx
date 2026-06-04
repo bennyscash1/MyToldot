@@ -1,10 +1,17 @@
 import { getTranslations } from 'next-intl/server';
 
 import { Link, type Locale } from '@/i18n/routing';
+import { getAuthUser } from '@/lib/api/auth';
 import { HeroFamilyTree } from './HeroFamilyTree';
+
+/** Public demo tree on production (משפחת בנאי). */
+const DEMO_TREE_SHORT_CODE = '29838';
 
 export async function LandingHero({ locale }: { locale: Locale }) {
   const t = await getTranslations({ locale, namespace: 'landing.hero' });
+  const user = await getAuthUser();
+  const primaryCtaHref = user ? '/tree' : '/signup';
+  const demoCtaHref = `/tree/${DEMO_TREE_SHORT_CODE}`;
 
   return (
     <section className="relative z-[2] mx-auto max-w-[1320px] px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-24 lg:px-8">
@@ -34,7 +41,7 @@ export async function LandingHero({ locale }: { locale: Locale }) {
 
           <div className="landing-fade-up landing-delay-3 mt-9 flex flex-wrap items-center gap-3.5">
             <Link
-              href="/signup"
+              href={primaryCtaHref}
               className="inline-flex items-center gap-2 rounded-lg border border-brand-green bg-brand-green px-7 py-4 text-sm font-semibold text-cream shadow-[0_4px_14px_rgba(61,93,58,0.25)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-green-deep hover:shadow-[0_8px_24px_rgba(61,93,58,0.32)]"
             >
               <span>{t('primaryCta')}</span>
@@ -43,7 +50,7 @@ export async function LandingHero({ locale }: { locale: Locale }) {
               </svg>
             </Link>
             <Link
-              href="/tree"
+              href={demoCtaHref}
               className="inline-flex items-center rounded-lg border border-ink bg-transparent px-7 py-4 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-ink hover:text-cream"
             >
               {t('secondaryCta')}

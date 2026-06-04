@@ -40,7 +40,7 @@ export async function LandingFooter({ locale }: { locale: Locale }) {
             {t('features.title')}
           </h4>
           <ul className="mt-5 space-y-2.5 text-sm">
-            <li><Link href="/tree" className="transition-colors hover:text-gold-soft">{t('features.demoTree')}</Link></li>
+            <li><Link href="/tree/29838" className="transition-colors hover:text-gold-soft">{t('features.demoTree')}</Link></li>
             <li><a href="#features" className="transition-colors hover:text-gold-soft">{t('features.aiBiographies')}</a></li>
             <li><a href="#scenario" className="transition-colors hover:text-gold-soft">{t('features.livingRoom')}</a></li>
           </ul>
