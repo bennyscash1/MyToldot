@@ -387,12 +387,12 @@ export async function searchPersonImagesAction(input: {
     const context =
       searchContext?.trim() || buildDefaultImageSearchContext(subject);
 
-    const MAX_RESULTS = 12;
+    const MAX_RESULTS = 16;
 
     const [rawCandidates, commonsCandidates] = await Promise.all([
       generatePersonImageCandidates(subject, context),
       searchCommonsImageCandidates(
-        buildCommonsSearchQueries(subject.fullNameEn, context),
+        buildCommonsSearchQueries(subject.fullNameEn, context, subject.fullNameHe),
         MAX_RESULTS,
       ),
     ]);

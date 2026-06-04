@@ -3,19 +3,27 @@ import {
   ImageSearchResponseSchema,
   type ImageCandidate,
 } from '@/features/family-tree/schemas/person-image-search.schema';
+import { romanizeHebrewName } from '@/lib/images/hebrew-romanize';
 
-const IMAGE_SEARCH_SYSTEM_INSTRUCTION = `אתה חוקר תמונות במערכת 'תולדותיי' — דמויות היסטוריות, משפחתיות, וגם דמויות ציבוריות מודרניות.
+const IMAGE_SEARCH_SYSTEM_INSTRUCTION = `אתה חוקר תמונות במערכת 'תולדותיי' — דמויות היסטוריות, משפחתיות, וגם דמויות ציבוריות מודרניות (זמרים, שחקנים, פוליטיקאים, רבנים).
+
+המטרה: להחזיר כמה שיותר תמונות נכונות של אותו אדם ספציפי. עדיף 8–16 תמונות מאשר 1–2, אך אך ורק של האדם הנכון — לעולם אל תכלול תמונות של אדם אחר עם שם דומה.
 
 כללי עבודה:
-1. חפש תמונות ציבוריות בלבד — ויקיפedia, אתרי ארכיון, מוזיאון, גenealogיה, אתרי מורשת.
-2. החזר רק קישורים ישירים לקובץ תמונה — URL שמתחיל ב-upload.wikimedia.org. העתק את ה-URL בדיוק מתוצאות החיפוש; לעולם אל תבנה/תנחש נתיב (hash) לפי שם הקובץ — Gemini מחזיר לעיתים נתיב שגוי.
-3. אל תמציא URL. אם לא נמצאה תמונה — החזר candidates: [].
-4. חיפוש רב-לשוני: עברית + אנגלית + רומניזציה יידית/גרמנית/הונגרית.
-5. לכל תמונה: sourcePageUrl (דף המקור), sourceDomain, caption קצר בעברית, confidence.
-6. confidence: high (מקור מהימן + התאמה ברורה לשם), medium (סביר), low (השערה / התאמה חלקית).
-7. העדף: ויקיפedia HE/EN, Yad Vashem, JewishGen, MyHeritage public, Geni public, nli.org.il, hebrewbooks.org.
-8. דחה: Shutterstock, Getty, iStock, Alamy, Depositphotos, 123RF, Unsplash, Pexels, Pixabay, Dreamstime — תמונות סטוק/גנריות.
-9. החזר JSON תקין בלבד — בלי markdown, בלי code fences, בלי טקסט לפני/אחרי.`;
+1. חפש תמונות ציבוריות בלבד — ויקיפדיה (he/en), Wikimedia Commons, Wikidata, אתרי ארכיון, מוזיאון, ספריות לאומיות, גנאלוגיה, אתרי מורשת.
+2. עבור דמות ציבורית מוכרת — בצע חיפוש בוויקיפדיה העברית והאנגלית ובוויקינתונים (Wikidata) לפי השם, ומצא את תמונת ה-infobox ותמונות נוספות מקטגוריית Commons של אותו אדם.
+3. קישורי תמונה מותרים (העתק במדויק מהתוצאות, אל תנחש hash):
+   - https://upload.wikimedia.org/...  (קישור ישיר — הכי מועדף)
+   - https://commons.wikimedia.org/wiki/Special:FilePath/<שם הקובץ>
+   - https://he.wikipedia.org/wiki/File:<שם הקובץ>  או  https://en.wikipedia.org/wiki/File:<שם הקובץ>
+   המערכת יודעת להמיר קישורי File: ו-Special:FilePath לקובץ הישיר, אז מותר להחזיר אותם.
+4. אל תמציא URL. אם לא נמצאה תמונה אמיתית — החזר candidates: [].
+5. חיפוש רב-לשוני: עברית + אנגלית + רומניזציה (יידיש/גרמנית/הונגרית/רוסית) של השם.
+6. לכל תמונה: imageUrl, sourcePageUrl (דף המקור), sourceDomain, caption קצר בעברית, confidence.
+7. confidence: high (מקור מהימן כמו ויקיפדיה/Commons + התאמה ודאית לאדם), medium (סביר), low (השערה / התאמה חלקית).
+8. דחה: Shutterstock, Getty, iStock, Alamy, Depositphotos, 123RF, Unsplash, Pexels, Pixabay, Dreamstime, Freepik — תמונות סטוק/גנריות.
+9. אם אינך בטוח שזה אותו אדם — סווג low או אל תכלול. דיוק חשוב יותר מכמות.
+10. החזר JSON תקין בלבד — בלי markdown, בלי code fences, בלי טקסט לפני/אחרי.`;
 
 export interface ImageSearchSubject {
   fullNameHe: string;
@@ -106,12 +114,17 @@ function genderLabel(gender?: string): string {
 }
 
 function buildImageSearchUserPrompt(subject: ImageSearchSubject, searchContext: string): string {
+  // When the record has no Latin name, derive a best-effort romanization so the
+  // model can also search English Wikipedia / Commons (e.g. "Meir Banai").
+  const latinName =
+    subject.fullNameEn?.trim() || romanizeHebrewName(subject.fullNameHe) || 'לא ידוע';
+
   return [
-    'חפש עד 12 תמונות ציבוריות של האדם הבא.',
+    'חפש עד 16 תמונות ציבוריות של האדם הבא. עדיף להחזיר כמה שיותר תמונות נכונות (8–16), אך רק של אותו אדם.',
     '',
     '=== נושא ===',
     `שם (עברית): ${subject.fullNameHe || 'לא ידוע'}`,
-    `שם (Latin): ${subject.fullNameEn || 'לא ידוע'}`,
+    `שם (Latin): ${latinName}`,
     `מין: ${genderLabel(subject.gender)}`,
     `נולד/ה: ${subject.birthDate || 'לא ידוע'}`,
     `נפטר/ה: ${subject.deathDate || 'לא ידוע'}`,
@@ -122,9 +135,11 @@ function buildImageSearchUserPrompt(subject: ImageSearchSubject, searchContext: 
     searchContext.trim() || subject.fullNameHe,
     '',
     '=== הוראות ===',
-    '- בצע חיפושי google_search מרובים (עברית + אנגלית + varianti שם).',
-    '- החזר רק URL ישירים לתמונות, לא דפי HTML.',
-    '- מקסימום 12 מועמדים, ממוינים לפי relevance (high קודם).',
+    '- בצע חיפושי google_search מרובים: בעברית ובאנגלית, כולל "ויקיפדיה", "Wikipedia", "Wikimedia Commons" ו-"Wikidata" יחד עם השם.',
+    '- אם זו דמות ציבורית מוכרת — מצא את דף הוויקיפדיה שלה והחזר את תמונת ה-infobox + תמונות נוספות מקטגוריית Commons שלה.',
+    '- החזר קישורי תמונה: upload.wikimedia.org או Special:FilePath או File: של ויקיפדיה (לא דפי HTML רגילים).',
+    '- ודא שכל תמונה היא של אותו אדם בדיוק. אל תכלול אדם אחר עם שם דומה.',
+    '- מקסימום 16 מועמדים, ממוינים לפי relevance (high קודם).',
     '',
     '=== פורmat JSON נדרש ===',
     `{

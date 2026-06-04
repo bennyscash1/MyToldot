@@ -1,5 +1,7 @@
 import type { ImageCandidate } from '@/features/family-tree/schemas/person-image-search.schema';
 
+import { romanizeHebrewName } from './hebrew-romanize';
+
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 const FETCH_TIMEOUT_MS = 10000;
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
@@ -12,6 +14,10 @@ interface CommonsSearchPage {
 
 function isLatinQuery(query: string): boolean {
   return /[a-zA-Z]/.test(query);
+}
+
+function hasHebrew(text: string): boolean {
+  return /[\u05D0-\u05EA]/.test(text);
 }
 
 async function fetchCommonsSearch(query: string, limit: number): Promise<CommonsSearchPage[]> {
@@ -62,18 +68,44 @@ function pageToCandidate(page: CommonsSearchPage): ImageCandidate | null {
   };
 }
 
-/** Build Latin search queries for Wikimedia Commons (Hebrew-only strings are skipped). */
+/**
+ * Build Wikimedia Commons search queries from the person's Hebrew name, an
+ * optional Latin name, and the free-text search context.
+ *
+ * Commons CirrusSearch indexes Hebrew file-description pages and Wikidata
+ * structured data, so Hebrew queries DO return results for well-known people.
+ * We therefore search with:
+ *   - the Hebrew full name (as typed)
+ *   - a best-effort Latin romanization of the Hebrew name (e.g. "Meir Banai")
+ *   - the explicit Latin name, if the record has one
+ *   - any Latin portion of the search context
+ */
 export function buildCommonsSearchQueries(
   fullNameEn: string | undefined,
   searchContext: string,
+  fullNameHe?: string,
 ): string[] {
   const queries = new Set<string>();
 
+  const he = fullNameHe?.trim();
+  if (he && hasHebrew(he)) {
+    queries.add(he);
+    const romanized = romanizeHebrewName(he);
+    if (romanized) queries.add(romanized);
+  }
+
   const en = fullNameEn?.trim();
-  if (en) queries.add(en);
+  if (en && isLatinQuery(en)) queries.add(en);
 
   const ctx = searchContext.trim();
-  if (ctx && isLatinQuery(ctx)) queries.add(ctx);
+  if (ctx) {
+    if (isLatinQuery(ctx)) queries.add(ctx);
+    else if (hasHebrew(ctx)) {
+      queries.add(ctx);
+      const romanizedCtx = romanizeHebrewName(ctx);
+      if (romanizedCtx) queries.add(romanizedCtx);
+    }
+  }
 
   const enLower = en?.toLowerCase() ?? '';
   const first = en?.split(/\s+/)[0];
@@ -90,7 +122,10 @@ export function buildCommonsSearchQueries(
     }
   }
 
-  return [...queries].filter(isLatinQuery).slice(0, 5);
+  // Keep queries that are either Latin or contain Hebrew (skip empty / noise).
+  return [...queries]
+    .filter((q) => q.length > 1 && (isLatinQuery(q) || hasHebrew(q)))
+    .slice(0, 6);
 }
 
 /** Search Wikimedia Commons directly — returns verified upload.wikimedia.org URLs. */
