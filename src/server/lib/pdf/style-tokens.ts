@@ -1,4 +1,3 @@
-import { BASE_STYLE_IDS } from './constants';
 import { parseVariantId } from './variants';
 import type { StyleToken } from './types';
 

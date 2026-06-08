@@ -92,7 +92,7 @@ export interface PosterVariant {
   usedCssFallback: boolean;
 }
 
-export interface EnsureBorderResult extends PosterVariant {}
+export type EnsureBorderResult = PosterVariant;
 
 /** Poster-edition narrative cached per epoch. */
 export interface PosterBioCopy {

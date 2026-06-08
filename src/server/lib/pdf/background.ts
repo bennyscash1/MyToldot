@@ -1,11 +1,10 @@
 import 'server-only';
 
-import { getSupabaseAdminClient, isSupabaseAdminConfigured } from '@/lib/supabase/admin';
+import { isSupabaseAdminConfigured } from '@/lib/supabase/admin';
 
 import { getStyleToken } from './style-tokens';
 import { parseVariantId } from './variants';
 import {
-  DESIGN_ASSETS_BUCKET,
   borderAssetPublicUrl,
   borderAssetStoragePath,
   ensureDesignAssetsBucket,

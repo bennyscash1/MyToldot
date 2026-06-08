@@ -8,7 +8,7 @@ import { ensurePosterBio } from './poster-bio';
 import { ensurePosterTreeLayout, type PosterTreeLayoutData } from './poster-layout';
 import { planTreeLayout } from './plan';
 import { buildTreeSummary, resolveHeadId } from './summarize';
-import { DEFAULT_STYLE_ID, getBaseStyleId, getStyleToken } from './style-tokens';
+import { getBaseStyleId, getStyleToken } from './style-tokens';
 import { borderAssetPublicUrl, borderAssetStoragePath, objectExistsInDesignAssets } from './storage-assets';
 import type { TreeLayoutPlan } from './types';
 import { parseVariantId } from './variants';
