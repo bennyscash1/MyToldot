@@ -15,16 +15,12 @@ export interface StyleToken {
   labelHe: string;
   /** Page background colour, e.g. "#f4f3e9". */
   backgroundColor: string;
-  /** AI-generated decorative frame; resolved at runtime from Storage. */
-  borderAssetUrl?: string;
   fontHeading: string;
   fontBody: string;
   /** Connector lines, dividers, focal accents. */
   accentColor: string;
   /** Curved tree connectors; defaults to accentColor. */
   connectorColor?: string;
-  /** border = corner frame only; scenic = full-page illustrated background. */
-  backgroundMode?: 'border' | 'scenic';
   cardStyle: 'framed' | 'minimal' | 'soft';
 }
 
@@ -84,15 +80,6 @@ export interface GenerateTreePdfArgs {
   /** Origin used to navigate the headless browser to the print route. */
   baseUrl: string;
 }
-
-/** One decorative border variant in a generation set. */
-export interface PosterVariant {
-  variantId: string;
-  borderUrl: string | null;
-  usedCssFallback: boolean;
-}
-
-export type EnsureBorderResult = PosterVariant;
 
 /** Poster-edition narrative cached per epoch. */
 export interface PosterBioCopy {

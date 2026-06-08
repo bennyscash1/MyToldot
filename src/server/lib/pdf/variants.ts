@@ -1,6 +1,14 @@
-import { ensureBorderAsset } from './background';
+import { isSupabaseAdminConfigured } from '@/lib/supabase/admin';
+
 import { BASE_STYLE_IDS } from './constants';
-import type { PosterVariant } from './types';
+import {
+  ensureDesignAssetsBucket,
+  getLatestFrameIndex,
+  setLatestFrameIndex,
+} from './storage-assets';
+
+/** Number of minimalist CSS frame variants (v1–v4). */
+export const FRAME_VARIANT_COUNT = 4;
 
 /** Parse variant id using known base-style prefixes (ids contain dashes). */
 export function parseVariantId(variantId: string): {
@@ -29,7 +37,7 @@ export function parseVariantId(variantId: string): {
  * Build a stable variant id:
  *   {baseStyleId}--{treeId}--g{epoch}--v{n}
  *
- * Caching is per variant id. A new epoch (via "צור מחדש") mints fresh ids.
+ * v{n} selects a CSS frame variant (1–4). Epoch drives bio/layout cache.
  */
 export function buildVariantId(
   baseStyleId: string,
@@ -45,12 +53,24 @@ export function mintEpoch(): string {
   return Date.now().toString(36);
 }
 
-/** Ensure the single decorative border for one generation epoch. */
-export async function ensurePosterVariant(
-  treeId: string,
+/**
+ * Resolve CSS frame index for this poster session.
+ * regenerate=true → cycle 1→2→3→4→1. First visit defaults to 1.
+ */
+export async function resolveFrameIndex(
   baseStyleId: string,
-  epoch: string,
-): Promise<PosterVariant> {
-  const variantId = buildVariantId(baseStyleId, treeId, epoch, 1);
-  return ensureBorderAsset(variantId, baseStyleId, 1);
+  treeId: string,
+  regenerate: boolean,
+): Promise<number> {
+  const prev = await getLatestFrameIndex(baseStyleId, treeId);
+  const next = regenerate
+    ? ((prev ?? 0) % FRAME_VARIANT_COUNT) + 1
+    : (prev ?? 1);
+
+  if (isSupabaseAdminConfigured()) {
+    await ensureDesignAssetsBucket();
+    await setLatestFrameIndex(baseStyleId, treeId, next);
+  }
+
+  return next;
 }

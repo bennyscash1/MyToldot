@@ -4,10 +4,7 @@ import type { StyleToken } from '@/server/lib/pdf/types';
 
 import styles from './print.module.css';
 
-/**
- * CSS-only ornamental fallback when Flash Image generation fails.
- * Three distinct patterns keyed by variantIndex (1–3).
- */
+/** CSS-only minimalist frame — four variants keyed by variantIndex (1–4). */
 export function CssDecorativeBorder({
   styleToken,
   variantIndex,
@@ -15,15 +12,22 @@ export function CssDecorativeBorder({
   styleToken: StyleToken;
   variantIndex: number;
 }) {
-  const accent = styleToken.accentColor;
-  const pattern = variantIndex === 2 ? 'medallion' : variantIndex === 3 ? 'organic' : 'classic';
+  const frame = ((variantIndex - 1) % 4) + 1;
+  const variantClass =
+    frame === 2
+      ? styles.frameHairline
+      : frame === 3
+        ? styles.frameBrackets
+        : frame === 4
+          ? styles.frameTint
+          : styles.frameDouble;
 
   return (
     <div
-      className={`${styles.cssBorder} ${styles[`cssBorder_${pattern}`]}`}
+      className={`${styles.cssBorder} ${variantClass}`}
       style={
         {
-          '--poster-accent': accent,
+          '--poster-accent': styleToken.accentColor,
           '--poster-bg': styleToken.backgroundColor,
         } as CSSProperties
       }

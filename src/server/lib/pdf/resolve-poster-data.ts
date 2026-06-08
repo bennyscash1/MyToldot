@@ -9,7 +9,6 @@ import { ensurePosterTreeLayout, type PosterTreeLayoutData } from './poster-layo
 import { planTreeLayout } from './plan';
 import { buildTreeSummary, resolveHeadId } from './summarize';
 import { getBaseStyleId, getStyleToken } from './style-tokens';
-import { borderAssetPublicUrl, borderAssetStoragePath, objectExistsInDesignAssets } from './storage-assets';
 import type { TreeLayoutPlan } from './types';
 import { parseVariantId } from './variants';
 
@@ -40,8 +39,6 @@ export interface PosterRenderData {
   styleToken: ReturnType<typeof getStyleToken>;
   variantId: string;
   variantIndex: number;
-  borderUrl: string | null;
-  usedCssFallback: boolean;
   plan: TreeLayoutPlan;
   personById: Map<string, PersonRow>;
   headId: string | null;
@@ -110,10 +107,6 @@ export async function resolvePosterRenderData(params: {
     personBios: bioCopy.personBios,
   });
 
-  const borderExists = await objectExistsInDesignAssets(borderAssetStoragePath(variantId));
-  const borderUrl = borderExists ? borderAssetPublicUrl(variantId) : null;
-  const usedCssFallback = !borderExists;
-
   return {
     treeId: treeData.treeId,
     treeName: treeData.treeName ?? '',
@@ -122,8 +115,6 @@ export async function resolvePosterRenderData(params: {
     styleToken: getStyleToken(baseStyleId),
     variantId,
     variantIndex,
-    borderUrl,
-    usedCssFallback,
     plan,
     personById,
     headId,

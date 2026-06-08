@@ -27,7 +27,10 @@ import {
 } from './poster-curved-edges';
 import type { BipartiteEdge, BipartiteGraph, PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
 
+import { clampPosterBioParagraphs } from './poster-bio-clamp';
+import { posterBioDepth } from './poster-bio-depth';
 import { relationshipLabelHe } from './poster-relationships';
+import { headSpouseIds } from './summarize';
 import {
   downloadFromDesignAssets,
   ensureDesignAssetsBucket,
@@ -108,14 +111,20 @@ function buildPersonBioMap(
   headId: string,
   personBios: Record<string, string[]>,
   personById: Map<string, PersonRow>,
+  minGen: number,
+  spouses: Set<string>,
 ): Map<string, PersonBioContent> {
   const out = new Map<string, PersonBioContent>();
   for (const id of core) {
     const person = personById.get(id);
     if (!person) continue;
-    const paragraphs = personBios[id] ?? [];
+    const node = fullGraph.nodes.find((n) => n.id === id && n.kind === 'person');
+    const gen = node?.gen ?? 0;
+    const depth = posterBioDepth(id, gen, minGen, headId, spouses);
+    const paragraphs = clampPosterBioParagraphs(personBios[id] ?? [], depth);
+    const relationshipLabel = relationshipLabelHe(fullGraph, id, headId, personById);
     out.set(id, {
-      relationshipLabel: relationshipLabelHe(fullGraph, id, headId, personById),
+      relationshipLabel: paragraphs.length > 0 ? relationshipLabel : '',
       paragraphs,
     });
   }
@@ -518,11 +527,19 @@ export async function buildPosterTreeLayout(params: {
     tierById.set(id, tierForPerson(plan, id));
   }
 
-  const bioById = buildPersonBioMap(core, fullGraph, headId, personBios, personById);
-
   const minGen = Math.min(
     ...filtered.nodes.filter((n) => n.kind === 'person').map((n) => n.gen),
     0,
+  );
+  const spouses = headSpouseIds(headId, relationships);
+  const bioById = buildPersonBioMap(
+    core,
+    fullGraph,
+    headId,
+    personBios,
+    personById,
+    minGen,
+    spouses,
   );
   const genCount = new Set(
     filtered.nodes.filter((n) => n.kind === 'person').map((n) => n.gen),

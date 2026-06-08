@@ -21,23 +21,22 @@ function formatYear(d: Date | string | null): string | null {
   return String(date.getFullYear());
 }
 
-function gregorianYears(person: PersonRow): string {
+function gregorianYears(person: PersonRow): string | null {
   const birth = formatYear(person.birth_date);
   const death = person.is_deceased ? formatYear(person.death_date) : null;
-  if (person.is_deceased) {
-    return birth && death ? `${birth} – ${death}` : (birth ?? '');
-  }
-  return birth ? `${birth} –` : '';
+  if (!birth && !death) return null;
+  if (birth && death) return `${birth} – ${death}`;
+  if (birth) return birth;
+  if (death) return death;
+  return null;
 }
 
-function hebrewYears(person: PersonRow): string {
-  const birthHe = person.birth_year_hebrew ?? null;
-  const deathHe = person.is_deceased ? (person.death_year_hebrew ?? null) : null;
-  if (!birthHe) return '';
-  if (person.is_deceased) {
-    return deathHe ? `${birthHe} – ${deathHe}` : birthHe;
-  }
-  return `${birthHe} –`;
+function hebrewYears(person: PersonRow): string | null {
+  const birthHe = person.birth_year_hebrew?.trim() || null;
+  const deathHe = person.is_deceased ? (person.death_year_hebrew?.trim() || null) : null;
+  if (!birthHe && !deathHe) return null;
+  if (birthHe && deathHe) return `${birthHe} – ${deathHe}`;
+  return birthHe ?? deathHe;
 }
 
 function BioBlock({
@@ -60,7 +59,7 @@ function BioBlock({
 
   return (
     <div className={`${cardStyles.bioBlock} ${bioClass}`}>
-      {relationshipLabel ? (
+      {relationshipLabel?.trim() ? (
         <div className={cardStyles.bioRel} style={{ color: accentColor }}>
           {relationshipLabel}
         </div>
@@ -90,8 +89,8 @@ export function PosterPersonCard({
   const metrics = posterTierMetrics(tier);
   const name = displayName(person);
   const showDates = tier !== 'compact';
-  const years = showDates ? gregorianYears(person) : '';
-  const heYears = showDates ? hebrewYears(person) : '';
+  const years = showDates ? gregorianYears(person) : null;
+  const heYears = showDates ? hebrewYears(person) : null;
   const src = getPersonProfileImageUrl(person);
   const hasBio = bioParagraphs.length > 0;
   const isPrimary = tier === 'primary';

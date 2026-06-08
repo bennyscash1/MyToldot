@@ -12,7 +12,6 @@ export const STYLE_TOKENS: Record<string, StyleToken> = {
     fontBody: 'Heebo',
     accentColor: '#059669',
     connectorColor: '#34d399',
-    backgroundMode: 'scenic',
     cardStyle: 'soft',
   },
   'parchment-classic': {

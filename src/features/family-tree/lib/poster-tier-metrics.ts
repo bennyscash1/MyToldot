@@ -1,3 +1,8 @@
+import {
+  POSTER_BIO_G1_MAX_CHARS,
+  POSTER_BIO_G2_MAX_CHARS,
+} from '@/server/lib/pdf/poster-bio-clamp';
+
 /**
  * Rendered poster card dimensions — must match PosterPersonCard and ELK node
  * sizes fed in buildPosterTreeLayout (poster-only; canvas uses constants.ts).
@@ -88,10 +93,13 @@ export function estimatePosterCardHeight(
   }
 
   const cfg = BIO_LAYOUT[tier];
-  let lines = relationshipLabel ? 1 : 0;
-  for (const p of display) {
-    lines += estimateTextLines(p, cfg.charsPerLine);
-  }
+  const charBudget =
+    tier === 'primary' ? POSTER_BIO_G1_MAX_CHARS : tier === 'secondary' ? POSTER_BIO_G2_MAX_CHARS : 0;
+  const textForEstimate = display
+    .join(' ')
+    .slice(0, charBudget > 0 ? charBudget : undefined);
+  let lines = relationshipLabel?.trim() ? 1 : 0;
+  lines += estimateTextLines(textForEstimate, cfg.charsPerLine);
   const textHeight =
     lines * cfg.fontSize * cfg.lineHeight +
     Math.max(0, display.length - 1) * cfg.paraGap +

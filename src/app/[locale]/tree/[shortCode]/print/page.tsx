@@ -61,8 +61,6 @@ export default async function TreePrintPage({
       <PosterDocument
         dir={data.dir}
         styleToken={data.styleToken}
-        borderUrl={data.borderUrl}
-        usedCssFallback={data.usedCssFallback}
         variantIndex={data.variantIndex}
         treeName={data.treeName}
         introParagraphs={data.introParagraphs}

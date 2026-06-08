@@ -9,8 +9,8 @@ import { planTreeLayout } from './plan';
 import { buildTreeSummary, resolveHeadId } from './summarize';
 import { DEFAULT_STYLE_ID } from './style-tokens';
 import { resolveEpoch } from './storage-assets';
-import type { PosterBioCopy, PosterVariant, TreeLayoutPlan } from './types';
-import { buildVariantId, ensurePosterVariant } from './variants';
+import type { PosterBioCopy, TreeLayoutPlan } from './types';
+import { buildVariantId, resolveFrameIndex } from './variants';
 
 export interface PosterSession {
   treeId: string;
@@ -20,13 +20,12 @@ export interface PosterSession {
   variantId: string;
   plan: TreeLayoutPlan;
   planBase64: string;
-  variant: PosterVariant;
   bioCopy: PosterBioCopy;
 }
 
 /**
  * Run the full AI poster generation for one epoch: Pro tier plan (once),
- * one Flash Image border, poster-edition biography.
+ * CSS frame variant, poster-edition biography.
  */
 export async function generatePosterSession(params: {
   shortCode: string;
@@ -37,11 +36,12 @@ export async function generatePosterSession(params: {
   const treeData = await resolveTreePageDataBySlug(params.shortCode);
   if (!treeData.treeId) return null;
 
-  const epoch = await resolveEpoch(
-    baseStyleId,
-    treeData.treeId,
-    Boolean(params.regenerate),
-  );
+  const regenerate = Boolean(params.regenerate);
+
+  const [epoch, frameIndex] = await Promise.all([
+    resolveEpoch(baseStyleId, treeData.treeId, regenerate),
+    resolveFrameIndex(baseStyleId, treeData.treeId, regenerate),
+  ]);
 
   const persons = treeData.initialPersons;
   const relationships = treeData.initialRelationships;
@@ -57,23 +57,20 @@ export async function generatePosterSession(params: {
   const plan = await planTreeLayout(summary, baseStyleId);
   const planBase64 = Buffer.from(JSON.stringify(plan)).toString('base64');
 
-  const variantId = buildVariantId(baseStyleId, treeData.treeId, epoch, 1);
+  const variantId = buildVariantId(baseStyleId, treeData.treeId, epoch, frameIndex);
 
-  const [variant, bioCopy] = await Promise.all([
-    ensurePosterVariant(treeData.treeId, baseStyleId, epoch),
-    ensurePosterBio({
-      baseStyleId,
-      treeId: treeData.treeId,
-      epoch,
-      treeName: treeData.treeName ?? '',
-      aboutText: aboutRow?.about_text ?? null,
-      head,
-      persons,
-      relationships,
-      headId,
-      plan,
-    }),
-  ]);
+  const bioCopy = await ensurePosterBio({
+    baseStyleId,
+    treeId: treeData.treeId,
+    epoch,
+    treeName: treeData.treeName ?? '',
+    aboutText: aboutRow?.about_text ?? null,
+    head,
+    persons,
+    relationships,
+    headId,
+    plan,
+  });
 
   await ensurePosterTreeLayout({
     baseStyleId,
@@ -94,7 +91,6 @@ export async function generatePosterSession(params: {
     variantId,
     plan,
     planBase64,
-    variant,
     bioCopy,
   };
 }

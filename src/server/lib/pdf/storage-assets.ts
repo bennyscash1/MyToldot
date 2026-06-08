@@ -5,11 +5,6 @@ import { getSupabaseAdminClient, isSupabaseAdminConfigured } from '@/lib/supabas
 /** Public Supabase Storage bucket dedicated to design/style assets. */
 export const DESIGN_ASSETS_BUCKET = 'design-assets';
 
-/** Storage object path for a variant's decorative border frame. */
-export function borderAssetStoragePath(variantId: string): string {
-  return `borders/${variantId}.png`;
-}
-
 /** Cached poster-edition biography JSON for one generation epoch. */
 export function posterBioStoragePath(baseStyleId: string, treeId: string, epoch: string): string {
   return `poster-copy/${baseStyleId}--${treeId}--g${epoch}.json`;
@@ -25,10 +20,9 @@ export function latestEpochMetaPath(baseStyleId: string, treeId: string): string
   return `meta/${baseStyleId}--${treeId}/latest-epoch.txt`;
 }
 
-export function borderAssetPublicUrl(variantId: string): string | null {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
-  return `${base}/storage/v1/object/public/${DESIGN_ASSETS_BUCKET}/${borderAssetStoragePath(variantId)}`;
+/** Pointer file tracking the latest CSS frame index (1–4) for a tree + base style. */
+export function latestFrameMetaPath(baseStyleId: string, treeId: string): string {
+  return `meta/${baseStyleId}--${treeId}/latest-frame.txt`;
 }
 
 let bucketEnsured = false;
@@ -105,6 +99,31 @@ export async function setLatestEpoch(
   await uploadToDesignAssets({
     path: latestEpochMetaPath(baseStyleId, treeId),
     body: Buffer.from(epoch, 'utf8'),
+    contentType: 'text/plain',
+    upsert: true,
+  });
+}
+
+export async function getLatestFrameIndex(
+  baseStyleId: string,
+  treeId: string,
+): Promise<number | null> {
+  const raw = await downloadFromDesignAssets(latestFrameMetaPath(baseStyleId, treeId));
+  const n = Number.parseInt(raw?.trim() ?? '', 10);
+  if (!Number.isFinite(n) || n < 1 || n > 4) return null;
+  return n;
+}
+
+export async function setLatestFrameIndex(
+  baseStyleId: string,
+  treeId: string,
+  index: number,
+): Promise<void> {
+  if (!isSupabaseAdminConfigured()) return;
+  await ensureDesignAssetsBucket();
+  await uploadToDesignAssets({
+    path: latestFrameMetaPath(baseStyleId, treeId),
+    body: Buffer.from(String(index), 'utf8'),
     contentType: 'text/plain',
     upsert: true,
   });

@@ -4,6 +4,7 @@ import { buildBipartiteGraph } from '@/features/family-tree/lib/buildBipartiteGr
 import { generateStructuredJson } from '@/server/lib/gemini';
 import type { PersonRow, RelationshipRow } from '@/features/family-tree/lib/types';
 
+import { clampPosterBioParagraphs } from './poster-bio-clamp';
 import { posterBioDepth, posterBioDepthLabel, type PosterBioDepth } from './poster-bio-depth';
 import { buildFamilyRelationshipLines } from './poster-relationships';
 import { headSpouseIds, personDisplayName } from './summarize';
@@ -28,9 +29,10 @@ Hard rules:
 5. introParagraphs: 1-2 paragraphs about the family (from about_text facts).
 6. personBios: one entry per listed person who needs prose on the poster.
 7. Biography DEPTH per person (bioDepth field) — obey exactly:
-   - "full": G1 row — family head and spouse(s) — write 1-3 full paragraphs each.
-   - "short": G2 row — write a genuine 2-3 sentence summary. NOT the full DB text,
-     NOT one long paragraph, NOT empty. Compress meaningfully.
+   - "full": G1 row — family head and spouse(s) — max 700 characters total (~2 short
+     paragraphs). Warm, dignified, complete — never truncated mid-thought.
+   - "short": G2 row — max 160 characters (2-3 sentences). Genuine summary, not the
+     full DB text, not empty. Compress meaningfully.
    - Do NOT include persons marked "none" (G3+) in personBios at all.
 8. Vary wording each generation epoch while preserving factual accuracy.
 
@@ -50,17 +52,22 @@ function splitParagraphs(text: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
-function summarizeToShort(paragraphs: string[]): string[] {
-  const text = paragraphs.join(' ').trim();
-  if (!text) return [];
-  const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
-  const short = sentences
-    .slice(0, 3)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-  return short ? [short] : [];
+function clampBiosForRoster(
+  bios: Record<string, string[]>,
+  roster: Array<{ person: PersonRow; gen: number }>,
+  minGen: number,
+  headId: string,
+  spouses: Set<string>,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const { person, gen } of roster) {
+    const raw = bios[person.id];
+    if (!raw?.length) continue;
+    const depth = posterBioDepth(person.id, gen, minGen, headId, spouses);
+    const clamped = clampPosterBioParagraphs(raw, depth);
+    if (clamped.length > 0) out[person.id] = clamped;
+  }
+  return out;
 }
 
 function personIdsForPlan(plan: TreeLayoutPlan): string[] {
@@ -100,14 +107,12 @@ function fallbackPersonBiosWithGen(
   for (const { person, gen } of roster) {
     const depth = posterBioDepth(person.id, gen, minGen, headId, spouses);
     if (depth === 'none') continue;
-    if (depth === 'full') {
-      const paras = splitParagraphs(head?.bio ?? person.bio);
-      if (paras.length > 0) out[person.id] = paras;
-      continue;
-    }
-    const paras = splitParagraphs(person.bio);
-    const short = summarizeToShort(paras);
-    if (short.length > 0) out[person.id] = short;
+    const source = depth === 'full' && person.id === headId
+      ? (head?.bio ?? person.bio)
+      : person.bio;
+    const paras = splitParagraphs(source);
+    const clamped = clampPosterBioParagraphs(paras, depth);
+    if (clamped.length > 0) out[person.id] = clamped;
   }
   return out;
 }
@@ -137,7 +142,7 @@ function coercePersonBios(parsed: unknown): Record<string, string[]> {
     const paragraphs = Array.isArray(row.paragraphs)
       ? row.paragraphs.filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
       : [];
-    if (paragraphs.length > 0) out[row.personId] = paragraphs;
+    if (paragraphs.length > 0) out[row.personId.trim()] = paragraphs;
   }
   return out;
 }
@@ -260,7 +265,16 @@ export async function ensurePosterBio(params: {
     if (raw) {
       try {
         const cached = coercePosterBio(JSON.parse(raw), headId ?? null);
-        if (cached) return cached;
+        if (cached) {
+          cached.personBios = clampBiosForRoster(
+            cached.personBios,
+            roster.map((r) => ({ person: r.person, gen: r.gen })),
+            minGen,
+            headId ?? '',
+            spouses,
+          );
+          return cached;
+        }
       } catch {
         // fall through to regenerate or fallback
       }
@@ -324,6 +338,13 @@ export async function ensurePosterBio(params: {
     });
     const copy = coercePosterBio(result.parsed, headId);
     if (copy) {
+      copy.personBios = clampBiosForRoster(
+        copy.personBios,
+        roster.map((r) => ({ person: r.person, gen: r.gen })),
+        minGen,
+        headId,
+        spouses,
+      );
       try {
         await ensureDesignAssetsBucket();
         await uploadToDesignAssets({
