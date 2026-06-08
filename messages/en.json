@@ -47,6 +47,16 @@
     "copied": "Copied!",
     "shareWhatsapp": "Share on WhatsApp"
   },
+  "treePdf": {
+    "create": "Create poster",
+    "download": "Download PDF",
+    "regenerate": "Regenerate",
+    "previewTitle": "Family poster — {name}",
+    "loading": "Arranging your poster…",
+    "backToTree": "Back to tree",
+    "generating": "Preparing PDF...",
+    "error": "Could not generate the poster. Please try again."
+  },
   "joinFlow": {
     "welcomeBanner": "Welcome to {treeName}! You can request edit access using the button below.",
     "alreadyMember": "You are already a member of this family",

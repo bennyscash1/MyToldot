@@ -14,6 +14,7 @@ import { ViewportModeSync } from '@/components/layout/ViewportModeSync';
 import {
   isDashboardPathname,
   isLandingRootPathname,
+  isPrintPathname,
   isTreeCanvasPathname,
 } from '@/lib/routing/viewport';
 import '@/app/globals.css';
@@ -83,16 +84,21 @@ export default async function LocaleLayout({
 
   const hdrs = await headers();
   const pathname = hdrs.get('x-pathname') ?? '';
+  const isPrint = isPrintPathname(pathname);
   const isLockedViewport =
     isTreeCanvasPathname(pathname) || isDashboardPathname(pathname);
   const isLandingRoot = isLandingRootPathname(pathname);
 
-  const bodyClass = isLockedViewport
-    ? 'flex h-screen flex-col overflow-hidden bg-white'
-    : 'flex min-h-screen flex-col overflow-x-hidden bg-white';
-  const mainClass = isLockedViewport
-    ? 'flex min-h-0 flex-1 flex-col'
-    : 'flex-1';
+  const bodyClass = isPrint
+    ? 'm-0 bg-transparent'
+    : isLockedViewport
+      ? 'flex h-screen flex-col overflow-hidden bg-white'
+      : 'flex min-h-screen flex-col overflow-x-hidden bg-white';
+  const mainClass = isPrint
+    ? 'm-0 p-0'
+    : isLockedViewport
+      ? 'flex min-h-0 flex-1 flex-col'
+      : 'flex-1';
 
   return (
     <html lang={safeLocale} dir={dir} className={`${fontClass} ${fontVariables}`}>
@@ -107,20 +113,22 @@ export default async function LocaleLayout({
       <body className={bodyClass} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <QuotaDialogProvider>
-            <a
-              href="#app-main"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:z-[60] focus:rounded focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white ltr:focus:left-2 rtl:focus:right-2"
-            >
-              {tCommon('skipToContent')}
-            </a>
+            {!isPrint && (
+              <a
+                href="#app-main"
+                className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:z-[60] focus:rounded focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white ltr:focus:left-2 rtl:focus:right-2"
+              >
+                {tCommon('skipToContent')}
+              </a>
+            )}
             <ViewportModeSync />
-            <Navbar />
+            {!isPrint && <Navbar />}
             <main id="app-main" className={mainClass}>
               {children}
             </main>
             <footer
               id="app-footer"
-              hidden={isLockedViewport || isLandingRoot}
+              hidden={isPrint || isLockedViewport || isLandingRoot}
               className="border-t border-gray-100 py-6 text-center text-sm text-gray-600"
             >
               {tCommon('footerCopyright', { year: new Date().getFullYear() })}

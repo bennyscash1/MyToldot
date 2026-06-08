@@ -7,6 +7,7 @@ import { TreeAboutOrBackLink } from '@/components/features/tree/TreeAboutOrBackL
 import { TreeShareButton } from '@/components/features/tree/TreeShareButton';
 import { getCurrentUserTreeRole } from '@/lib/api/auth';
 import { getSiteOrigin } from '@/lib/site-url';
+import { isPrintPathname } from '@/lib/routing/viewport';
 import { findTreeByRouteParam } from '@/server/services/tree.service';
 
 type TreeShortCodeLayoutProps = {
@@ -22,6 +23,10 @@ export default async function TreeShortCodeLayout({
   const pathname = (await headers()).get('x-pathname') ?? '';
   const isDashboard = /\/tree\/\d{5}\/dashboard(?:\/|$)/.test(pathname);
 
+  if (isPrintPathname(pathname)) {
+    return <>{children}</>;
+  }
+
   if (isDashboard) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -33,6 +38,7 @@ export default async function TreeShortCodeLayout({
   const t = await getTranslations('treeNav');
   const tManage = await getTranslations('familyManage');
   const tDashboard = await getTranslations('dashboard');
+  const tPdf = await getTranslations('treePdf');
 
   const tree = await findTreeByRouteParam(shortCode);
   const familyLabel = tree?.name ?? shortCode;
@@ -84,6 +90,15 @@ export default async function TreeShortCodeLayout({
                 siteOrigin={siteOrigin}
               />
             )}
+            {treeRole != null && (
+              <Link
+                href={`/tree/${shortCode}/poster`}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+              >
+                <PosterIcon className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="hidden sm:inline">{tPdf('create')}</span>
+              </Link>
+            )}
             <TreeAboutOrBackLink shortCode={shortCode} familyLabel={familyLabel} />
             {isOwner && (
               <Link
@@ -113,6 +128,26 @@ function SparkleIcon({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M12 2.5a.75.75 0 0 1 .7.48l1.6 4.16a4 4 0 0 0 2.36 2.36l4.16 1.6a.75.75 0 0 1 0 1.4l-4.16 1.6a4 4 0 0 0-2.36 2.36l-1.6 4.16a.75.75 0 0 1-1.4 0l-1.6-4.16a4 4 0 0 0-2.36-2.36l-4.16-1.6a.75.75 0 0 1 0-1.4l4.16-1.6a4 4 0 0 0 2.36-2.36l1.6-4.16a.75.75 0 0 1 .7-.48Z" />
+    </svg>
+  );
+}
+
+function PosterIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
     </svg>
   );
 }

@@ -1,0 +1,159 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(30, 95, 107, 0.08);
+}
+
+.cardSideBio {
+  align-items: stretch;
+  padding: 10px 12px 12px;
+}
+
+.cardColumn {
+  padding: 10px 8px 10px;
+  gap: 6px;
+}
+
+.sideBioRow {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.sideBioMain {
+  flex: 1;
+  min-width: 0;
+  text-align: start;
+}
+
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  display: block;
+  border-radius: 50%;
+  border: 3px solid;
+  object-fit: cover;
+  object-position: top center;
+  background: #e8f0f4;
+  box-shadow: 0 2px 8px rgba(30, 95, 107, 0.12);
+}
+
+.deceasedDot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.namePrimary {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.nameSecondary {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+  text-align: center;
+}
+
+.nameCompact {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #0f172a;
+  text-align: center;
+}
+
+.yearsGreg {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.yearsHe {
+  margin-top: 1px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.columnMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.bioBlock {
+  text-align: start;
+  width: 100%;
+}
+
+.cardColumn .bioBlock {
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  margin-top: 4px;
+}
+
+.cardSideBio .bioBlock {
+  margin-top: 8px;
+  border-top: none;
+}
+
+.bioRel {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.bioPara {
+  margin: 0 0 5px;
+  color: #334155;
+}
+
+.bioPara:last-child {
+  margin-bottom: 0;
+}
+
+.bioPrimary {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.bioPrimary .bioRel {
+  font-size: 11px;
+}
+
+.bioSecondary {
+  padding-top: 6px;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.bioSecondary .bioRel {
+  font-size: 9px;
+}
+
+.bioCompact {
+  padding-top: 4px;
+  font-size: 8.5px;
+  line-height: 1.6;
+}
+
+.bioCompact .bioRel {
+  font-size: 8px;
+}

@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   // Enable strict mode for better React dev warnings.
   reactStrictMode: true,
 
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+
   webpack: (config) => {
     config.output.workerChunkLoading = 'import';
     return config;

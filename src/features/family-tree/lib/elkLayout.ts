@@ -222,7 +222,8 @@ function coupleUnionCountForPerson(
   return count;
 }
 
-function centerLoneChildrenUnderUnions(
+/** Exported for poster layout — re-run after poster dynamic row Y passes. */
+export function centerLoneChildrenUnderUnions(
   nodeMap: Map<string, PositionedNode>,
   edges: BipartiteEdge[],
 ): void {
@@ -280,7 +281,8 @@ function centerLoneChildrenUnderUnions(
  * positive shifts are ever applied — bundles whose extents don't overlap are
  * untouched, so this never spreads a layout that's already correct.
  */
-function repairSubtreeCollisions(
+/** Exported for poster layout — re-run after poster-only Y alignment passes. */
+export function repairSubtreeCollisions(
   nodeMap: Map<string, PositionedNode>,
   edges: BipartiteEdge[],
 ): void {

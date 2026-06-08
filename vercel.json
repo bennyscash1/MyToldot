@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "src/app/[locale]/tree/[shortCode]/pdf/route.ts": {
+      "memory": 1024,
+      "maxDuration": 120
+    },
+    "src/app/[locale]/tree/[shortCode]/poster/page.tsx": {
+      "maxDuration": 120
+    }
+  }
+}

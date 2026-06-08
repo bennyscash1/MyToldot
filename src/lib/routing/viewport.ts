@@ -14,6 +14,14 @@ const DASHBOARD_PATH_RE =
 /** Marketing landing root: `/`, `/en`, `/he`. */
 const LANDING_ROOT_PATH_RE = /^\/(?:en|he)?\/?$/;
 
+/** Internal poster render target for Puppeteer and preview iframe. */
+const PRINT_PATH_RE =
+  /^\/(?:en|he)\/tree\/\d{5}\/print\/?$|^\/tree\/\d{5}\/print\/?$/;
+
+export function isPrintPathname(pathname: string): boolean {
+  return PRINT_PATH_RE.test(pathname);
+}
+
 export function isTreeCanvasPathname(pathname: string): boolean {
   return TREE_CANVAS_PATH_RE.test(pathname);
 }

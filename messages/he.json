@@ -47,6 +47,16 @@
     "copied": "הועתק!",
     "shareWhatsapp": "שתף בוואטסאפ"
   },
+  "treePdf": {
+    "create": "צור פוסטר",
+    "download": "הורד PDF",
+    "regenerate": "צור מחדש",
+    "previewTitle": "פוסטר משפחתי — {name}",
+    "loading": "מסדר את הפוסטר…",
+    "backToTree": "חזרה לעץ",
+    "generating": "מכין PDF...",
+    "error": "יצירת הפוסטר נכשלה. נסו שוב."
+  },
   "joinFlow": {
     "welcomeBanner": "ברוך הבא למשפחת {treeName}! ניתן לבקש הרשאת עריכה בכפתור למטה.",
     "alreadyMember": "אתה כבר חבר במשפחה זו",
